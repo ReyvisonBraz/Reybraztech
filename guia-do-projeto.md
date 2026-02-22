@@ -16,12 +16,20 @@ Seu projeto é uma aplicação web moderna construída com:
 
 ---
 
-## 💡 O que poderia ser melhorado (Próximos passos)
+## 📁 Como o Projeto está Organizado Agora (Páginas vs Componentes)
 
-Como você usou muita IA, o código gerado é funcional, mas podemos deixá-lo mais organizado para o futuro:
+Para deixar o projeto profissional e fácil de dar manutenção, dividimos a estrutura de telas em duas pastas principais:
 
-1.  **Criar uma pasta `src/components/`**: Arquivos grandes como o `LandingPage.tsx` têm muitas linhas. O ideal é quebrar pequenos pedaços (como o botão do WhatsApp, o cabeçalho e o rodapé) em "Componentes" separados para reaproveitá-los mais facilmente.
-2.  **Lógica Real no Login**: No arquivo `App.tsx` (linha 36), há um `setTimeout` fingindo que está fazendo login e demorando 1.5 segundos. No futuro, você precisará conectar isso a um banco de dados real.
+1.  **`src/pages/` (Páginas Inteiras):** Aqui ficam as telas completas que o usuário acessa. (Ex: `LandingPage.tsx`, `LoginPage.tsx`). Elas são como o "chassi" do carro.
+2.  **`src/components/` (Componentes Reaproveitáveis):** Aqui ficam os pedacinhos da interface que se repetem ou que são independentes. (Ex: O cabeçalho `Navbar.tsx`, o rodapé `Footer.tsx` e o botão `FloatingWhatsApp.tsx`). Eles são como os "pneus e bancos" que você encaixa no chassi.
+
+---
+
+## 🔐 A Lógica de Login (Preparada para o Futuro)
+
+No arquivo `src/pages/LoginPage.tsx`, a função `handleLogin` foi construída com `async/await`. Isso significa que o JavaScript "espera" uma resposta chegar de algum lugar antes de prosseguir. 
+
+Atualmente, há um `setTimeout` (uma pausa programada) de 1.5 segundos apenas para simular a internet. Porém, deixamos um código bem didático comentado (`fetch(...)`) que mostra exatamente como você deve conectar a sua futura API ou Banco de Dados para validar senhas reais!
 
 ---
 

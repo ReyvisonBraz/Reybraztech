@@ -1,146 +1,26 @@
-import { useState, useEffect } from 'react';
-import { Menu, X, PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, CheckCircle, ChevronDown, Mail, MessageSquare, Zap, Shield, Globe, Sun, Moon, Instagram, Send } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useEffect } from 'react';
+import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 
-const LOGO_URL = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT_PyoMkB59P3OzTV_FbTxjdvtzFgyoxemqDJwBcszLBk9vonzWpUiC2ZVcrQvOmbqY0zjk7FdF0CSKQP2t7wS1k61vO5FQUS-5qpoyzrsYbPRE0sJvWqqkjPTTG-RVStF2gd78ThnlxpXPO4He6FboapYSBvaZ3RPBRm3USRYgxtIK3ggMuLX8nwsgytGrMmzDCFhAipovqbRi-S3ahXOqlUnnDKyJLrsIyOMUU_iAsruVUNJkCByYeE9GmQcYhNLjMlQWQxue";
 
-export const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState('dark');
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    
-    // Theme initialization
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(savedTheme);
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(newTheme);
-    localStorage.setItem('theme', newTheme);
-  };
-
-  return (
-    <nav className={`fixed w-full z-50 transition-all duration-500 ${isScrolled ? 'glass-nav py-2' : 'bg-transparent py-4'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex-shrink-0 flex items-center"
-          >
-            <Link to="/">
-              <img 
-                alt="Reybraz Tech Logo" 
-                className="h-12 w-auto filter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" 
-                src={LOGO_URL} 
-              />
-            </Link>
-          </motion.div>
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-8">
-              {['Início', 'Dispositivos', 'Planos', 'FAQ'].map((item) => (
-                <a 
-                  key={item}
-                  href={item === 'Início' ? '/' : `/#${item.toLowerCase()}`} 
-                  className="text-slate-600 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 px-3 py-2 rounded-md text-sm font-bold transition-all duration-300 hover:scale-110 hover:shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:tracking-widest"
-                >
-                  {item}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="hidden md:flex items-center gap-4">
-            <button 
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-white/5 dark:bg-white/5 light:bg-slate-100 border border-white/10 dark:border-white/10 light:border-slate-200 text-slate-400 hover:text-cyan-400 transition-all"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            <Link to="/login" className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
-              Acesso
-            </Link>
-          </div>
-          <div className="-mr-2 flex md:hidden items-center gap-2">
-            <button 
-              onClick={toggleTheme}
-              className="p-2 rounded-md text-slate-200 hover:text-cyan-400 focus:outline-none"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-slate-200 hover:text-cyan-400 focus:outline-none"
-            >
-              {isMobileMenuOpen ? <X /> : <Menu />}
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="md:hidden glass-nav shadow-[0_10px_30px_rgba(34,211,238,0.2)] border-b-2 border-cyan-400/30"
-          >
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-              {['Início', 'Dispositivos', 'Planos', 'FAQ'].map((item) => (
-                <a 
-                  key={item}
-                  href={item === 'Início' ? '/' : `/#${item.toLowerCase()}`} 
-                  className="block text-slate-600 dark:text-slate-300 hover:text-cyan-400 dark:hover:text-cyan-400 px-3 py-4 rounded-md text-base font-black transition-all border-b border-slate-100 dark:border-white/5 last:border-0"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item}
-                </a>
-              ))}
-              <Link 
-                to="/login" 
-                className="w-full text-center glow-button bg-primary text-white px-3 py-4 rounded-xl text-base font-black block mt-4 shadow-[0_0_20px_rgba(14,165,233,0.4)] border-2 border-cyan-400"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Acesso
-              </Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
-  );
-};
 
 const Hero = () => {
   return (
     <section id="início" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-transparent">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1, 1.2, 1],
-            opacity: [0.2, 0.3, 0.2] 
+            opacity: [0.2, 0.3, 0.2]
           }}
           transition={{ duration: 10, repeat: Infinity }}
           className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px]"
         ></motion.div>
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1.2, 1, 1.2],
-            opacity: [0.2, 0.3, 0.2] 
+            opacity: [0.2, 0.3, 0.2]
           }}
           transition={{ duration: 8, repeat: Infinity }}
           className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-cyan-600/20 rounded-full blur-[120px]"
@@ -155,7 +35,7 @@ const Hero = () => {
         >
           🚀 A revolução do streaming chegou
         </motion.div>
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
@@ -167,7 +47,7 @@ const Hero = () => {
           <br />
           <span className="text-slate-900 dark:text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">Sem Limites</span>
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
@@ -175,7 +55,7 @@ const Hero = () => {
         >
           Acesse mais de 500 canais em UHD, filmes, séries e conteúdo exclusivo. Tudo isso na palma da sua mão ou na sua TV.
         </motion.p>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
@@ -205,7 +85,7 @@ const Compatibility = () => {
     <section id="dispositivos" className="py-32 bg-transparent relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-20">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             className="text-base text-cyan-400 font-bold tracking-[0.2em] uppercase mb-4"
@@ -221,7 +101,7 @@ const Compatibility = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {devices.map((device, idx) => (
-            <motion.div 
+            <motion.div
               key={idx}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -259,7 +139,7 @@ const Pricing = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {plans.map((plan, idx) => (
-            <motion.div 
+            <motion.div
               key={idx}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
@@ -314,10 +194,10 @@ const Features = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <div>
-            <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-10 leading-tight">Funções e Conteúdos <br/><span className="text-gradient">Exclusivos</span></h2>
+            <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-10 leading-tight">Funções e Conteúdos <br /><span className="text-gradient">Exclusivos</span></h2>
             <div className="space-y-8">
               {features.map((f, idx) => (
-                <motion.div 
+                <motion.div
                   key={idx}
                   initial={{ opacity: 0, x: -30 }}
                   whileInView={{ opacity: 1, x: 0 }}
@@ -336,19 +216,19 @@ const Features = () => {
             </div>
           </div>
           <div className="relative">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.8, opacity: 0, rotate: -5 }}
               whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
               transition={{ duration: 1 }}
               className="relative rounded-[3rem] bg-gradient-to-br from-slate-800 to-black p-3 shadow-[0_0_50px_rgba(34,211,238,0.2)] border border-white/10"
             >
-              <img 
-                alt="Streaming interface on TV" 
-                className="rounded-[2.5rem] w-full h-auto opacity-90" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfS2OAvF1Pi1Pak3tGAn8-1qnidOCBV7Jdh1w_-hiRGeFtNRiHSKj7328wIq7eZPSAaBf5O0uX4Jp_Ktu7fmVnbfpZHpFh8ScnUEsD6yyKn9CEtJ3_vNC_AomesEuwuFvi0lzEWzEV2sB_Bc5_gd9ETAU7_fL1hgUZyTmo_r2zqc1n-i6ctgoRqih6tF2KRMc59gq4otqumROcgcoPQqLMxKJeAMTvtFpLGPDYfEvbnrdyzCKaH0_fLYKCXaElSWlSe2kwKru2Z6Jj" 
+              <img
+                alt="Streaming interface on TV"
+                className="rounded-[2.5rem] w-full h-auto opacity-90"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfS2OAvF1Pi1Pak3tGAn8-1qnidOCBV7Jdh1w_-hiRGeFtNRiHSKj7328wIq7eZPSAaBf5O0uX4Jp_Ktu7fmVnbfpZHpFh8ScnUEsD6yyKn9CEtJ3_vNC_AomesEuwuFvi0lzEWzEV2sB_Bc5_gd9ETAU7_fL1hgUZyTmo_r2zqc1n-i6ctgoRqih6tF2KRMc59gq4otqumROcgcoPQqLMxKJeAMTvtFpLGPDYfEvbnrdyzCKaH0_fLYKCXaElSWlSe2kwKru2Z6Jj"
               />
               <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.1 }}
                   className="bg-cyan-500/20 backdrop-blur-xl p-6 rounded-full border border-cyan-500/30 cursor-pointer shadow-[0_0_30px_rgba(34,211,238,0.4)]"
                 >
@@ -377,7 +257,7 @@ const FAQ = () => {
         <h2 className="text-4xl md:text-6xl font-black text-center text-slate-900 dark:text-white mb-20">Perguntas <span className="text-gradient">Frequentes</span></h2>
         <div className="space-y-6">
           {faqs.map((faq, idx) => (
-            <motion.details 
+            <motion.details
               key={idx}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -401,73 +281,7 @@ const FAQ = () => {
   );
 };
 
-export const Footer = () => {
-  return (
-    <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-white/5 pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-16 mb-20">
-          <div className="col-span-1 md:col-span-1">
-            <img 
-              alt="Reybraz Tech Logo" 
-              className="h-14 w-auto mb-8 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]" 
-              src={LOGO_URL} 
-            />
-            <p className="text-slate-400 leading-relaxed text-lg">
-              A melhor plataforma de streaming para o seu entretenimento diário. Qualidade, estabilidade e variedade.
-            </p>
-            <div className="mt-8 flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all cursor-pointer">
-                <Instagram className="w-5 h-5 text-slate-300" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-green-500/20 hover:border-green-500/50 transition-all cursor-pointer">
-                <MessageSquare className="w-5 h-5 text-slate-300" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-500/20 hover:border-blue-500/50 transition-all cursor-pointer">
-                <Send className="w-5 h-5 text-slate-300" />
-              </a>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] mb-8">Links Rápidos</h3>
-            <ul className="space-y-4">
-              {['Início', 'Planos', 'Dispositivos'].map(item => (
-                <li key={item}><a href={item === 'Início' ? '/' : `/#${item.toLowerCase()}`} className="text-slate-400 hover:text-cyan-400 transition-colors text-lg">{item}</a></li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] mb-8">Suporte</h3>
-            <ul className="space-y-4">
-              {['FAQ', 'Termos de Uso', 'Política de Privacidade'].map(item => (
-                <li key={item}><a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors text-lg">{item}</a></li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] mb-8">Contato</h3>
-            <ul className="space-y-6">
-              <li className="flex items-center text-slate-400 text-lg">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center mr-4">
-                  <Mail className="w-5 h-5 text-cyan-400" />
-                </div>
-                contato@reybraz.tech
-              </li>
-              <li className="flex items-center text-slate-400 text-lg">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mr-4">
-                  <MessageSquare className="w-5 h-5 text-purple-400" />
-                </div>
-                Chat Online (09h - 18h)
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div className="border-t border-white/5 pt-12 text-center">
-          <p className="text-slate-500 text-sm font-medium tracking-widest uppercase">© 2023 Reybraz Tech. Todos os direitos reservados.</p>
-        </div>
-      </div>
-    </footer>
-  );
-};
+
 
 export const LandingPage = () => {
   useEffect(() => {

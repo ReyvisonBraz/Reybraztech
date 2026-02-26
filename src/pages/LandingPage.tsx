@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-
-
+import { ContentCarousel } from '../components/ContentCarousel';
 
 const Hero = () => {
   return (
@@ -299,6 +298,7 @@ export const LandingPage = () => {
   return (
     <>
       <Hero />
+      <ContentCarousel />
       <Compatibility />
       <Pricing />
       <Features />

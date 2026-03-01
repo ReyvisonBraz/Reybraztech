@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -41,7 +42,7 @@ export default function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           </Routes>
         </main>
         <Footer />

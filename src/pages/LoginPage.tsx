@@ -1,48 +1,45 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, AlertCircle } from 'lucide-react';
+
+const API_URL = 'http://localhost:3001';
 
 export const LoginPage = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
 
-    // FUNÇÃO DE LOGIN REESTRUTURADA PARA O FUTURO
     const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setErrorMsg('');
 
         try {
-            // Quando você tiver o banco de dados e a API prontos, o código ficará parecido com isto:
-            /*
-            const response = await fetch('http://sua-api.com/login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ email, password }),
+            const response = await fetch(`${API_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
             });
-            
-            if (!response.ok) {
-              throw new Error('Falha no login');
-            }
-            
+
             const data = await response.json();
-            // Salvar token, etc.
-            // localStorage.setItem('token', data.token);
-            */
 
-            // Por enquanto, usaremos este Timeout como "simulador" da rede:
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            if (!response.ok) {
+                setErrorMsg(data.error || 'Erro ao fazer login.');
+                return;
+            }
 
-            // Se deu tudo certo, enviamos o usuário para o dashboard
+            // Salvar token JWT no localStorage
+            localStorage.setItem('reyb_token', data.token);
+            localStorage.setItem('reyb_user', JSON.stringify(data.user));
+
+            // Redirecionar para o dashboard
             navigate('/dashboard');
 
-        } catch (error) {
-            console.error("Erro ao fazer login:", error);
-            alert("Erro ao entrar. Verifique suas credenciais e tente novamente.");
+        } catch {
+            setErrorMsg('Não foi possível conectar ao servidor. Tente novamente.');
         } finally {
             setLoading(false);
         }
@@ -82,9 +79,21 @@ export const LoginPage = () => {
                         />
                     </div>
 
+                    {/* Mensagem de erro */}
+                    {errorMsg && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+                        >
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            {errorMsg}
+                        </motion.div>
+                    )}
+
                     <button
                         disabled={loading}
-                        className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400"
+                        className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400 disabled:opacity-60"
                     >
                         {loading ? (
                             <motion.div

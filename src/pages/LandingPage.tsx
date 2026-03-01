@@ -247,7 +247,7 @@ const FAQ = () => {
     { q: 'Como faço para instalar o aplicativo?', a: 'A instalação é simples! Após a assinatura, você receberá um email com o link direto para download do nosso APK para Android ou instruções para configurar no seu TV Box/Fire Stick.' },
     { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um período de teste gratuito de 4 horas para que você possa verificar a qualidade do nosso serviço e a estabilidade dos canais.' },
     { q: 'A lista de canais é atualizada?', a: 'Sim, nossa equipe trabalha diariamente para manter a lista de canais, filmes e séries sempre atualizada com os lançamentos mais recentes.' },
-    { q: 'Quais as formas de pagamento?', a: 'Aceitamos PIX, cartão de crédito e boleto bancário. A ativação via PIX e cartão é imediata.' },
+    { q: 'Quais as formas de pagamento?', a: 'Aceitamos PIX, cartão de crédito (em até 12x) e pix copia e cola — tudo processado com segurança pelo Mercado Pago. A ativação após o pagamento é imediata.' },
   ];
 
   return (

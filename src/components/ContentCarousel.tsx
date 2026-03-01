@@ -4,45 +4,26 @@ import { Play, Pause } from 'lucide-react';
 
 // =========================================================================
 // CONFIGURAÇÃO DOS CONTEÚDOS DO CARROSSEL
-// Adicione, edite ou remova os itens abaixo para atualizar o carrossel.
+// ► Para trocar as imagens: coloque os arquivos em  public/carrossel/
+// ► Para mudar títulos/categorias: edite  public/carrossel/config.json
+// ► NÃO precisa mexer neste arquivo!
 // =========================================================================
-const carouselItems = [
-    {
-        id: 1,
-        title: 'Ação Explosiva',
-        category: 'Filmes',
-        image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-        id: 2,
-        title: 'Aventuras Épicas',
-        category: 'Animes',
-        image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-        id: 3,
-        title: 'Ficção Científica',
-        category: 'Séries',
-        image: 'https://images.unsplash.com/photo-1614728263694-2c0861de8ef9?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-        id: 4,
-        title: 'Magia e Mistério',
-        category: 'Animes',
-        image: 'https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-        id: 5,
-        title: 'Suspense',
-        category: 'Filmes',
-        image: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=800&auto=format&fit=crop',
-    },
-    {
-        id: 6,
-        title: 'Heróis',
-        category: 'Filmes',
-        image: 'https://images.unsplash.com/photo-1608889825103-60980ef618e1?q=80&w=800&auto=format&fit=crop',
-    }
+
+type CarouselItem = {
+    id: number;
+    title: string;
+    category: string;
+    image: string;
+};
+
+// Fallback usado enquanto as imagens locais não foram adicionadas
+const FALLBACK_ITEMS: CarouselItem[] = [
+    { id: 1, title: 'Ação Explosiva', category: 'Filmes', image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop' },
+    { id: 2, title: 'Aventuras Épicas', category: 'Animes', image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=800&auto=format&fit=crop' },
+    { id: 3, title: 'Ficção Científica', category: 'Séries', image: 'https://images.unsplash.com/photo-1614728263694-2c0861de8ef9?q=80&w=800&auto=format&fit=crop' },
+    { id: 4, title: 'Magia e Mistério', category: 'Animes', image: 'https://images.unsplash.com/photo-1541562232579-512a21360020?q=80&w=800&auto=format&fit=crop' },
+    { id: 5, title: 'Suspense', category: 'Filmes', image: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=800&auto=format&fit=crop' },
+    { id: 6, title: 'Heróis', category: 'Filmes', image: 'https://images.unsplash.com/photo-1608889825103-60980ef618e1?q=80&w=800&auto=format&fit=crop' },
 ];
 
 export const ContentCarousel = () => {
@@ -50,9 +31,24 @@ export const ContentCarousel = () => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
+    const [items, setItems] = useState<CarouselItem[]>(FALLBACK_ITEMS);
 
-    const SLIDE_DURATION = 8000; // 8 segundos
-    const UPDATE_INTERVAL = 50;  // Atualiza a cada 50ms para animação suave
+    const SLIDE_DURATION = 8000;
+    const UPDATE_INTERVAL = 50;
+
+    // Carrega o config.json da pasta public/carrossel/
+    useEffect(() => {
+        fetch('/carrossel/config.json')
+            .then(res => res.json())
+            .then((data: CarouselItem[]) => {
+                if (Array.isArray(data) && data.length > 0) {
+                    setItems(data);
+                }
+            })
+            .catch(() => {
+                // Se o arquivo não existir ainda, mantém o fallback silenciosamente
+            });
+    }, []);
 
     // Lógica do Timer de 8 Segundos
     useEffect(() => {
@@ -62,38 +58,30 @@ export const ContentCarousel = () => {
             setProgress((prev) => {
                 const nextProgress = prev + (UPDATE_INTERVAL / SLIDE_DURATION) * 100;
                 if (nextProgress >= 100) {
-                    // Quando a barra encher (8s), vai para o próximo slide
-                    setActiveIndex((current) => (current + 1) % carouselItems.length);
-                    return 0; // Reseta o progresso para o próximo
+                    setActiveIndex((current) => (current + 1) % items.length);
+                    return 0;
                 }
                 return nextProgress;
             });
         }, UPDATE_INTERVAL);
 
         return () => clearInterval(timer);
-    }, [isPaused, activeIndex]); // Depende do activeIndex para garantir sincronia
+    }, [isPaused, activeIndex, items.length]);
 
     // Efeito para rolar suavemente a lista sempre que o activeIndex mudar
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (container && container.children[activeIndex]) {
             const item = container.children[activeIndex] as HTMLElement;
-            // Calcula a rolagem para centralizar o item
             const scrollTarget = item.offsetLeft - (container.offsetWidth / 2) + (item.offsetWidth / 2);
-
-            container.scrollTo({
-                left: scrollTarget,
-                behavior: 'smooth'
-            });
+            container.scrollTo({ left: scrollTarget, behavior: 'smooth' });
         }
     }, [activeIndex]);
 
     const handleItemClick = (index: number) => {
         if (activeIndex === index) {
-            // Se clicar no item ativo, alterna entre pausa/play
             setIsPaused(!isPaused);
         } else {
-            // Se clicar em um item novo, foca nele, reseta o tempo e começa a tocar
             setActiveIndex(index);
             setProgress(0);
             setIsPaused(false);
@@ -132,7 +120,7 @@ export const ContentCarousel = () => {
                     className="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-4 max-w-7xl mx-auto px-4 sm:px-0"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                    {carouselItems.map((item, index) => {
+                    {items.map((item, index) => {
                         const isActive = index === activeIndex;
 
                         return (

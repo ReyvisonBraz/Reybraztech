@@ -1,0 +1,38 @@
+[
+    {
+        "id": 1,
+        "title": "Ação Explosiva",
+        "category": "Filmes",
+        "image": "/carrossel/acao-explosiva.jpg"
+    },
+    {
+        "id": 2,
+        "title": "Aventuras Épicas",
+        "category": "Animes",
+        "image": "/carrossel/aventuras-epicas.jpg"
+    },
+    {
+        "id": 3,
+        "title": "Ficção Científica",
+        "category": "Séries",
+        "image": "/carrossel/ficcao-cientifica.jpg"
+    },
+    {
+        "id": 4,
+        "title": "Magia e Mistério",
+        "category": "Animes",
+        "image": "/carrossel/magia-misterio.jpg"
+    },
+    {
+        "id": 5,
+        "title": "Suspense",
+        "category": "Filmes",
+        "image": "/carrossel/suspense.jpg"
+    },
+    {
+        "id": 6,
+        "title": "Heróis",
+        "category": "Filmes",
+        "image": "/carrossel/herois.jpg"
+    }
+]

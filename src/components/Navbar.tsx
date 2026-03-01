@@ -3,7 +3,10 @@ import { Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 
-const LOGO_URL = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT_PyoMkB59P3OzTV_FbTxjdvtzFgyoxemqDJwBcszLBk9vonzWpUiC2ZVcrQvOmbqY0zjk7FdF0CSKQP2t7wS1k61vO5FQUS-5qpoyzrsYbPRE0sJvWqqkjPTTG-RVStF2gd78ThnlxpXPO4He6FboapYSBvaZ3RPBRm3USRYgxtIK3ggMuLX8nwsgytGrMmzDCFhAipovqbRi-S3ahXOqlUnnDKyJLrsIyOMUU_iAsruVUNJkCByYeE9GmQcYhNLjMlQWQxue";
+// ► Para trocar a logo: substitua o arquivo  public/logo/logo.png
+// ► Formatos aceitos: PNG, JPG, SVG, WEBP
+const LOGO_URL = "/logo/logo.png";
+const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT_PyoMkB59P3OzTV_FbTxjdvtzFgyoxemqDJwBcszLBk9vonzWpUiC2ZVcrQvOmbqY0zjk7FdF0CSKQP2t7wS1k61vO5FQUS-5qpoyzrsYbPRE0sJvWqqkjPTTG-RVStF2gd78ThnlxpXPO4He6FboapYSBvaZ3RPBRm3USRYgxtIK3ggMuLX8nwsgytGrMmzDCFhAipovqbRi-S3ahXOqlUnnDKyJLrsIyOMUU_iAsruVUNJkCByYeE9GmQcYhNLjMlQWQxue";
 
 export const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -47,6 +50,7 @@ export const Navbar = () => {
                                 alt="Reybraz Tech Logo"
                                 className="h-12 w-auto filter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
                                 src={LOGO_URL}
+                                onError={(e) => { (e.target as HTMLImageElement).src = LOGO_FALLBACK; }}
                             />
                         </Link>
                     </motion.div>

@@ -123,56 +123,185 @@ const Compatibility = () => {
 
 const Pricing = () => {
   const plans = [
-    { name: 'Mensal', duration: '31 dias', price: '35,00', color: 'border-cyan-500/30', btnColor: 'bg-cyan-500 hover:bg-cyan-600 shadow-[0_0_20px_rgba(34,211,238,0.4)]', textColor: 'text-cyan-400', features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h'] },
-    { name: 'Trimestral', duration: '93 dias', price: '90,00', color: 'border-purple-500/30', btnColor: 'bg-purple-500 hover:bg-purple-600 shadow-[0_0_20px_rgba(168,85,247,0.4)]', textColor: 'text-purple-400', features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h'] },
-    { name: 'Semestral', duration: '186 dias', price: '169,00', color: 'border-blue-500/30', btnColor: 'bg-blue-500 hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]', textColor: 'text-blue-400', features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h'] },
-    { name: 'Anual', duration: '365 dias', price: '299,00', color: 'border-orange-500', btnColor: 'bg-orange-500 hover:bg-orange-600 shadow-[0_0_30px_rgba(249,115,22,0.5)]', textColor: 'text-orange-400', features: ['2 Telas Simultâneas', '+500 Canais UHD', 'Conteúdo Hot+18', 'Suporte Prioritário'], highlighted: true },
+    {
+      id: 'mensal',
+      name: 'Mensal',
+      duration: '31 dias',
+      price: '35,00',
+      color: 'cyan',
+      popular: false,
+      bestValue: false,
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h']
+    },
+    {
+      id: 'trimestral',
+      name: 'Trimestral',
+      duration: '93 dias',
+      price: '90,00',
+      color: 'purple',
+      popular: true,
+      bestValue: false,
+      badgeText: 'Destaque',
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h']
+    },
+    {
+      id: 'semestral',
+      name: 'Semestral',
+      duration: '186 dias',
+      price: '169,00',
+      color: 'blue',
+      popular: false,
+      bestValue: false,
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h']
+    },
+    {
+      id: 'anual',
+      name: 'Anual',
+      duration: '365 dias',
+      price: '299,00',
+      color: 'orange',
+      popular: false,
+      bestValue: true,
+      badgeText: 'Melhor Valor',
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'Conteúdo Hot+18', 'Suporte Prioritário']
+    },
   ];
+
+  const getColorStyles = (color: string) => {
+    const styles = {
+      cyan: {
+        border: 'border-cyan-500/30',
+        text: 'text-cyan-400',
+        bg: 'bg-cyan-500/5',
+        btn: 'bg-cyan-500 hover:bg-cyan-600 shadow-[0_0_20px_rgba(34,211,238,0.3)]',
+        badge: 'bg-cyan-500',
+        glow: 'glow-card neon-border-cyan'
+      },
+      purple: {
+        border: 'border-purple-500',
+        text: 'text-purple-400',
+        bg: 'bg-gradient-to-b from-purple-900/40 to-slate-900/90',
+        btn: 'bg-purple-500 hover:bg-purple-600 shadow-[0_0_25px_rgba(168,85,247,0.5)]',
+        badge: 'bg-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.5)]',
+        glow: 'glow-card ring-2 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.3)]'
+      },
+      blue: {
+        border: 'border-blue-500/30',
+        text: 'text-blue-400',
+        bg: 'bg-blue-500/5',
+        btn: 'bg-blue-500 hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.3)]',
+        badge: 'bg-blue-500',
+        glow: 'glow-card neon-border-cyan'
+      },
+      orange: {
+        border: 'border-orange-500',
+        text: 'text-orange-400',
+        bg: 'bg-gradient-to-b from-orange-900/40 to-slate-900/90',
+        btn: 'bg-orange-500 hover:bg-orange-600 shadow-[0_0_30px_rgba(249,115,22,0.6)]',
+        badge: 'bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.6)]',
+        glow: 'glow-card ring-2 ring-orange-500 shadow-[0_0_40px_rgba(249,115,22,0.4)] neon-border-orange'
+      }
+    };
+    return styles[color as keyof typeof styles];
+  };
 
   return (
     <section id="planos" className="py-32 bg-transparent relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-7xl font-black text-slate-900 dark:text-white mb-6">Escolha seu Plano</h2>
-          <p className="text-xl text-slate-400">Transparência total. Sem taxas escondidas.</p>
+        <div className="text-center mb-24">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-7xl font-black text-slate-900 dark:text-white mb-6"
+          >
+            Escolha seu Plano
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-xl text-slate-400 max-w-2xl mx-auto"
+          >
+            Transparência total. Sem taxas escondidas. Cancele a qualquer momento.
+          </motion.p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {plans.map((plan, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.1 }}
-              viewport={{ once: true }}
-              className={`glow-card relative ${plan.highlighted ? 'bg-slate-900 ring-2 ring-orange-500 lg:-translate-y-6 neon-border-orange' : 'neon-border-cyan'} rounded-[2.5rem] p-10 flex flex-col ${plan.color}`}
-            >
-              {plan.highlighted && (
-                <div className="absolute top-0 right-0 -mt-4 -mr-4 bg-orange-500 text-white text-xs font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-xl">
-                  Melhor Valor
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 lg:items-center">
+          {plans.map((plan, idx) => {
+            const style = getColorStyles(plan.color);
+            const isHighlighted = plan.popular || plan.bestValue;
+
+            return (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1, duration: 0.5 }}
+                viewport={{ once: true }}
+                className={`relative rounded-[2.5rem] p-8 md:p-10 flex flex-col backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 h-full
+                  ${isHighlighted
+                    ? `z-10 bg-slate-800/60 ${style.bg} ${style.glow}`
+                    : `bg-slate-900/40 border border-white/5 ${style.glow}`
+                  }
+                `}
+              >
+                <div className="mb-6 text-center flex flex-col items-center">
+                  {isHighlighted && (
+                    <div className="mb-4">
+                      <span className={`text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-white/20 shadow-lg ${style.badge}`}>
+                        {plan.badgeText}
+                      </span>
+                    </div>
+                  )}
+                  <h3 className={`text-3xl font-black mb-3 ${style.text}`}>{plan.name}</h3>
+                  <div className="inline-flex items-center justify-center text-slate-300 text-sm font-medium bg-black/30 border border-white/5 rounded-full px-4 py-1.5 shadow-inner">
+                    <Zap className="w-4 h-4 mr-1.5 text-yellow-500" />
+                    {plan.duration}
+                  </div>
                 </div>
-              )}
-              <h3 className={`text-3xl font-black mb-4 ${plan.textColor}`}>{plan.name}</h3>
-              <div className="flex items-center text-slate-500 text-sm mb-8 font-medium">
-                <Zap className="w-4 h-4 mr-2 text-yellow-500" />
-                Duração: {plan.duration}
-              </div>
-              <div className="text-5xl font-black text-slate-900 dark:text-white mb-8 tracking-tighter">
-                R${plan.price}
-              </div>
-              {plan.highlighted && <p className="text-slate-400 text-sm mb-8 leading-relaxed">Economize mais de 25% comparado ao plano mensal.</p>}
-              <ul className="space-y-5 mb-10 flex-1">
-                {plan.features.map((feature, fIdx) => (
-                  <li key={fIdx} className="flex items-center text-slate-300">
-                    <CheckCircle2 className={`w-6 h-6 mr-3 ${plan.highlighted ? 'text-orange-500' : plan.textColor}`} />
-                    <span className="font-medium">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link to={`/checkout?plan=${plan.name.toLowerCase()}`} className={`glow-button w-full py-4 px-6 text-white font-black text-center rounded-2xl transition-all ${plan.btnColor}`}>
-                Assinar {plan.name}
-              </Link>
-            </motion.div>
-          ))}
+
+                <div className="text-center mb-8">
+                  <div className="flex items-start justify-center text-slate-900 dark:text-white drop-shadow-md">
+                    <span className="text-2xl font-bold mt-2 mr-1 opacity-80">R$</span>
+                    <span className="text-6xl font-black tracking-tighter">{plan.price.split(',')[0]}</span>
+                    <span className="text-2xl font-bold mt-2 opacity-80">,{plan.price.split(',')[1]}</span>
+                  </div>
+
+                  <div className="h-8 mt-3 flex items-center justify-center">
+                    {plan.bestValue && (
+                      <span className="text-orange-400 text-sm font-bold bg-orange-500/10 border border-orange-500/20 px-4 py-1.5 rounded-full">
+                        Economia de +25%
+                      </span>
+                    )}
+                    {plan.popular && (
+                      <span className="text-purple-400 text-sm font-bold bg-purple-500/10 border border-purple-500/20 px-4 py-1.5 rounded-full">
+                        O Mais Escolhido
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 mb-8">
+                  <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-8"></div>
+                  <ul className="space-y-4">
+                    {plan.features.map((feature, fIdx) => (
+                      <li key={fIdx} className="flex items-start text-slate-300">
+                        <CheckCircle2 className={`w-6 h-6 mr-3 shrink-0 ${isHighlighted ? style.text : 'text-slate-500'}`} />
+                        <span className="font-medium text-sm md:text-base leading-tight pt-0.5">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <Link
+                  to={`/checkout?plan=${plan.id}`}
+                  className={`w-full py-4 px-6 text-white font-black text-center rounded-2xl transition-all duration-300 transform hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 border border-white/10 ${style.btn}`}
+                >
+                  Assinar Agora
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

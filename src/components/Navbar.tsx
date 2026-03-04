@@ -48,7 +48,7 @@ export const Navbar = () => {
                         <Link to="/">
                             <img
                                 alt="Reybraz Tech Logo"
-                                className="h-12 w-auto filter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
+                                className="h-16 w-auto filter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
                                 src={LOGO_URL}
                                 onError={(e) => { (e.target as HTMLImageElement).src = LOGO_FALLBACK; }}
                             />

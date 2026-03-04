@@ -13,7 +13,7 @@ export const Footer = () => {
                     <div className="col-span-1 md:col-span-1">
                         <img
                             alt="Reybraz Tech Logo"
-                            className="h-14 w-auto mb-8 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]"
+                            className="h-20 w-auto mb-8 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]"
                             src={LOGO_URL}
                             onError={(e) => { (e.target as HTMLImageElement).src = LOGO_FALLBACK; }}
                         />

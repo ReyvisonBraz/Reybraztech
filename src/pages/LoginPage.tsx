@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, FormEvent } from "react";
+import React, { useState, useEffect, useRef, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
-import { Eye, EyeOff, Sparkles, AlertCircle } from "lucide-react";
-
-const API_URL = 'http://localhost:3001';
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { API_URL } from "../config/api";
+import { useMousePosition } from "../hooks/useMousePosition";
 
 interface PupilProps {
     size?: number;
@@ -16,6 +16,7 @@ interface PupilProps {
     forceLookY?: number;
 }
 
+/** Ponto (pupila) que segue o cursor do mouse dentro de um olho. */
 const Pupil = ({
     size = 12,
     maxDistance = 5,
@@ -23,19 +24,13 @@ const Pupil = ({
     forceLookX,
     forceLookY
 }: PupilProps) => {
-    const [mouseX, setMouseX] = useState<number>(0);
-    const [mouseY, setMouseY] = useState<number>(0);
+    const mouse = useMousePosition();
     const pupilRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            setMouseX(e.clientX);
-            setMouseY(e.clientY);
-        };
-        window.addEventListener("mousemove", handleMouseMove);
-        return () => window.removeEventListener("mousemove", handleMouseMove);
-    }, []);
-
+    /**
+     * Calcula o deslocamento da pupila em relação ao centro do olho,
+     * limitado por `maxDistance`. Se `forceLook` estiver definido, usa esse valor.
+     */
     const calculatePupilPosition = () => {
         if (!pupilRef.current) return { x: 0, y: 0 };
         if (forceLookX !== undefined && forceLookY !== undefined) {
@@ -44,13 +39,11 @@ const Pupil = ({
         const pupil = pupilRef.current.getBoundingClientRect();
         const pupilCenterX = pupil.left + pupil.width / 2;
         const pupilCenterY = pupil.top + pupil.height / 2;
-        const deltaX = mouseX - pupilCenterX;
-        const deltaY = mouseY - pupilCenterY;
+        const deltaX = mouse.x - pupilCenterX;
+        const deltaY = mouse.y - pupilCenterY;
         const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance);
         const angle = Math.atan2(deltaY, deltaX);
-        const x = Math.cos(angle) * distance;
-        const y = Math.sin(angle) * distance;
-        return { x, y };
+        return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance };
     };
 
     const pupilPosition = calculatePupilPosition();
@@ -81,6 +74,7 @@ interface EyeBallProps {
     forceLookY?: number;
 }
 
+/** Globo ocular completo com pupila que acompanha o cursor e suporte a piscada. */
 const EyeBall = ({
     size = 48,
     pupilSize = 16,
@@ -91,19 +85,13 @@ const EyeBall = ({
     forceLookX,
     forceLookY
 }: EyeBallProps) => {
-    const [mouseX, setMouseX] = useState<number>(0);
-    const [mouseY, setMouseY] = useState<number>(0);
+    const mouse = useMousePosition();
     const eyeRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            setMouseX(e.clientX);
-            setMouseY(e.clientY);
-        };
-        window.addEventListener("mousemove", handleMouseMove);
-        return () => window.removeEventListener("mousemove", handleMouseMove);
-    }, []);
-
+    /**
+     * Calcula o deslocamento da pupila em relação ao centro do olho,
+     * limitado por `maxDistance`. Se `forceLook` estiver definido, usa esse valor.
+     */
     const calculatePupilPosition = () => {
         if (!eyeRef.current) return { x: 0, y: 0 };
         if (forceLookX !== undefined && forceLookY !== undefined) {
@@ -112,13 +100,11 @@ const EyeBall = ({
         const eye = eyeRef.current.getBoundingClientRect();
         const eyeCenterX = eye.left + eye.width / 2;
         const eyeCenterY = eye.top + eye.height / 2;
-        const deltaX = mouseX - eyeCenterX;
-        const deltaY = mouseY - eyeCenterY;
+        const deltaX = mouse.x - eyeCenterX;
+        const deltaY = mouse.y - eyeCenterY;
         const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance);
         const angle = Math.atan2(deltaY, deltaX);
-        const x = Math.cos(angle) * distance;
-        const y = Math.sin(angle) * distance;
-        return { x, y };
+        return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance };
     };
 
     const pupilPosition = calculatePupilPosition();

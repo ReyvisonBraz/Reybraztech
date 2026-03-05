@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown } from 'lucide-react';
+import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown, MoveHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { ContentCarousel } from '../components/ContentCarousel';
@@ -7,7 +7,7 @@ import { WebGLShader } from '../components/web-gl-shader';
 
 const Hero = () => {
   return (
-    <section id="início" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-transparent">
+    <section id="início" className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-48 lg:pb-32 overflow-hidden bg-transparent">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
         <motion.div
           animate={{
@@ -39,7 +39,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-3xl sm:text-5xl md:text-8xl font-black tracking-tighter mb-8"
+          className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter mb-6 sm:mb-8"
         >
           <span className="text-gradient">
             Entretenimento
@@ -59,7 +59,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-12 flex flex-col sm:flex-row justify-center gap-6"
+          className="mt-8 sm:mt-12 flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 px-4 sm:px-0"
         >
           <a href="#planos" className="glow-button gradient-logo text-white px-6 py-4 md:px-10 md:py-5 rounded-full text-base md:text-lg font-black shadow-[0_0_40px_rgba(34,211,238,0.6)] flex items-center justify-center gap-3 border-2 border-cyan-400">
             <PlayCircle className="w-7 h-7" />
@@ -76,47 +76,117 @@ const Hero = () => {
 
 const Compatibility = () => {
   const devices = [
-    { icon: <MonitorPlay className="w-14 h-14" />, title: 'TV Box e Fire TV Stick', desc: 'Transforme sua TV convencional em uma Smart TV completa.' },
-    { icon: <Smartphone className="w-14 h-14" />, title: 'Celular Android', desc: 'Leve seu conteúdo favorito para onde você for.' },
-    { icon: <Tv className="w-14 h-14" />, title: 'Smart TV Android', desc: 'A melhor experiência na tela grande da sua sala.' },
+    {
+      icon: <MonitorPlay className="w-10 h-10 sm:w-12 sm:h-12" />,
+      title: 'TV Box & Fire Stick',
+      desc: 'Transforme sua TV convencional em uma Smart TV completa com total compatibilidade.',
+      gradient: 'from-cyan-500 to-blue-600',
+      glow: 'shadow-[0_0_30px_rgba(34,211,238,0.3)]',
+      border: 'border-cyan-500/30',
+      tag: 'Android 5.0+',
+    },
+    {
+      icon: <Smartphone className="w-10 h-10 sm:w-12 sm:h-12" />,
+      title: 'Celular Android',
+      desc: 'Leve seu conteúdo favorito para onde você for. Assista na tela do seu bolso.',
+      gradient: 'from-purple-500 to-pink-600',
+      glow: 'shadow-[0_0_30px_rgba(168,85,247,0.3)]',
+      border: 'border-purple-500/30',
+      tag: 'Android & iOS',
+    },
+    {
+      icon: <Tv className="w-10 h-10 sm:w-12 sm:h-12" />,
+      title: 'Smart TV Android',
+      desc: 'A melhor experiência na tela grande. Imagem UHD 4K direto na sua sala.',
+      gradient: 'from-orange-500 to-red-600',
+      glow: 'shadow-[0_0_30px_rgba(249,115,22,0.3)]',
+      border: 'border-orange-500/30',
+      tag: 'Smart TV',
+    },
   ];
 
   return (
-    <section id="dispositivos" className="py-32 bg-transparent relative overflow-hidden">
+    <section id="dispositivos" className="py-20 sm:py-28 lg:py-32 bg-transparent relative overflow-hidden">
+      {/* Background glow blobs */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[120px]" />
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-20">
-          <motion.h2
+        {/* Header */}
+        <div className="text-center mb-12 sm:mb-20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs sm:text-sm font-bold tracking-widest uppercase backdrop-blur-sm"
+          >
+            <MonitorSmartphone className="w-4 h-4" />
+            Compatibilidade
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl sm:text-5xl md:text-6xl font-black text-white mb-4 sm:mb-6 leading-tight"
+          >
+            Assista onde{' '}<span className="text-gradient">você preferir</span>
+          </motion.p>
+          <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            className="text-base text-cyan-400 font-bold tracking-[0.2em] uppercase mb-4"
+            viewport={{ once: true }}
+            transition={{ delay: 0.15 }}
+            className="max-w-xl mx-auto text-base sm:text-lg text-slate-400"
           >
-            Compatibilidade
-          </motion.h2>
-          <p className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-6">
-            Assista onde você preferir
-          </p>
-          <p className="max-w-2xl text-xl text-slate-400 mx-auto">
-            Nossa plataforma é compatível com os dispositivos mais populares do mercado.
-          </p>
+            Compatível com os dispositivos mais populares do mercado. Plug and play.
+          </motion.p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+
+        {/* Cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           {devices.map((device, idx) => (
             <motion.div
               key={idx}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.2 }}
+              transition={{ delay: idx * 0.15, duration: 0.5 }}
               viewport={{ once: true }}
-              className="glow-card neon-border-cyan p-10 rounded-3xl text-center group"
+              className={`relative rounded-3xl p-6 sm:p-8 flex sm:flex-col items-center sm:items-start gap-5 sm:gap-0
+                bg-slate-900/60 backdrop-blur-xl border ${device.border} ${device.glow}
+                hover:-translate-y-2 transition-all duration-300 overflow-hidden group`}
             >
-              <div className="flex justify-center mb-8 text-cyan-400 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
+              {/* Gradient accent top */}
+              <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${device.gradient} rounded-t-3xl`} />
+              {/* Icon */}
+              <div className={`flex-shrink-0 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 sm:mb-6 rounded-2xl bg-gradient-to-br ${device.gradient} text-white ${device.glow} group-hover:scale-110 transition-transform duration-500`}>
                 {device.icon}
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">{device.title}</h3>
-              <p className="text-slate-400 leading-relaxed">{device.desc}</p>
+              {/* Text */}
+              <div className="flex-1 sm:flex-none">
+                <div className="flex flex-wrap items-center gap-2 sm:mb-3 mb-1">
+                  <h3 className="text-lg sm:text-xl font-black text-white">{device.title}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${device.gradient} text-white`}>{device.tag}</span>
+                </div>
+                <p className="text-slate-400 text-sm sm:text-base leading-relaxed">{device.desc}</p>
+              </div>
             </motion.div>
           ))}
         </div>
+
+        {/* Bottom badge row */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="mt-10 sm:mt-16 flex flex-wrap justify-center gap-3 sm:gap-4"
+        >
+          {['TV Box', 'Fire TV Stick', 'Android', 'Smart TV', 'iOS em breve'].map((b, i) => (
+            <span key={i} className="text-xs sm:text-sm text-slate-400 bg-white/5 border border-white/10 rounded-full px-4 py-2 backdrop-blur-sm">
+              ✓ {b}
+            </span>
+          ))}
+        </motion.div>
       </div>
     </section>
   );
@@ -129,181 +199,226 @@ const Pricing = () => {
       name: 'Mensal',
       duration: '31 dias',
       price: '35,00',
+      priceInt: '35',
+      priceDec: '00',
       color: 'cyan',
       popular: false,
       bestValue: false,
-      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h']
+      highlight: false,
+      savingText: '',
+      badgeText: '',
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.000h', 'Suporte via WhatsApp'],
+      gradientFrom: 'from-cyan-500',
+      gradientTo: 'to-blue-500',
+      btnColor: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500',
+      glowColor: 'shadow-[0_0_30px_rgba(34,211,238,0.25)]',
+      borderColor: 'border-cyan-500/25',
+      textColor: 'text-cyan-400',
     },
     {
       id: 'trimestral',
       name: 'Trimestral',
       duration: '93 dias',
       price: '90,00',
+      priceInt: '90',
+      priceDec: '00',
       color: 'purple',
       popular: true,
       bestValue: false,
-      badgeText: 'Destaque',
-      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h']
+      highlight: true,
+      savingText: 'O Mais Escolhido',
+      badgeText: '⭐ Popular',
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.000h', 'Suporte Prioritário'],
+      gradientFrom: 'from-purple-500',
+      gradientTo: 'to-pink-600',
+      btnColor: 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500',
+      glowColor: 'shadow-[0_0_50px_rgba(168,85,247,0.45)]',
+      borderColor: 'border-purple-400/50',
+      textColor: 'text-purple-400',
     },
     {
       id: 'semestral',
       name: 'Semestral',
       duration: '186 dias',
       price: '169,00',
+      priceInt: '169',
+      priceDec: '00',
       color: 'blue',
       popular: false,
       bestValue: false,
-      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.00h']
+      highlight: false,
+      savingText: 'Economize 19%',
+      badgeText: '',
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.000h', 'Suporte Prioritário'],
+      gradientFrom: 'from-blue-500',
+      gradientTo: 'to-indigo-600',
+      btnColor: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500',
+      glowColor: 'shadow-[0_0_30px_rgba(59,130,246,0.25)]',
+      borderColor: 'border-blue-500/25',
+      textColor: 'text-blue-400',
     },
     {
       id: 'anual',
       name: 'Anual',
       duration: '365 dias',
       price: '299,00',
+      priceInt: '299',
+      priceDec: '00',
       color: 'orange',
       popular: false,
       bestValue: true,
-      badgeText: 'Melhor Valor',
-      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'Conteúdo Hot+18', 'Suporte Prioritário']
+      highlight: true,
+      savingText: 'Economize +28%',
+      badgeText: '🔥 Melhor Valor',
+      features: ['2 Telas Simultâneas', '+500 Canais UHD', 'VOD +280.000h', 'Conteúdo Hot +18', 'Suporte 24/7 VIP'],
+      gradientFrom: 'from-orange-500',
+      gradientTo: 'to-red-600',
+      btnColor: 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500',
+      glowColor: 'shadow-[0_0_60px_rgba(249,115,22,0.5)]',
+      borderColor: 'border-orange-400/60',
+      textColor: 'text-orange-400',
     },
   ];
 
-  const getColorStyles = (color: string) => {
-    const styles = {
-      cyan: {
-        border: 'border-cyan-500/30',
-        text: 'text-cyan-400',
-        bg: 'bg-cyan-500/5',
-        btn: 'bg-cyan-500 hover:bg-cyan-600 shadow-[0_0_20px_rgba(34,211,238,0.3)]',
-        badge: 'bg-cyan-500',
-        glow: 'glow-card neon-border-cyan'
-      },
-      purple: {
-        border: 'border-purple-500',
-        text: 'text-purple-400',
-        bg: 'bg-gradient-to-b from-purple-900/40 to-slate-900/90',
-        btn: 'bg-purple-500 hover:bg-purple-600 shadow-[0_0_25px_rgba(168,85,247,0.5)]',
-        badge: 'bg-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.5)]',
-        glow: 'glow-card ring-2 ring-purple-500 shadow-[0_0_35px_rgba(168,85,247,0.3)]'
-      },
-      blue: {
-        border: 'border-blue-500/30',
-        text: 'text-blue-400',
-        bg: 'bg-blue-500/5',
-        btn: 'bg-blue-500 hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.3)]',
-        badge: 'bg-blue-500',
-        glow: 'glow-card neon-border-cyan'
-      },
-      orange: {
-        border: 'border-orange-500',
-        text: 'text-orange-400',
-        bg: 'bg-gradient-to-b from-orange-900/40 to-slate-900/90',
-        btn: 'bg-orange-500 hover:bg-orange-600 shadow-[0_0_30px_rgba(249,115,22,0.6)]',
-        badge: 'bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.6)]',
-        glow: 'glow-card ring-2 ring-orange-500 shadow-[0_0_40px_rgba(249,115,22,0.4)] neon-border-orange'
-      }
-    };
-    return styles[color as keyof typeof styles];
-  };
-
   return (
-    <section id="planos" className="py-32 bg-transparent relative">
+    <section id="planos" className="py-20 sm:py-28 lg:py-32 bg-transparent relative overflow-hidden">
+      {/* Ambient glows */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-24">
+        {/* Header */}
+        <div className="text-center mb-12 sm:mb-20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-400 text-xs sm:text-sm font-bold tracking-widest uppercase backdrop-blur-sm"
+          >
+            <Zap className="w-4 h-4 text-yellow-400" />
+            Planos & Preços
+          </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-7xl font-black text-slate-900 dark:text-white mb-6"
+            viewport={{ once: true }}
+            className="text-3xl sm:text-5xl md:text-7xl font-black text-white mb-4 sm:mb-6 leading-tight"
           >
-            Escolha seu Plano
+            Escolha seu <span className="text-gradient">Plano</span>
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-xl text-slate-400 max-w-2xl mx-auto"
+            className="text-base sm:text-xl text-slate-400 max-w-2xl mx-auto"
           >
-            Transparência total. Sem taxas escondidas. Cancele a qualquer momento.
+            Transparência total. Sem taxas escondidas. Cancele quando quiser.
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 lg:items-center">
-          {plans.map((plan, idx) => {
-            const style = getColorStyles(plan.color);
-            const isHighlighted = plan.popular || plan.bestValue;
+        {/* Plans grid - horizontal scroll on mobile */}
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-4 overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory sm:snap-none">
+          {plans.map((plan, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1, duration: 0.5 }}
+              viewport={{ once: true }}
+              className={`relative flex-shrink-0 w-72 sm:w-auto flex flex-col rounded-3xl sm:rounded-[2rem] lg:rounded-[2.5rem]
+                backdrop-blur-xl border transition-all duration-300 hover:-translate-y-2 snap-start
+                ${plan.highlight
+                  ? `bg-slate-800/70 ${plan.borderColor} ${plan.glowColor} z-10`
+                  : `bg-slate-900/50 border-white/8`
+                }`}
+            >
+              {/* Gradient top bar */}
+              <div className={`h-1 w-full rounded-t-3xl sm:rounded-t-[2rem] lg:rounded-t-[2.5rem] bg-gradient-to-r ${plan.gradientFrom} ${plan.gradientTo}`} />
 
-            return (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1, duration: 0.5 }}
-                viewport={{ once: true }}
-                className={`relative rounded-[2.5rem] p-8 md:p-10 flex flex-col backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 h-full
-                  ${isHighlighted
-                    ? `z-10 bg-slate-800/60 ${style.bg} ${style.glow}`
-                    : `bg-slate-900/40 border border-white/5 ${style.glow}`
-                  }
-                `}
-              >
-                <div className="mb-6 text-center flex flex-col items-center">
-                  {isHighlighted && (
-                    <div className="mb-4">
-                      <span className={`text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-white/20 shadow-lg ${style.badge}`}>
-                        {plan.badgeText}
-                      </span>
-                    </div>
-                  )}
-                  <h3 className={`text-3xl font-black mb-3 ${style.text}`}>{plan.name}</h3>
-                  <div className="inline-flex items-center justify-center text-slate-300 text-sm font-medium bg-black/30 border border-white/5 rounded-full px-4 py-1.5 shadow-inner">
-                    <Zap className="w-4 h-4 mr-1.5 text-yellow-500" />
-                    {plan.duration}
+              <div className="p-6 sm:p-7 lg:p-8 flex flex-col flex-1">
+                {/* Badge */}
+                {plan.badgeText && (
+                  <div className="mb-4">
+                    <span className={`inline-flex items-center gap-1 text-white text-[11px] font-black px-3 py-1 rounded-full bg-gradient-to-r ${plan.gradientFrom} ${plan.gradientTo} uppercase tracking-widest`}>
+                      {plan.badgeText}
+                    </span>
+                  </div>
+                )}
+
+                {/* Plan name & duration */}
+                <h3 className={`text-2xl sm:text-2xl lg:text-3xl font-black mb-1 ${plan.textColor}`}>{plan.name}</h3>
+                <div className="inline-flex items-center gap-1.5 text-slate-400 text-xs sm:text-sm font-medium mb-5">
+                  <Zap className="w-3.5 h-3.5 text-yellow-500" />
+                  {plan.duration}
+                </div>
+
+                {/* Price */}
+                <div className="mb-2">
+                  <div className="flex items-start">
+                    <span className="text-base sm:text-lg font-bold text-slate-300 mt-2 mr-1">R$</span>
+                    <span className={`text-5xl sm:text-5xl lg:text-6xl font-black tracking-tighter text-white`}>{plan.priceInt}</span>
+                    <span className="text-base sm:text-lg font-bold text-slate-300 mt-2">,{plan.priceDec}</span>
                   </div>
                 </div>
 
-                <div className="text-center mb-8">
-                  <div className="flex items-start justify-center text-slate-900 dark:text-white drop-shadow-md">
-                    <span className="text-2xl font-bold mt-2 mr-1 opacity-80">R$</span>
-                    <span className="text-6xl font-black tracking-tighter">{plan.price.split(',')[0]}</span>
-                    <span className="text-2xl font-bold mt-2 opacity-80">,{plan.price.split(',')[1]}</span>
+                {/* Saving tag */}
+                {plan.savingText && (
+                  <div className="mb-5">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full bg-gradient-to-r ${plan.gradientFrom} ${plan.gradientTo} text-white bg-opacity-20`}>
+                      {plan.savingText}
+                    </span>
                   </div>
+                )}
 
-                  <div className="h-8 mt-3 flex items-center justify-center">
-                    {plan.bestValue && (
-                      <span className="text-orange-400 text-sm font-bold bg-orange-500/10 border border-orange-500/20 px-4 py-1.5 rounded-full">
-                        Economia de +25%
+                {/* Divider */}
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-5" />
+
+                {/* Features */}
+                <ul className="space-y-3 flex-1 mb-6">
+                  {plan.features.map((feature, fIdx) => (
+                    <li key={fIdx} className="flex items-center gap-3 text-slate-300">
+                      <span className={`flex-shrink-0 w-5 h-5 rounded-full bg-gradient-to-br ${plan.gradientFrom} ${plan.gradientTo} flex items-center justify-center`}>
+                        <CheckCircle2 className="w-3 h-3 text-white" />
                       </span>
-                    )}
-                    {plan.popular && (
-                      <span className="text-purple-400 text-sm font-bold bg-purple-500/10 border border-purple-500/20 px-4 py-1.5 rounded-full">
-                        O Mais Escolhido
-                      </span>
-                    )}
-                  </div>
-                </div>
+                      <span className="text-sm sm:text-sm font-medium leading-tight">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                <div className="flex-1 mb-8">
-                  <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-8"></div>
-                  <ul className="space-y-4">
-                    {plan.features.map((feature, fIdx) => (
-                      <li key={fIdx} className="flex items-start text-slate-300">
-                        <CheckCircle2 className={`w-6 h-6 mr-3 shrink-0 ${isHighlighted ? style.text : 'text-slate-500'}`} />
-                        <span className="font-medium text-sm md:text-base leading-tight pt-0.5">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
+                {/* CTA Button */}
                 <Link
                   to={`/checkout?plan=${plan.id}`}
-                  className={`w-full py-4 px-6 text-white font-black text-center rounded-2xl transition-all duration-300 transform hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 border border-white/10 ${style.btn}`}
+                  className={`w-full py-3.5 sm:py-4 px-6 text-white font-black text-sm sm:text-base text-center rounded-2xl
+                    transition-all duration-300 transform hover:scale-[1.03] active:scale-95
+                    flex items-center justify-center gap-2 ${plan.btnColor}
+                    shadow-lg`}
                 >
                   Assinar Agora
                 </Link>
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          ))}
         </div>
+
+        {/* Mobile swipe indicator */}
+        <div className="flex sm:hidden items-center justify-center gap-2 mt-4 text-slate-500 text-xs animate-pulse">
+          <MoveHorizontal className="w-4 h-4" />
+          <span>Arraste para ver mais planos</span>
+        </div>
+
+        {/* Trust badges */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+          className="mt-10 sm:mt-16 flex flex-wrap justify-center gap-4 sm:gap-8 text-slate-500 text-xs sm:text-sm"
+        >
+          {['✅ Pagamento seguro via Mercado Pago', '⚡ Ativação imediata', '🔒 Sem fidelidade', '💬 Suporte via WhatsApp'].map((t, i) => (
+            <span key={i} className="flex items-center gap-1">{t}</span>
+          ))}
+        </motion.div>
       </div>
     </section>
   );
@@ -311,45 +426,56 @@ const Pricing = () => {
 
 const Features = () => {
   const features = [
-    { icon: <MonitorSmartphone className="w-8 h-8" />, title: 'Dispositivos Simultâneos', desc: 'Acesse em até 2 telas ao mesmo tempo (TV ou App).', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-    { icon: <Film className="w-8 h-8" />, title: 'Qualidade UHD e 4K', desc: 'Conteúdo de TV, filmes e séries em ultra alta definição.', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-    { icon: <Shield className="w-8 h-8" />, title: 'VOD Atualizado', desc: '+280.000 horas de conteúdo on demand para você maratonar.', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    { icon: <Globe className="w-8 h-8" />, title: 'Multi-Idioma e Legendas', desc: 'Personalize sua experiência trocando o idioma do áudio e adicionando legendas em tempo real.', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-    { icon: <PlayCircle className="w-8 h-8" />, title: 'Reprodução Inteligente', desc: 'Funcionalidades de Continuar Assistindo e Vistos Recentemente sincronizados em todos os seus aparelhos.', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
+    { icon: <MonitorSmartphone className="w-7 h-7" />, title: 'Telas Simultâneas', desc: 'Acesse em até 2 telas ao mesmo tempo — TV e celular ao mesmo tempo.', color: 'from-green-500 to-emerald-600', glow: 'shadow-[0_0_20px_rgba(34,197,94,0.3)]' },
+    { icon: <Film className="w-7 h-7" />, title: 'Qualidade UHD e 4K', desc: 'Conteúdo de TV, filmes e séries em ultra alta definição.', color: 'from-purple-500 to-violet-600', glow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]' },
+    { icon: <Shield className="w-7 h-7" />, title: 'VOD Atualizado', desc: '+280.000 horas de conteúdo on demand para você maratonar.', color: 'from-blue-500 to-indigo-600', glow: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]' },
+    { icon: <Globe className="w-7 h-7" />, title: 'Multi-Idioma & Legendas', desc: 'Troque o idioma e adicione legendas em tempo real, em qualquer conteúdo.', color: 'from-orange-500 to-amber-600', glow: 'shadow-[0_0_20px_rgba(249,115,22,0.3)]' },
+    { icon: <PlayCircle className="w-7 h-7" />, title: 'Reprodução Inteligente', desc: 'Continuar Assistindo sincronizado em todos os aparelhos.', color: 'from-cyan-500 to-teal-600', glow: 'shadow-[0_0_20px_rgba(34,211,238,0.3)]' },
   ];
 
   return (
-    <section className="py-32 bg-transparent relative overflow-hidden">
+    <section className="py-20 sm:py-28 lg:py-32 bg-transparent relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          {/* Left: feature list */}
           <div>
-            <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-10 leading-tight">Funções e Conteúdos <br /><span className="text-gradient">Exclusivos</span></h2>
-            <div className="space-y-8">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-3xl sm:text-5xl md:text-6xl font-black text-white mb-8 sm:mb-10 leading-tight"
+            >
+              Funções e Conteúdos{' '}<br className="hidden sm:block" /><span className="text-gradient">Exclusivos</span>
+            </motion.h2>
+            <div className="space-y-4 sm:space-y-5">
               {features.map((f, idx) => (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, x: -30 }}
                   whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.2 }}
-                  className="flex items-start p-6 rounded-2xl glow-card transition-all"
+                  transition={{ delay: idx * 0.1 }}
+                  viewport={{ once: true }}
+                  className="flex items-start gap-4 p-4 sm:p-5 rounded-2xl bg-slate-900/40 border border-white/5 hover:border-white/10 hover:bg-slate-800/40 transition-all duration-300 group"
                 >
-                  <div className={`flex-shrink-0 flex items-center justify-center h-16 w-16 rounded-2xl border ${f.color}`}>
+                  <div className={`flex-shrink-0 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br ${f.color} text-white ${f.glow} group-hover:scale-110 transition-transform duration-300`}>
                     {f.icon}
                   </div>
-                  <div className="ml-6">
-                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{f.title}</h3>
-                    <p className="text-slate-400 leading-relaxed">{f.desc}</p>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-white mb-1">{f.title}</h3>
+                    <p className="text-slate-400 text-sm sm:text-base leading-relaxed">{f.desc}</p>
                   </div>
                 </motion.div>
               ))}
             </div>
           </div>
-          <div className="relative">
+          {/* Right: image */}
+          <div className="relative hidden lg:block">
             <motion.div
-              initial={{ scale: 0.8, opacity: 0, rotate: -5 }}
+              initial={{ scale: 0.85, opacity: 0, rotate: -5 }}
               whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
               transition={{ duration: 1 }}
-              className="relative rounded-[3rem] bg-gradient-to-br from-slate-800 to-black p-3 shadow-[0_0_50px_rgba(34,211,238,0.2)] border border-white/10"
+              viewport={{ once: true }}
+              className="relative rounded-[3rem] bg-gradient-to-br from-slate-800 to-black p-3 shadow-[0_0_60px_rgba(34,211,238,0.2)] border border-white/10"
             >
               <img
                 alt="Streaming interface on TV"
@@ -361,7 +487,7 @@ const Features = () => {
                   whileHover={{ scale: 1.1 }}
                   className="bg-cyan-500/20 backdrop-blur-xl p-6 rounded-full border border-cyan-500/30 cursor-pointer shadow-[0_0_30px_rgba(34,211,238,0.4)]"
                 >
-                  <PlayCircle className="w-20 h-20 text-white" />
+                  <PlayCircle className="w-16 h-16 text-white" />
                 </motion.div>
               </div>
             </motion.div>

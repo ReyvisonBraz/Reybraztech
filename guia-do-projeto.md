@@ -1,21 +1,21 @@
 # 📘 Guia do Projeto — Reybraztech
 
-> **Última atualização:** Março de 2026
-> Este é o guia vivo do projeto. Aqui você aprende como tudo funciona, como está organizado e o que ainda precisa ser melhorado.
+> **Última atualização:** Março de 2026  
+> Este é o guia vivo do projeto. Aqui você aprende como tudo funciona, como está organizado e o que pode ser melhorado.
 
 ---
 
-## 🗺️ Visão Geral: Como o projeto funciona
+## 🗺️ Visão Geral
 
-O projeto é uma plataforma completa de assinaturas com **frontend + backend**, dividida em duas partes que conversam entre si:
+O projeto é uma **plataforma completa de streaming por assinatura** com frontend + backend, dividida em duas partes que conversam entre si:
 
 | Camada | Tecnologia | Porta | Comando |
 |--------|-----------|-------|---------|
 | **Frontend** | React + Vite + TypeScript + Tailwind CSS | `3000` | `npm run dev` |
 | **Backend** | Node.js + Express + TypeScript | `3001` | `npm run server` |
-| **Banco de Dados** | SQLite (arquivo `reybraztech.db`) | — | Automático |
+| **Banco de Dados** | SQLite (`reybraztech.db`) | — | Automático |
 
-O usuário acessa o site pelo frontend (React), que faz chamadas HTTP (`fetch`) para o backend (Express), que por sua vez lê e grava dados no banco SQLite.
+> O frontend faz chamadas HTTP (`fetch`) para o backend, que lê e grava dados no banco SQLite.
 
 ---
 
@@ -25,108 +25,120 @@ O usuário acessa o site pelo frontend (React), que faz chamadas HTTP (`fetch`) 
 Reybraztech/
 ├── src/                        ← Frontend (React)
 │   ├── App.tsx                 ← Roteador principal (define as URLs)
-│   ├── main.tsx                ← Ponto de entrada, injeta React no HTML
-│   ├── index.css               ← Estilos globais e variáveis CSS
-│   ├── pages/                  ← Telas completas do site
+│   ├── main.tsx                ← Ponto de entrada (força modo escuro)
+│   ├── index.css               ← Estilos globais, paleta de cores, classes utilitárias
+│   ├── lib/
+│   │   └── utils.ts            ← Helper cn() para shadcn/ui
+│   ├── pages/
 │   │   ├── LandingPage.tsx     ← Página inicial (marketing)
 │   │   ├── CheckoutPage.tsx    ← Escolha de plano e pagamento
 │   │   ├── RegisterPage.tsx    ← Cadastro de novo cliente
-│   │   ├── LoginPage.tsx       ← Tela de login
+│   │   ├── LoginPage.tsx       ← Tela de login com personagens animados
 │   │   └── DashboardPage.tsx   ← Painel do cliente logado
-│   └── components/             ← Pedaços reutilizáveis de interface
-│       ├── Navbar.tsx          ← Cabeçalho de navegação
+│   └── components/             ← Peças reutilizáveis de interface
+│       ├── Navbar.tsx          ← Cabeçalho de navegação (modo escuro fixo)
 │       ├── Footer.tsx          ← Rodapé
-│       ├── FloatingWhatsApp.tsx ← Botão flutuante do WhatsApp
-│       ├── ContentCarousel.tsx ← Carrossel de conteúdo
-│       └── ProtectedRoute.tsx  ← Guarda das rotas privadas
+│       ├── FloatingWhatsApp.tsx← Botão flutuante do WhatsApp
+│       ├── ContentCarousel.tsx ← Carrossel de conteúdo animado
+│       ├── ProtectedRoute.tsx  ← Guarda das rotas privadas
+│       ├── web-gl-shader.tsx   ← Onda WebGL animada do fundo (em uso)
+│       └── ui/                 ← Componentes shadcn/ui (button, input, etc.)
 │
 ├── server/                     ← Backend (Express/Node.js)
-│   ├── index.ts                ← Servidor Express (configuração e inicialização)
+│   ├── index.ts                ← Servidor Express
 │   ├── database.ts             ← Conexão e criação do banco SQLite
 │   ├── middleware/
-│   │   └── auth.ts             ← Middleware de verificação do token JWT
+│   │   └── auth.ts             ← Middleware JWT
 │   └── routes/
-│       ├── auth.ts             ← Rotas de registro e login (/api/auth/*)
-│       └── dashboard.ts        ← Rota do painel do cliente (/api/dashboard)
+│       ├── auth.ts             ← /api/auth/* (login e registro)
+│       └── dashboard.ts        ← /api/dashboard (dados do cliente)
 │
-├── reybraztech.db              ← Arquivo do banco de dados SQLite
+├── reybraztech.db              ← Banco de dados SQLite
 ├── .env                        ← Variáveis de ambiente (segredos)
-├── .env.example                ← Modelo do .env para compartilhar
-└── vite.config.ts              ← Configuração do Vite (proxy para o backend)
+└── vite.config.ts              ← Configuração do Vite (proxy e aliases)
 ```
 
 ---
 
-## 🗄️ O Banco de Dados (SQLite)
+## 🎨 Identidade Visual (Paleta de Cores)
 
-O banco tem **duas tabelas** criadas automaticamente ao iniciar o servidor:
+O projeto usa **modo escuro fixo** (classe `dark` sempre ativa no `<html>`).
 
-### Tabela `clients` — Clientes cadastrados
+| Cor | Código | Uso |
+|-----|--------|-----|
+| **Cyan** | `#22d3ee` | Cor principal, botões primários, bordas glow |
+| **Blue** | `#3b82f6` | Destaques secundários |
+| **Purple/Magenta** | `#d946ef` | Acento, destaques e gradient |
+| **Dark BG** | `#020617` | Fundo da página |
+| **Slate Dark** | `#0f172a` | Cards, elementos de fundo |
+
+O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.text-gradient`).
+
+---
+
+## 🗄️ Banco de Dados (SQLite)
+
+### Tabela `clients`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | `id` | INTEGER | Chave primária, auto-gerada |
 | `name` | TEXT | Nome completo |
 | `whatsapp` | TEXT | Número do WhatsApp |
-| `device` | TEXT | Dispositivo (ex: Android, iPhone) |
-| `email` | TEXT UNIQUE | E-mail (usado para login) |
+| `device` | TEXT | Dispositivo (Android, Smart TV, etc.) |
+| `email` | TEXT UNIQUE | E-mail (login) |
 | `password_hash` | TEXT | Senha criptografada com bcrypt |
-| `plan` | TEXT | Plano contratado (ex: `mensal`) |
-| `status` | TEXT | Estado da conta (`Ativo`, `Inativo`) |
+| `plan` | TEXT | Plano contratado (mensal, trimestral…) |
+| `status` | TEXT | `Ativo` / `Inativo` |
 | `days_remaining` | INTEGER | Dias restantes na assinatura |
-| `app_account` | TEXT | Login do aplicativo do cliente |
-| `app_password` | TEXT | Senha do aplicativo do cliente |
+| `app_account` | TEXT | Login do app do cliente |
+| `app_password` | TEXT | Senha do app do cliente |
 | `created_at` | TEXT | Data/hora do cadastro |
 
-### Tabela `payments` — Histórico de pagamentos
+### Tabela `payments`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | `id` | INTEGER | Chave primária |
 | `client_id` | INTEGER | FK referenciando o cliente |
 | `plan` | TEXT | Plano pago |
 | `value` | TEXT | Valor pago |
-| `status` | TEXT | Status do pagamento (`Pago`) |
+| `status` | TEXT | Status (`Pago`) |
 | `paid_at` | TEXT | Data do pagamento |
 
 ---
 
-## 🔌 A API (Rotas do Backend)
-
-O backend expõe as seguintes rotas HTTP:
+## 🔌 API — Rotas do Backend
 
 ### Autenticação — `/api/auth/`
-| Método | Rota | Descrição | Autenticação |
-|--------|------|-----------|--------------|
-| `POST` | `/api/auth/register` | Cadastra novo cliente | Não |
-| `POST` | `/api/auth/login` | Faz login e retorna token JWT | Não |
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/auth/register` | Cadastra novo cliente |
+| `POST` | `/api/auth/login` | Login — retorna token JWT |
 
 ### Painel — `/api/dashboard/`
-| Método | Rota | Descrição | Autenticação |
-|--------|------|-----------|--------------|
-| `GET` | `/api/dashboard` | Retorna dados + histórico do cliente | **Sim (JWT)** |
+| Método | Rota | Descrição | Auth |
+|--------|------|-----------|------|
+| `GET` | `/api/dashboard` | Dados + histórico do cliente | **JWT** |
 
-### Saúde do servidor
+### Saúde
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | `GET` | `/api/health` | Verifica se o servidor está rodando |
 
 ---
 
-## 🔐 Como Funciona a Autenticação (JWT)
+## 🔐 Autenticação JWT
 
-1. O usuário preenche e-mail + senha na `LoginPage.tsx`.
-2. O frontend faz `POST /api/auth/login` com os dados.
-3. O backend compara a senha com o hash salvo no banco (`bcryptjs`).
-4. Se correto, gera um **token JWT** (válido por 2 horas) com o `id` e `email` do cliente.
-5. O frontend salva esse token no `localStorage` do navegador.
-6. Em qualquer rota protegida (ex: `/dashboard`), o token é enviado no header `Authorization: Bearer <token>`.
-7. O middleware `server/middleware/auth.ts` valida o token antes de processar a requisição.
-8. O `ProtectedRoute.tsx` no frontend redireciona para `/login` se não houver token salvo.
+1. Usuário preenche e-mail + senha na `LoginPage.tsx`
+2. Frontend faz `POST /api/auth/login`
+3. Backend valida a senha com `bcryptjs`
+4. Se correto, gera token JWT (válido por 2h)
+5. Frontend salva no `localStorage` (`reyb_token`)
+6. Rotas protegidas enviam `Authorization: Bearer <token>`
+7. `ProtectedRoute.tsx` redireciona para `/login` se sem token
 
 ---
 
-## 🗺️ Rotas do Site (Frontend)
-
-Definidas em `src/App.tsx`:
+## 🗺️ Rotas do Site
 
 | URL | Componente | Protegida? |
 |-----|-----------|------------|
@@ -138,105 +150,95 @@ Definidas em `src/App.tsx`:
 
 ---
 
-## 🛠️ Como Fazer Alterações (Guia Rápido)
+## 🚀 Como Rodar o Projeto
 
-O projeto usa **Tailwind CSS** — as classes de estilo ficam diretamente dentro do atributo `className=""` de cada componente.
+**Terminal 1 — Backend:**
+```bash
+npm run server
+```
+Saída esperada: `🚀 Servidor Reybraztech Online! → http://localhost:3001`
 
-### Mudar um texto na tela
-Encontre o texto entre as tags HTML e troque. Use `Ctrl+F` no VSCode para achar rapidamente.
+**Terminal 2 — Frontend:**
+```bash
+npm run dev
+```
+Acesse: `http://localhost:3000`
+
+> **Dica:** O Vite usa proxy automático — chamadas para `/api/...` são redirecionadas para `localhost:3001`.
+
+---
+
+## 🛠️ Como Fazer Alterações
+
+### Mudar um texto
 ```tsx
 // Antes
 <h1>Bem-vindo ao sistema</h1>
-
 // Depois
 <h1>Bem-vindo à Reybraztech</h1>
 ```
 
 ### Mudar uma cor
-Procure pelas classes `bg-` (cor de fundo) ou `text-` (cor do texto):
 ```tsx
-// Fundo verde → fundo azul
-className="bg-green-500"  →  className="bg-blue-500"
-
-// Texto cinza → texto amarelo
-className="text-slate-400"  →  className="text-yellow-400"
+className="bg-green-500"  →  className="bg-cyan-500"
+className="text-slate-400"  →  className="text-cyan-400"
 ```
 
-### Adicionar uma nova página
-1. Crie o arquivo em `src/pages/NovaPagina.tsx`
-2. Exporte o componente: `export function NovaPagina() { return <div>...</div>; }`
-3. Importe e registre a rota em `src/App.tsx`:
+### Adicionar nova página
+1. Crie `src/pages/NovaPagina.tsx` e exporte o componente
+2. Registre em `src/App.tsx`:
 ```tsx
 import { NovaPagina } from './pages/NovaPagina';
-// ...dentro de <Routes>:
 <Route path="/nova-pagina" element={<NovaPagina />} />
 ```
 
-### Navegar entre páginas (link interno)
-Use sempre `<Link>` do React Router para navegação interna (nunca `<a>` para rotas internas):
+### Navegação interna (use sempre `<Link>`)
 ```tsx
 import { Link } from 'react-router-dom';
-
-<Link to="/checkout" className="bg-cyan-500 text-white px-4 py-2 rounded">
-  Ver Planos
-</Link>
-```
-
-### Link externo (redes sociais, etc.)
-```tsx
-<a href="https://instagram.com/reybraztech" target="_blank" rel="noopener noreferrer">
-  Instagram
-</a>
+<Link to="/checkout">Ver Planos</Link>
 ```
 
 ---
 
-## 🚀 Como Rodar o Projeto
+## 🔮 Roadmap de Melhorias
 
-Você precisa de **dois terminais** abertos ao mesmo tempo:
+### 🔴 Prioridade Alta — Essencial para o negócio
 
-**Terminal 1 — Backend (API):**
-```bash
-npm run server
-```
-Deverá exibir: `🚀 Servidor Reybraztech Online! → http://localhost:3001`
+| # | Melhoria | Por quê é importante |
+|---|----------|----------------------|
+| 1 | **Painel Administrativo** | Sem admin panel, você não consegue ver/editar clientes pelo site, gerenciar renovações ou acompanhar tudo sem acessar o banco direto |
+| 2 | **Job de contagem regressiva de dias** | O campo `days_remaining` existe, mas não é decrementado automaticamente. Um job diário (`node-cron`) deve subtrair 1 dia e inativar clientes vencidos |
+| 3 | **Alertas de vencimento por WhatsApp** | Enviar mensagem automática quando restam 3 dias na assinatura. Pode usar a API da Evolution API ou Baileys |
+| 4 | **Exibir `days_remaining` no Dashboard** | O cliente precisa saber quantos dias faltam para vencer sem precisar te perguntar |
 
-**Terminal 2 — Frontend (Site):**
-```bash
-npm run dev
-```
-Deverá exibir o endereço `http://localhost:3000`
+### 🟡 Prioridade Média — UX e robustez
 
-> **Dica:** O Vite está configurado para fazer um "proxy" — quando o frontend chama `/api/...`, ele automaticamente redireciona para `localhost:3001`. Isso está configurado no `vite.config.ts`.
+| # | Melhoria | Por quê é importante |
+|---|----------|----------------------|
+| 5 | **Validação de formulários com Zod** | Erros muito mais precisos e amigáveis nos formulários de cadastro e login |
+| 6 | **Refresh Token** | O token JWT expira em 2h e o usuário é deslogado de surpresa. Refresh token resolve isso silenciosamente |
+| 7 | **Página de recuperação de senha** | O link "Esqueceu a senha?" já existe visualmente mas não faz nada. Essencial para auto-atendimento |
+| 8 | **Criptografia da `app_password`** | Hoje o campo é salvo em texto puro. Deveria ser criptografado com AES (criptografia reversível, pois você precisa descriptografar) |
+| 9 | **Checkout integrado com Mercado Pago** | Gerar o link de pagamento direto no site ao clicar em "Assinar Agora", e tratar o webhook de confirmação para ativar o cliente automaticamente |
+
+### 🟢 Prioridade Baixa — Profissionalismo e escala
+
+| # | Melhoria | Por quê é importante |
+|---|----------|----------------------|
+| 10 | **Deploy (Hosting)** | Hoje o site só roda localmente. Backend → Railway ou Render. Frontend → Vercel ou Netlify |
+| 11 | **SEO e meta tags** | Adicionar Open Graph (imagem de prévia ao compartilhar o link no WhatsApp), título e descrição otimizados |
+| 12 | **Testes automatizados** | Garantir que ao adicionar novas funcionalidades nada quebra. Usar Vitest (frontend) e Jest (backend) |
+| 13 | **Variáveis de ambiente obrigatórias** | O servidor não deve subir sem `JWT_SECRET` definido. Adicionar validação no `server/index.ts` |
+| 14 | **Página de erro 404** | Usuários que acessam URLs inválidas devem ver uma página elegante com redirecionamento |
 
 ---
 
-## ⚠️ O Que Ainda Precisa Melhorar (Próximos Passos)
+## 📌 Histórico de Mudanças Recentes
 
-Esta seção registra as fragilidades atuais e o que deve ser implementado para o projeto ficar mais robusto e pronto para produção.
-
-### 🔴 Alta Prioridade
-
-- **`app_password` armazenado em texto puro:** O campo `app_password` na tabela `clients` guarda a senha do aplicativo do cliente sem criptografia. Isso é um risco de segurança. O ideal é criptografar com `bcrypt` antes de salvar, ou usar criptografia reversível (AES) se o sistema precisar descriptografar depois.
-
-- **Admin Panel inexistente:** Não existe ainda uma área de administrador para gerenciar clientes (visualizar todos, editar `days_remaining`, marcar pagamentos, etc.). Para sincronizar com clientes vindos pelo WhatsApp, isso é essencial.
-
-- **Sincronização de `days_remaining`:** O campo existe no banco, mas não há lógica automática que decrementa os dias ou que detecta clientes vencidos. Isso deveria ser feito via um job agendado (ex: `node-cron`).
-
-### 🟡 Média Prioridade
-
-- **Sem renovação automática:** O sistema ainda não gera links de pagamento nem avisa o cliente automaticamente quando a assinatura está próxima de vencer. Um sistema de alertas por WhatsApp (via API) seria o próximo grande passo.
-
-- **Validação de formulários fraca:** Os formulários de cadastro e login fazem apenas validações simples. Usar uma biblioteca como `zod` ou `react-hook-form` tornaria os erros mais precisos e amigáveis.
-
-- **Dashboard não exibe `days_remaining`:** A rota `/api/dashboard` busca `days_remaining` do banco, mas esse campo não é exibido para o cliente na `DashboardPage.tsx`. Adicionar uma seção "Dias restantes na assinatura" seria útil.
-
-- **Token JWT sem refresh:** O token expira em 2 horas e o usuário é deslogado sem aviso. Implementar um "refresh token" evitaria essa quebra de experiência.
-
-### 🟢 Baixa Prioridade / Melhorias Futuras
-
-- **Testes automatizados:** Não existem testes unitários ou de integração. Ferramentas como `vitest` (frontend) e `jest` (backend) poderiam garantir que o sistema não quebra ao evoluir.
-
-- **Variável `JWT_SECRET` hardcoded como fallback:** Em `server/routes/auth.ts`, se o `.env` não tiver `JWT_SECRET`, ele usa uma string padrão. Em produção, isso é inseguro — o servidor não deveria nem subir sem essa variável.
-
-- **Deploy:** O projeto ainda roda apenas localmente. O próximo passo seria fazer o deploy do backend em um serviço como Railway ou Render, e do frontend no Vercel ou Netlify.
+| Data | Mudança |
+|------|---------|
+| Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto |
+| Mar/2026 | `LoginPage` reformulada com personagens animados interativos |
+| Mar/2026 | Componentes shadcn/ui (button, input, label, checkbox) integrados |
+| Mar/2026 | Toggle dark/light removido — projeto fixado em modo escuro permanente |
+| Mar/2026 | Overlay escuro adicionado sobre a onda para melhorar legibilidade |

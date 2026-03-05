@@ -33,7 +33,7 @@ const ScrollToTop = () => {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-500">
+      <div className="min-h-screen bg-transparent text-slate-900 dark:text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-500">
         <ScrollToTop />
         <Navbar />
         <main>

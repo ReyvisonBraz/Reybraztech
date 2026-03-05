@@ -94,7 +94,7 @@ export const ContentCarousel = () => {
                 <div className="flex items-center justify-between mb-8 max-w-7xl mx-auto">
                     <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
                         <span className="w-2 h-8 bg-cyan-500 rounded-full inline-block"></span>
-                        Em Destaque
+                        DESTAQUES
                     </h2>
                     <div className="text-sm font-medium text-slate-400 flex items-center gap-2">
                         <span className="hidden sm:inline">

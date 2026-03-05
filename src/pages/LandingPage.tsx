@@ -3,6 +3,7 @@ import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphon
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { ContentCarousel } from '../components/ContentCarousel';
+import { WebGLShader } from '../components/web-gl-shader';
 
 const Hero = () => {
   return (
@@ -29,7 +30,7 @@ const Hero = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 2 }}
           className="inline-block mb-6 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-sm font-medium backdrop-blur-sm"
         >
           🚀 A revolução do streaming chegou
@@ -426,6 +427,7 @@ export const LandingPage = () => {
 
   return (
     <>
+      <WebGLShader />
       <Hero />
       <ContentCarousel />
       <Compatibility />

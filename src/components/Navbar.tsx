@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 
@@ -11,30 +11,14 @@ const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT
 export const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [theme, setTheme] = useState('dark');
 
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };
         window.addEventListener('scroll', handleScroll);
-
-        // Theme initialization
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        setTheme(savedTheme);
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(savedTheme);
-
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-
-    const toggleTheme = () => {
-        const newTheme = theme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(newTheme);
-        localStorage.setItem('theme', newTheme);
-    };
 
     return (
         <nav className={`fixed w-full z-50 transition-all duration-500 ${isScrolled ? 'glass-nav py-2' : 'bg-transparent py-4'}`}>
@@ -68,23 +52,11 @@ export const Navbar = () => {
                         </div>
                     </div>
                     <div className="hidden md:flex items-center gap-4">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 rounded-full bg-white/5 dark:bg-white/5 light:bg-slate-100 border border-white/10 dark:border-white/10 light:border-slate-200 text-slate-400 hover:text-cyan-400 transition-all"
-                        >
-                            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                        </button>
                         <Link to="/login" className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
                             Acesso
                         </Link>
                     </div>
                     <div className="-mr-2 flex md:hidden items-center gap-2">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 rounded-md text-slate-200 hover:text-cyan-400 focus:outline-none"
-                        >
-                            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                        </button>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             className="inline-flex items-center justify-center p-2 rounded-md text-slate-200 hover:text-cyan-400 focus:outline-none"

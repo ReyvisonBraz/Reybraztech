@@ -9,8 +9,8 @@ Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem aba
 | # | Arquivo | Conteúdo |
 |---|---------|----------|
 | 1 | [1-supabase-setup.md](./1-supabase-setup.md) | Como migrar do SQLite para o Supabase (PostgreSQL na nuvem) |
-| 2 | [2-evolution-api-whatsapp.md](./2-evolution-api-whatsapp.md) | Integração da Evolution API — envio de OTP via WhatsApp para login, cadastro e recuperação de senha |
-| 3 | [3-seguranca.md](./3-seguranca.md) | Segurança do site e banco de dados — do básico ao avançado |
+| 2 | [2-sendpulse-whatsapp.md](./2-sendpulse-whatsapp.md) | Integração da SendPulse API — envio de OTP via WhatsApp (API oficial) para login, cadastro e recuperação de senha |
+| 3 | [3-seguranca.md](./3-seguranca.md) | Segurança do site e banco de dados — do básico ao avançado + anti-bot (reCAPTCHA, Honeypot, XSS, CSRF) |
 | 4 | [4-entendendo-o-projeto.md](./4-entendendo-o-projeto.md) | Entendendo o projeto por partes, de forma didática |
 | 5 | [5-melhorias-e-integracoes.md](./5-melhorias-e-integracoes.md) | Painel Admin, Automações (Jobs) e Integração Mercado Pago |
 
@@ -25,7 +25,7 @@ Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem aba
       ↓
 3. Implementar o Guia 1 (Supabase — banco em produção)
       ↓
-4. Implementar o Guia 2 (Evolution API — OTP WhatsApp)
+4. Implementar o Guia 2 (SendPulse — OTP WhatsApp)
       ↓
 5. Seguir o Guia 5 (Novas Melhorias e Integrações)
 ```

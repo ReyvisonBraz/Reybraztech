@@ -38,9 +38,9 @@ No menu lateral, vá em **"SQL Editor"** e cole o SQL abaixo para criar as mesma
 CREATE TABLE clients (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,
-  whatsapp TEXT NOT NULL,
+  whatsapp TEXT NOT NULL UNIQUE,
   device TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
+  email TEXT,                    -- OPCIONAL!
   password_hash TEXT NOT NULL,
   plan TEXT NOT NULL DEFAULT 'mensal',
   status TEXT NOT NULL DEFAULT 'Ativo',
@@ -60,8 +60,9 @@ CREATE TABLE payments (
   paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Índice para busca por email ser mais rápida
+-- Índices para buscas rápidas
 CREATE INDEX idx_clients_email ON clients(email);
+CREATE INDEX idx_clients_whatsapp ON clients(whatsapp);
 ```
 
 > Clique em **"Run"** para executar. Vá em **"Table Editor"** para confirmar que criou.
@@ -207,12 +208,23 @@ router.post('/register', async (req, res) => {
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { identifier, password } = req.body;
 
   try {
-    const [client] = await sql`
-      SELECT * FROM clients WHERE email = ${email}
-    `;
+    // Verifica se é email (contém @) ou telefone
+    const isEmail = identifier.includes('@');
+    let client;
+
+    if (isEmail) {
+      [client] = await sql`
+        SELECT * FROM clients WHERE email = ${identifier}
+      `;
+    } else {
+      const cleanPhone = identifier.replace(/[\s\-\(\)]/g, '');
+      [client] = await sql`
+        SELECT * FROM clients WHERE whatsapp = ${cleanPhone}
+      `;
+    }
 
     if (!client) {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
@@ -225,12 +237,12 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: client.id, email: client.email },
+      { id: client.id, email: client.email || client.whatsapp },
       process.env.JWT_SECRET!,
       { expiresIn: '2h' }
     );
 
-    res.json({ token, name: client.name });
+    res.json({ token, user: { name: client.name, plan: client.plan, status: client.status, whatsapp: client.whatsapp } });
   } catch (error) {
     console.error('Erro no login:', error);
     res.status(500).json({ error: 'Erro interno do servidor.' });
@@ -296,6 +308,6 @@ Adicione todas as variáveis do `.env`:
 - [ ] Credenciais copiadas para o `.env`
 - [ ] `npm uninstall better-sqlite3` e `npm install postgres`
 - [ ] `server/database.ts` reescrito
-- [ ] Rotas do backend atualizadas (async/await)
+- [ ] Rotas do backend atualizadas (async/await + `identifier` login)
 - [ ] RLS ativado no Supabase
 - [ ] Variáveis de ambiente configuradas no Netlify e no host do backend

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db from '../database.js';
+import sql from '../database.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'reybraztech_secret_key_change_in_production';
@@ -12,9 +12,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'reybraztech_secret_key_change_in_p
 router.post('/register', async (req: Request, res: Response) => {
     const { name, whatsapp, device, email, password } = req.body;
 
-    // Validação básica
-    if (!name || !whatsapp || !device || !email || !password) {
-        res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+    // Validação básica — email é OPCIONAL
+    if (!name || !whatsapp || !device || !password) {
+        res.status(400).json({ error: 'Nome, WhatsApp, dispositivo e senha são obrigatórios.' });
         return;
     }
 
@@ -24,25 +24,37 @@ router.post('/register', async (req: Request, res: Response) => {
     }
 
     try {
-        // Verificar se e-mail já existe
-        const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email);
-        if (existing) {
-            res.status(409).json({ error: 'Este e-mail já está cadastrado.' });
+        // Verificar se o WhatsApp já existe
+        const [existingWhatsapp] = await sql`
+          SELECT id FROM clients WHERE whatsapp = ${whatsapp}
+        `;
+        if (existingWhatsapp) {
+            res.status(409).json({ error: 'Este WhatsApp já está cadastrado.' });
             return;
+        }
+
+        // Se forneceu email, verificar se já existe
+        if (email && email.trim() !== '') {
+            const [existingEmail] = await sql`
+              SELECT id FROM clients WHERE email = ${email}
+            `;
+            if (existingEmail) {
+                res.status(409).json({ error: 'Este e-mail já está cadastrado.' });
+                return;
+            }
         }
 
         // Criptografar senha
         const passwordHash = await bcrypt.hash(password, 12);
 
-        // Salvar no banco
-        const stmt = db.prepare(`
-      INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status)
-      VALUES (?, ?, ?, ?, ?, 'mensal', 'Ativo')
-    `);
+        // Salvar no banco (email pode ser null)
+        const [newClient] = await sql`
+          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status)
+          VALUES (${name}, ${whatsapp}, ${device}, ${email || null}, ${passwordHash}, 'mensal', 'Ativo')
+          RETURNING id, name, email, plan, status
+        `;
 
-        const result = stmt.run(name, whatsapp, device, email, passwordHash);
-
-        console.log(`✅ Novo cliente cadastrado: ${name} (ID: ${result.lastInsertRowid})`);
+        console.log(`✅ Novo cliente cadastrado: ${name} (ID: ${newClient.id})`);
 
         res.status(201).json({
             success: true,
@@ -56,39 +68,55 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // ============================================================
 // POST /api/auth/login — Autenticar cliente e retornar JWT
+// O frontend envia { identifier, password }
+// identifier pode ser um WhatsApp (telefone) ou um e-mail
 // ============================================================
 router.post('/login', async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!email || !password) {
-        res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+    if (!identifier || !password) {
+        res.status(400).json({ error: 'WhatsApp/E-mail e senha são obrigatórios.' });
         return;
     }
 
     try {
-        // Buscar cliente pelo e-mail
-        const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(email) as any;
+        // Verificar se parece email (contém @) ou telefone
+        const isEmail = identifier.includes('@');
+
+        let client: any;
+
+        if (isEmail) {
+            [client] = await sql`
+              SELECT * FROM clients WHERE email = ${identifier}
+            `;
+        } else {
+            // Limpar o telefone (remover espaços, traços, parênteses)
+            const cleanPhone = identifier.replace(/[\s\-\(\)]/g, '');
+            [client] = await sql`
+              SELECT * FROM clients WHERE whatsapp = ${cleanPhone}
+            `;
+        }
 
         if (!client) {
-            res.status(401).json({ error: 'E-mail ou senha incorretos.' });
+            res.status(401).json({ error: 'Credenciais inválidas.' });
             return;
         }
 
         // Comparar senha
         const passwordMatch = await bcrypt.compare(password, client.password_hash);
         if (!passwordMatch) {
-            res.status(401).json({ error: 'E-mail ou senha incorretos.' });
+            res.status(401).json({ error: 'Credenciais inválidas.' });
             return;
         }
 
         // Gerar token JWT (expira em 2 horas por segurança)
         const token = jwt.sign(
-            { id: client.id, email: client.email },
+            { id: client.id, email: client.email || client.whatsapp },
             JWT_SECRET,
             { expiresIn: '2h' }
         );
 
-        console.log(`✅ Login realizado: ${client.name} (${client.email})`);
+        console.log(`✅ Login realizado: ${client.name} (${client.email || client.whatsapp})`);
 
         res.json({
             success: true,

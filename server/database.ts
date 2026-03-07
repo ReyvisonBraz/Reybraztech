@@ -1,46 +1,20 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+// server/database.ts
+import postgres from 'postgres';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// A CONNECTION STRING vem do .env (segredo!)
+const connectionString = process.env.DATABASE_URL!;
 
-// O banco de dados será criado na raiz do projeto
-const dbPath = path.join(__dirname, '..', 'reybraztech.db');
+if (!connectionString) {
+  throw new Error('❌ DATABASE_URL não definida no .env!');
+}
 
-const db = new Database(dbPath);
+// Cria a conexão principal com o banco
+const sql = postgres(connectionString, {
+  ssl: 'require', // Supabase exige SSL
+  max: 10,        // máximo de 10 conexões simultâneas
+  idle_timeout: 20,
+});
 
-// Ativar WAL para melhor performance
-db.pragma('journal_mode = WAL');
+console.log('✅ Conectado ao Supabase (PostgreSQL)!');
 
-// Criar tabela de clientes se não existir
-db.exec(`
-  CREATE TABLE IF NOT EXISTS clients (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    whatsapp TEXT NOT NULL,
-    device TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    plan TEXT NOT NULL DEFAULT 'mensal',
-    status TEXT NOT NULL DEFAULT 'Ativo',
-    days_remaining INTEGER DEFAULT 0,
-    app_account TEXT,
-    app_password TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-  );
-
-  CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    client_id INTEGER NOT NULL,
-    plan TEXT NOT NULL,
-    value TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'Pago',
-    paid_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-    FOREIGN KEY (client_id) REFERENCES clients(id)
-  );
-`);
-
-console.log('✅ Banco de dados inicializado em:', dbPath);
-
-export default db;
+export default sql;

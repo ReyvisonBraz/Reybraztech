@@ -139,7 +139,7 @@ const EyeBall = ({
 export const LoginPage = () => {
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState("");
+    const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const [loading, setLoading] = useState(false);
@@ -255,7 +255,7 @@ export const LoginPage = () => {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ identifier, password }),
             });
 
             const data = await response.json();
@@ -481,14 +481,14 @@ export const LoginPage = () => {
                     {/* Login Form */}
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-sm font-medium text-slate-300">E-mail</Label>
+                            <Label htmlFor="identifier" className="text-sm font-medium text-slate-300">WhatsApp ou E-mail</Label>
                             <Input
-                                id="email"
-                                type="email"
-                                placeholder="seu@email.com"
-                                value={email}
+                                id="identifier"
+                                type="text"
+                                placeholder="Seu WhatsApp ou e-mail"
+                                value={identifier}
                                 autoComplete="off"
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => setIdentifier(e.target.value)}
                                 onFocus={() => setIsTyping(true)}
                                 onBlur={() => setIsTyping(false)}
                                 required

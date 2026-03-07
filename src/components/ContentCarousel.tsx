@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Sparkles } from 'lucide-react';
+import { Play, Pause, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 // =========================================================================
 // CONFIGURAÇÃO DOS CONTEÚDOS DO CARROSSEL
@@ -38,6 +38,7 @@ export const ContentCarousel = () => {
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
     const [items, setItems] = useState<CarouselItem[]>(FALLBACK_ITEMS);
+    const [isOpen, setIsOpen] = useState(false);
 
     const SLIDE_DURATION = 8000;
     const UPDATE_INTERVAL = 50;
@@ -115,136 +116,158 @@ export const ContentCarousel = () => {
                             </p>
                         </div>
                     </div>
-                    {/* Status indicators */}
-                    <div className="flex items-center gap-3">
-                        {/* Dot indicators */}
-                        <div className="hidden sm:flex items-center gap-1.5">
-                            {items.map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => { setActiveIndex(i); setProgress(0); setIsPaused(false); }}
-                                    className={`h-1.5 rounded-full transition-all duration-300 ${i === activeIndex
-                                            ? `w-6 bg-gradient-to-r ${gradient}`
-                                            : 'w-1.5 bg-slate-700 hover:bg-slate-500'
-                                        }`}
-                                />
-                            ))}
-                        </div>
-                        {/* Play/Pause toggle */}
-                        <button
-                            onClick={() => setIsPaused(!isPaused)}
-                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-white/10 ${!isPaused ? 'text-cyan-400' : 'text-slate-400'}`}
-                        >
-                            {isPaused
-                                ? <Play className="w-4 h-4 fill-current ml-0.5" />
-                                : <Pause className="w-4 h-4 fill-current" />
-                            }
-                        </button>
-                    </div>
+                    {/* Toggle button */}
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        className={`flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full font-bold text-sm sm:text-base border transition-all ${isOpen ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10' : `bg-gradient-to-r ${gradient} border-transparent text-white shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:scale-105`}`}
+                    >
+                        {isOpen ? 'Ocultar' : 'Ver Destaques'}
+                        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
                 </div>
 
-                {/* Carousel scroll container */}
-                <div
-                    ref={scrollContainerRef}
-                    className="flex gap-3 sm:gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-2 max-w-7xl mx-auto"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    {items.map((item, index) => {
-                        const isActive = index === activeIndex;
-                        const itemGradient = categoryGradients[item.category] || 'from-cyan-500 to-blue-600';
-
-                        return (
-                            <motion.div
-                                key={item.id}
-                                onClick={() => handleItemClick(index)}
-                                layout
-                                className={`snap-center flex-shrink-0 rounded-2xl sm:rounded-3xl relative overflow-hidden cursor-pointer transition-all duration-500
-                                    ${isActive
-                                        ? 'min-w-[200px] sm:min-w-[240px] md:min-w-[260px] h-[280px] sm:h-[320px] md:h-[360px] z-10 shadow-2xl'
-                                        : 'min-w-[140px] sm:min-w-[170px] md:min-w-[200px] h-[240px] sm:h-[280px] md:h-[300px] opacity-50 hover:opacity-80'
-                                    }`}
-                            >
-                                {/* Background Image */}
-                                <img
-                                    src={item.image}
-                                    alt={item.title}
-                                    className="w-full h-full object-cover pointer-events-none"
-                                />
-
-                                {/* Gradient overlay */}
-                                <div className={`absolute inset-0 transition-opacity duration-300 ${isActive
-                                        ? 'bg-gradient-to-t from-black via-black/40 to-transparent opacity-90'
-                                        : 'bg-gradient-to-t from-slate-900/80 via-slate-900/30 to-transparent opacity-70'
-                                    }`} />
-
-                                {/* Active ring glow */}
-                                {isActive && (
-                                    <div className={`absolute inset-0 rounded-2xl sm:rounded-3xl ring-2 ring-inset bg-gradient-to-t ${itemGradient} opacity-20 pointer-events-none`} />
-                                )}
-
-                                {/* Progress bar at top */}
-                                {isActive && (
-                                    <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-20 rounded-t-2xl sm:rounded-t-3xl overflow-hidden">
-                                        <motion.div
-                                            className={`h-full bg-gradient-to-r ${itemGradient} shadow-[0_0_8px_rgba(34,211,238,0.6)]`}
-                                            style={{ width: `${progress}%` }}
+                {/* Controles Dinâmicos e Lista de Slides */}
+                <AnimatePresence>
+                    {isOpen && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.5, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                        >
+                            {/* Header de controles rápidos quando aberto */}
+                            <div className="flex items-center justify-end mb-4 gap-3 max-w-7xl mx-auto px-1 sm:px-0">
+                                {/* Dot indicators */}
+                                <div className="hidden sm:flex items-center gap-1.5">
+                                    {items.map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => { setActiveIndex(i); setProgress(0); setIsPaused(false); }}
+                                            className={`h-1.5 rounded-full transition-all duration-300 ${i === activeIndex
+                                                ? `w-6 bg-gradient-to-r ${gradient}`
+                                                : 'w-1.5 bg-slate-700 hover:bg-slate-500'
+                                                }`}
                                         />
-                                    </div>
-                                )}
+                                    ))}
+                                </div>
+                                {/* Play/Pause toggle */}
+                                <button
+                                    onClick={() => setIsPaused(!isPaused)}
+                                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-white/10 ${!isPaused ? 'text-cyan-400' : 'text-slate-400'}`}
+                                >
+                                    {isPaused
+                                        ? <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" />
+                                        : <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                                    }
+                                </button>
+                            </div>
 
-                                {/* Center play/pause icon */}
-                                <AnimatePresence>
-                                    {isActive && (
+                            {/* Carousel scroll container */}
+                            <div
+                                ref={scrollContainerRef}
+                                className="flex gap-3 sm:gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide py-2 max-w-7xl mx-auto"
+                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                            >
+                                {items.map((item, index) => {
+                                    const isActive = index === activeIndex;
+                                    const itemGradient = categoryGradients[item.category] || 'from-cyan-500 to-blue-600';
+
+                                    return (
                                         <motion.div
-                                            initial={{ scale: 0, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            exit={{ scale: 0, opacity: 0 }}
-                                            className="absolute inset-0 flex items-center justify-center z-10"
+                                            key={item.id}
+                                            onClick={() => handleItemClick(index)}
+                                            layout
+                                            className={`snap-center flex-shrink-0 rounded-2xl sm:rounded-3xl relative overflow-hidden cursor-pointer transition-all duration-500
+                                    ${isActive
+                                                    ? 'min-w-[200px] sm:min-w-[240px] md:min-w-[260px] h-[280px] sm:h-[320px] md:h-[360px] z-10 shadow-2xl'
+                                                    : 'min-w-[140px] sm:min-w-[170px] md:min-w-[200px] h-[240px] sm:h-[280px] md:h-[300px] opacity-50 hover:opacity-80'
+                                                }`}
                                         >
-                                            <div className={`bg-gradient-to-r ${itemGradient} bg-opacity-80 backdrop-blur-md p-3 sm:p-4 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-transform`}>
-                                                {isPaused ? (
-                                                    <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white ml-0.5" />
-                                                ) : (
-                                                    <Pause className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white" />
+                                            {/* Background Image */}
+                                            <img
+                                                src={item.image}
+                                                alt={item.title}
+                                                className="w-full h-full object-cover pointer-events-none"
+                                            />
+
+                                            {/* Gradient overlay */}
+                                            <div className={`absolute inset-0 transition-opacity duration-300 ${isActive
+                                                ? 'bg-gradient-to-t from-black via-black/40 to-transparent opacity-90'
+                                                : 'bg-gradient-to-t from-slate-900/80 via-slate-900/30 to-transparent opacity-70'
+                                                }`} />
+
+                                            {/* Active ring glow */}
+                                            {isActive && (
+                                                <div className={`absolute inset-0 rounded-2xl sm:rounded-3xl ring-2 ring-inset bg-gradient-to-t ${itemGradient} opacity-20 pointer-events-none`} />
+                                            )}
+
+                                            {/* Progress bar at top */}
+                                            {isActive && (
+                                                <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-20 rounded-t-2xl sm:rounded-t-3xl overflow-hidden">
+                                                    <motion.div
+                                                        className={`h-full bg-gradient-to-r ${itemGradient} shadow-[0_0_8px_rgba(34,211,238,0.6)]`}
+                                                        style={{ width: `${progress}%` }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Center play/pause icon */}
+                                            <AnimatePresence>
+                                                {isActive && (
+                                                    <motion.div
+                                                        initial={{ scale: 0, opacity: 0 }}
+                                                        animate={{ scale: 1, opacity: 1 }}
+                                                        exit={{ scale: 0, opacity: 0 }}
+                                                        className="absolute inset-0 flex items-center justify-center z-10"
+                                                    >
+                                                        <div className={`bg-gradient-to-r ${itemGradient} bg-opacity-80 backdrop-blur-md p-3 sm:p-4 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-transform`}>
+                                                            {isPaused ? (
+                                                                <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white ml-0.5" />
+                                                            ) : (
+                                                                <Pause className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white" />
+                                                            )}
+                                                        </div>
+                                                    </motion.div>
                                                 )}
+                                            </AnimatePresence>
+
+                                            {/* Bottom text */}
+                                            <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-10 pointer-events-none">
+                                                <span className={`text-[10px] sm:text-xs font-black px-2 py-0.5 sm:py-1 rounded-md mb-1.5 sm:mb-2 inline-block uppercase tracking-widest transition-all duration-300
+                                        ${isActive
+                                                        ? `bg-gradient-to-r ${itemGradient} text-white`
+                                                        : 'bg-white/10 backdrop-blur-md border border-white/20 text-white/70'
+                                                    }`}
+                                                >
+                                                    {item.category}
+                                                </span>
+                                                <h3 className={`font-black leading-tight drop-shadow-md transition-all duration-300 ${isActive ? 'text-white text-base sm:text-xl' : 'text-slate-300 text-sm sm:text-lg'
+                                                    }`}>
+                                                    {item.title}
+                                                </h3>
                                             </div>
                                         </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                    );
+                                })}
+                            </div>
 
-                                {/* Bottom text */}
-                                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-10 pointer-events-none">
-                                    <span className={`text-[10px] sm:text-xs font-black px-2 py-0.5 sm:py-1 rounded-md mb-1.5 sm:mb-2 inline-block uppercase tracking-widest transition-all duration-300
-                                        ${isActive
-                                            ? `bg-gradient-to-r ${itemGradient} text-white`
-                                            : 'bg-white/10 backdrop-blur-md border border-white/20 text-white/70'
-                                        }`}
-                                    >
-                                        {item.category}
-                                    </span>
-                                    <h3 className={`font-black leading-tight drop-shadow-md transition-all duration-300 ${isActive ? 'text-white text-base sm:text-xl' : 'text-slate-300 text-sm sm:text-lg'
-                                        }`}>
-                                        {item.title}
-                                    </h3>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </div>
-
-                {/* Mobile dot indicators */}
-                <div className="flex sm:hidden items-center justify-center gap-1.5 mt-4">
-                    {items.map((_, i) => (
-                        <button
-                            key={i}
-                            onClick={() => { setActiveIndex(i); setProgress(0); setIsPaused(false); }}
-                            className={`h-1.5 rounded-full transition-all duration-300 ${i === activeIndex
-                                    ? `w-5 bg-gradient-to-r ${gradient}`
-                                    : 'w-1.5 bg-slate-700'
-                                }`}
-                        />
-                    ))}
-                </div>
+                            {/* Mobile dot indicators */}
+                            <div className="flex sm:hidden items-center justify-center gap-1.5 mt-4">
+                                {items.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => { setActiveIndex(i); setProgress(0); setIsPaused(false); }}
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${i === activeIndex
+                                            ? `w-5 bg-gradient-to-r ${gradient}`
+                                            : 'w-1.5 bg-slate-700'
+                                            }`}
+                                    />
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             <style>{`
@@ -252,6 +275,6 @@ export const ContentCarousel = () => {
                     display: none;
                 }
             `}</style>
-        </section>
+        </section >
     );
 };

@@ -164,9 +164,8 @@ export const RegisterPage = () => {
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input
-                    required
-                    type="email"
-                    placeholder="Seu melhor e-mail"
+                    type="text"
+                    placeholder="E-mail (opcional)"
                     className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -195,7 +194,7 @@ export const RegisterPage = () => {
                   />
                 </div>
                 <p className="text-xs text-slate-500 text-center px-4">
-                  Use seu e-mail e senha para acessar o painel do cliente.
+                  Use seu WhatsApp e senha para acessar o painel. E-mail é opcional.
                 </p>
               </motion.div>
             )}

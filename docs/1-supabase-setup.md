@@ -1,313 +1,271 @@
-# 🗄️ Guia 1 — Implementação do Supabase
+# 🗄️ Guia 1 — Configurar o Supabase (Banco de Dados na Nuvem)
 
-> **Objetivo:** Substituir o banco SQLite local pelo Supabase (PostgreSQL na nuvem), de forma didática e no padrão manual — sem usar ORM, sem "magia", passo a passo.
-
----
-
-## O que é o Supabase?
-
-O Supabase é um **banco de dados PostgreSQL hospedado na nuvem**, com uma interface visual online (como o phpMyAdmin, mas muito mais moderno). Ele oferece:
-
-- ✅ Banco de dados PostgreSQL real
-- ✅ Interface web para ver/editar dados
-- ✅ Autenticação pronta (mas vamos usar a nossa própria com JWT)
-- ✅ API automática (usaremos para acessar o banco)
-- ✅ Free tier generoso (500MB, perfeito para começar)
+> **Para quem é esse guia?** Para quem nunca mexeu com banco de dados online.
+> Vamos ir devagar, explicando TUDO.
 
 ---
 
-## PARTE 1 — Criar o banco no site do Supabase
+## 🤔 Primeiro: O que é um banco de dados?
 
-### Passo 1 — Criar um novo Projeto
+Pense num banco de dados como uma **planilha do Excel gigante** que guarda informações.
+Por exemplo:
+- Nome do cliente
+- WhatsApp do cliente
+- Qual plano ele comprou
+- Sua senha (criptografada, claro)
 
-1. Acesse [supabase.com](https://supabase.com) e faça login
-2. Clique em **"New Project"**
-3. Escolha um nome: `reybraztech`
-4. Crie uma **senha forte** para o banco (salve ela com segurança!)
-5. Escolha a região: **South America (São Paulo)** para menor latência
-6. Clique em **"Create new project"** e aguarde ~2 minutos
+Até agora, seu projeto usava um banco **local** (um arquivo chamado `reybraztech.db` no seu computador). O problema? Quando você publicar o site, esse arquivo não vai junto. Por isso precisamos de um banco **na nuvem** — que fica na internet e qualquer servidor pode acessar.
+
+É aí que entra o **Supabase**.
 
 ---
 
-### Passo 2 — Criar as Tabelas
+## 🤔 O que é o Supabase?
 
-No menu lateral, vá em **"SQL Editor"** e cole o SQL abaixo para criar as mesmas tabelas que já existem no SQLite:
+O Supabase é um **serviço gratuito** que te dá:
+- Um banco de dados PostgreSQL (tipo o Excel, mas profissional) **hospedado na internet**
+- Uma **interface visual** (um site bonito pra você ver seus dados, tipo o phpMyAdmin)
+- Tudo de graça até 500MB (mais que suficiente pro seu projeto)
+
+Pense nele como um "Google Drive do banco de dados" — seus dados ficam salvos na nuvem, acessíveis de qualquer lugar.
+
+---
+
+---
+
+# 📋 PASSO 1 — Criar uma conta no Supabase
+
+### O que vamos fazer?
+Criar uma conta gratuita no site do Supabase.
+
+### Como fazer:
+
+1. Abra o navegador e vá para: **[https://supabase.com](https://supabase.com)**
+2. Clique no botão **"Start your project"** (ou "Sign Up")
+3. Você pode fazer login com:
+   - **GitHub** (mais fácil se você já tem conta)
+   - **E-mail e senha** (se preferir)
+4. Depois de entrar, você vai cair no **Dashboard** (painel de controle)
+
+> ✅ **Pronto?** Me avise quando estiver logado no Supabase!
+
+---
+
+# 📋 PASSO 2 — Criar um novo Projeto
+
+### O que é um "projeto" no Supabase?
+É como criar uma pasta separada para o seu app. Cada projeto tem seu próprio banco de dados. Pense como "criar uma nova planilha no Google Sheets".
+
+### Como fazer:
+
+1. No Dashboard do Supabase, clique em **"New Project"** (botão verde)
+2. Preencha:
+   - **Name (Nome):** `reybraztech`
+   - **Database Password (Senha do banco):** Crie uma senha forte (ex: `MinhaS3nh@F0rte!2026`).
+     > ⚠️ **ANOTE ESSA SENHA!** Você vai precisar dela depois. Sem ela, não consegue conectar.
+   - **Region (Região):** Escolha **South America (São Paulo)** — isso faz os dados ficarem mais perto do Brasil, o que deixa tudo mais rápido.
+3. Clique em **"Create new project"**
+4. **Aguarde ~2 minutos** — o Supabase vai criar seu banco de dados na nuvem. Você vai ver uma barrinha de progresso.
+
+### O que acabou de acontecer?
+O Supabase criou um computador virtual na Amazon (AWS) em São Paulo, instalou um banco de dados PostgreSQL nele, e te deu acesso. Tudo automático e gratuito!
+
+> ✅ **Pronto?** Quando a barrinha de progresso terminar e aparecer o Dashboard do projeto, me avise!
+
+---
+
+# 📋 PASSO 3 — Criar as Tabelas (onde os dados vão morar)
+
+### O que é uma "tabela"?
+É literalmente uma tabela, igual no Excel:
+- **`clients`** = tabela com os dados dos clientes (nome, whatsapp, senha...)
+- **`payments`** = tabela com os pagamentos que os clientes fizeram
+
+### Como fazer:
+
+1. No menu lateral esquerdo do Supabase, clique em **"SQL Editor"**
+   - É um lugar onde você pode digitar comandos para o banco de dados
+   - Pense nele como um "terminal" do banco
+2. Você vai ver uma área de texto grande. **Apague tudo** que estiver lá
+3. **Copie e cole** o código abaixo inteiro:
 
 ```sql
--- Tabela de clientes
+-- ═══════════════════════════════════════════════
+-- TABELA DE CLIENTES
+-- Aqui ficam salvos todos os dados dos clientes
+-- ═══════════════════════════════════════════════
 CREATE TABLE clients (
-  id BIGSERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  whatsapp TEXT NOT NULL UNIQUE,
-  device TEXT NOT NULL,
-  email TEXT,                    -- OPCIONAL!
-  password_hash TEXT NOT NULL,
-  plan TEXT NOT NULL DEFAULT 'mensal',
-  status TEXT NOT NULL DEFAULT 'Ativo',
-  days_remaining INTEGER DEFAULT 0,
-  app_account TEXT,
-  app_password TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id BIGSERIAL PRIMARY KEY,           -- Número único do cliente (1, 2, 3...)
+  name TEXT NOT NULL,                  -- Nome completo
+  whatsapp TEXT NOT NULL UNIQUE,       -- WhatsApp (com DDD) — não pode repetir
+  device TEXT NOT NULL,                -- Dispositivo (tvbox, android, smarttv)
+  email TEXT,                          -- E-mail (OPCIONAL — pode ficar vazio)
+  password_hash TEXT NOT NULL,         -- Senha criptografada (nunca a senha real!)
+  plan TEXT NOT NULL DEFAULT 'mensal', -- Plano atual (mensal, trimestral, etc)
+  status TEXT NOT NULL DEFAULT 'Ativo',-- Status da conta (Ativo, Inativo, etc)
+  days_remaining INTEGER DEFAULT 0,   -- Dias restantes do plano
+  app_account TEXT,                    -- Login do app IPTV (preenchido depois)
+  app_password TEXT,                   -- Senha do app IPTV (preenchido depois)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() -- Data de cadastro (automática)
 );
 
--- Tabela de pagamentos
+-- ═══════════════════════════════════════════════
+-- TABELA DE PAGAMENTOS
+-- Registra cada pagamento feito por cada cliente
+-- ═══════════════════════════════════════════════
 CREATE TABLE payments (
-  id BIGSERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,           -- Número único do pagamento
   client_id BIGINT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  plan TEXT NOT NULL,
-  value TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'Pago',
-  paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                                       -- ↑ Liga este pagamento ao cliente
+  plan TEXT NOT NULL,                  -- Qual plano foi pago
+  value TEXT NOT NULL,                 -- Valor pago (ex: "35,00")
+  status TEXT NOT NULL DEFAULT 'Pago', -- Status (Pago, Pendente, etc)
+  paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW() -- Data do pagamento (automática)
 );
 
--- Índices para buscas rápidas
+-- ═══════════════════════════════════════════════
+-- ÍNDICES (fazem as buscas serem mais rápidas)
+-- ═══════════════════════════════════════════════
 CREATE INDEX idx_clients_email ON clients(email);
 CREATE INDEX idx_clients_whatsapp ON clients(whatsapp);
-```
 
-> Clique em **"Run"** para executar. Vá em **"Table Editor"** para confirmar que criou.
-
----
-
-### Passo 3 — Pegar as credenciais de conexão
-
-No menu lateral, vá em **"Settings" → "API"**
-
-Você vai precisar de 3 valores:
-1. **Project URL** → ex: `https://xxxxxxxxxxx.supabase.co`
-2. **anon / public key** → chave pública (pode aparecer no frontend)
-3. **service_role key** → chave secreta (NUNCA no frontend!)
-
-E também da **Connection String** do banco (para conectar direto via PostgreSQL):
-- Vá em **"Settings" → "Database"**
-- Copie a **"Connection string" → URI** (modo **Transaction**)
-- Será algo como: `postgresql://postgres:[SUA-SENHA]@db.xxxxxxxxxxx.supabase.co:5432/postgres`
-
----
-
-## PARTE 2 — Configurar o Projeto Local
-
-### Passo 4 — Instalar o driver do PostgreSQL
-
-O projeto usa `better-sqlite3`. Vamos trocar pelo `postgres` (driver leve e moderno):
-
-```bash
-# Remover o driver SQLite
-npm uninstall better-sqlite3
-
-# Instalar o driver PostgreSQL
-npm install postgres
-npm install -D @types/node
-```
-
----
-
-### Passo 5 — Atualizar o arquivo `.env`
-
-Abra o arquivo `.env` na raiz do projeto e adicione as variáveis do Supabase:
-
-```bash
-# == BANCO DE DADOS SUPABASE ==
-SUPABASE_URL=https://SEU_PROJECT_ID.supabase.co
-SUPABASE_ANON_KEY=eyJhbGci... (sua chave anon)
-SUPABASE_SERVICE_KEY=eyJhbGci... (sua chave service_role — SEGREDO!)
-DATABASE_URL=postgresql://postgres:SUA_SENHA@db.SEU_PROJECT_ID.supabase.co:5432/postgres
-```
-
-> ⚠️ **NUNCA suba o arquivo `.env` para o GitHub!** O `.gitignore` já garante isso.
-
----
-
-### Passo 6 — Reescrever o `server/database.ts`
-
-Substitua todo o conteúdo do arquivo `server/database.ts` pelo seguinte:
-
-```typescript
-// server/database.ts
-import postgres from 'postgres';
-
-// A CONNECTION STRING vem do .env (segredo!)
-const connectionString = process.env.DATABASE_URL!;
-
-if (!connectionString) {
-  throw new Error('❌ DATABASE_URL não definida no .env!');
-}
-
-// Cria a conexão principal com o banco
-const sql = postgres(connectionString, {
-  ssl: 'require', // Supabase exige SSL
-  max: 10,        // máximo de 10 conexões simultâneas
-  idle_timeout: 20,
-});
-
-console.log('✅ Conectado ao Supabase (PostgreSQL)!');
-
-export default sql;
-```
-
----
-
-### Passo 7 — Atualizar as rotas do backend
-
-O `postgres` usa uma sintaxe de query diferente do SQLite. Veja como fica:
-
-**ANTES (SQLite — `better-sqlite3`):**
-```typescript
-const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(email);
-```
-
-**DEPOIS (Supabase — `postgres`):**
-```typescript
-const [client] = await sql`SELECT * FROM clients WHERE email = ${email}`;
-```
-
-A diferença principal é que o `postgres` é **assíncrono** (usa `await`) e usa **template literals** para evitar SQL Injection automaticamente.
-
----
-
-#### Exemplo completo: `server/routes/auth.ts`
-
-```typescript
-import sql from '../database.js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { Router } from 'express';
-
-const router = Router();
-
-// POST /api/auth/register
-router.post('/register', async (req, res) => {
-  const { name, whatsapp, device, email, password, plan } = req.body;
-
-  try {
-    // Verificar se o email já existe
-    const [existing] = await sql`
-      SELECT id FROM clients WHERE email = ${email}
-    `;
-
-    if (existing) {
-      return res.status(409).json({ error: 'Email já cadastrado.' });
-    }
-
-    // Criptografar a senha
-    const password_hash = await bcrypt.hash(password, 12);
-
-    // Inserir o novo cliente
-    const [newClient] = await sql`
-      INSERT INTO clients (name, whatsapp, device, email, password_hash, plan)
-      VALUES (${name}, ${whatsapp}, ${device}, ${email}, ${password_hash}, ${plan})
-      RETURNING id, name, email, plan, status
-    `;
-
-    res.status(201).json({ message: 'Cadastro realizado!', client: newClient });
-  } catch (error) {
-    console.error('Erro no registro:', error);
-    res.status(500).json({ error: 'Erro interno do servidor.' });
-  }
-});
-
-// POST /api/auth/login
-router.post('/login', async (req, res) => {
-  const { identifier, password } = req.body;
-
-  try {
-    // Verifica se é email (contém @) ou telefone
-    const isEmail = identifier.includes('@');
-    let client;
-
-    if (isEmail) {
-      [client] = await sql`
-        SELECT * FROM clients WHERE email = ${identifier}
-      `;
-    } else {
-      const cleanPhone = identifier.replace(/[\s\-\(\)]/g, '');
-      [client] = await sql`
-        SELECT * FROM clients WHERE whatsapp = ${cleanPhone}
-      `;
-    }
-
-    if (!client) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
-    }
-
-    const passwordOk = await bcrypt.compare(password, client.password_hash);
-
-    if (!passwordOk) {
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
-    }
-
-    const token = jwt.sign(
-      { id: client.id, email: client.email || client.whatsapp },
-      process.env.JWT_SECRET!,
-      { expiresIn: '2h' }
-    );
-
-    res.json({ token, user: { name: client.name, plan: client.plan, status: client.status, whatsapp: client.whatsapp } });
-  } catch (error) {
-    console.error('Erro no login:', error);
-    res.status(500).json({ error: 'Erro interno do servidor.' });
-  }
-});
-
-export default router;
-```
-
----
-
-## PARTE 3 — Segurança no Supabase (Row Level Security)
-
-No menu do Supabase, vá em **"Authentication" → "Policies"**.
-
-Por padrão, o Supabase bloqueia acesso externo direto se você ativar o **Row Level Security (RLS)**. Como vamos acessar o banco **pelo nosso backend** (usando a `service_role key`), o backend tem acesso total — isso é seguro.
-
-Para proteger de acesso direto via API pública:
-
-```sql
--- Ativar RLS nas tabelas
+-- ═══════════════════════════════════════════════
+-- SEGURANÇA — Ativar proteção contra acesso direto
+-- ═══════════════════════════════════════════════
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-
--- Nenhum acesso público direto (nosso backend usa service_role, não precisa de policy)
--- As leituras e escritas acontecem apenas pelo nosso servidor Node.js
 ```
 
----
+4. Clique no botão **"Run"** (▶️) no canto inferior direito (ou pressione `Ctrl+Enter`)
+5. Deve aparecer uma mensagem de **"Success"** (sucesso)
 
-## PARTE 4 — Variáveis de Ambiente no Netlify/GitHub
+### Como confirmar que funcionou?
+1. No menu lateral esquerdo, clique em **"Table Editor"**
+2. Você deve ver duas tabelas listadas: **`clients`** e **`payments`**
+3. Elas estarão vazias (é normal, ainda não tem nenhum cliente cadastrado)
 
-### No Netlify (Frontend)
-1. Vá no painel do projeto no Netlify
-2. **"Site Settings" → "Environment variables"**
-3. Adicione: `VITE_API_URL = https://sua-api.onrender.com` (URL do seu backend hospedado)
+### O que significam os termos no SQL?
+| Termo | Significado |
+|-------|-------------|
+| `CREATE TABLE` | "Criar tabela" |
+| `BIGSERIAL PRIMARY KEY` | Número que aumenta sozinho (1, 2, 3...) e identifica cada linha |
+| `TEXT NOT NULL` | Campo de texto obrigatório (não pode ficar vazio) |
+| `TEXT` | Campo de texto opcional (pode ficar vazio) |
+| `UNIQUE` | Não pode ter valores repetidos (ex: 2 clientes com o mesmo WhatsApp) |
+| `DEFAULT 'mensal'` | Se não informar, usa "mensal" como padrão |
+| `REFERENCES clients(id)` | "Este campo aponta para um cliente" (liga as tabelas) |
+| `ON DELETE CASCADE` | Se deletar o cliente, deleta os pagamentos dele também |
+| `NOW()` | Preenche automaticamente com a data/hora atual |
+| `CREATE INDEX` | Cria um "atalho" para buscas serem mais rápidas |
+| `ENABLE ROW LEVEL SECURITY` | Ativa segurança extra (bloqueia acesso externo direto) |
 
-### No Render/Railway (Backend)
-Adicione todas as variáveis do `.env`:
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY`
-
----
-
-## Resumo do que mudou
-
-| Item | Antes (SQLite) | Depois (Supabase) |
-|------|---------------|-------------------|
-| Banco | Arquivo `.db` local | PostgreSQL na nuvem |
-| Driver | `better-sqlite3` (síncrono) | `postgres` (assíncrono) |
-| Backup | Manual | Automático pelo Supabase |
-| Acesso visual | Nenhum | Interface web completa |
-| Produção | Não funciona no Netlify | Funciona em qualquer servidor |
+> ✅ **Pronto?** Me avise quando aparecerem as tabelas `clients` e `payments` no Table Editor!
 
 ---
 
-## Checklist Final
+# 📋 PASSO 4 — Pegar as credenciais de conexão
 
-- [ ] Projeto criado no Supabase
-- [ ] Tabelas `clients` e `payments` criadas via SQL Editor
-- [ ] Credenciais copiadas para o `.env`
-- [ ] `npm uninstall better-sqlite3` e `npm install postgres`
-- [ ] `server/database.ts` reescrito
-- [ ] Rotas do backend atualizadas (async/await + `identifier` login)
-- [ ] RLS ativado no Supabase
-- [ ] Variáveis de ambiente configuradas no Netlify e no host do backend
+### O que são "credenciais"?
+São as "senhas" e "endereços" que seu código precisa para se conectar ao banco de dados do Supabase. É como quando você precisa do endereço + login + senha do Wi-Fi para conectar.
+
+### Credencial 1: Connection String (a mais importante!)
+
+É o "endereço completo" do banco de dados. Com ele, seu servidor consegue se conectar.
+
+1. No menu lateral, clique em **"Settings"** (ícone de engrenagem ⚙️)
+2. No submenu, clique em **"Database"**
+3. Procure a seção **"Connection string"**
+4. Clique na aba **"URI"**
+5. Você verá algo como:
+   ```
+   postgresql://postgres.[ID_DO_PROJETO]:[SUA-SENHA]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+   ```
+6. Clique em **"Copy"** para copiar
+7. **Cole no seu arquivo `.env`** na linha `DATABASE_URL=`:
+   ```
+   DATABASE_URL=postgresql://postgres.[ID_DO_PROJETO]:[SUA-SENHA]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+   ```
+   > ⚠️ Substitua `[SUA-SENHA]` pela senha que você criou no Passo 2!
+
+### Credencial 2: URL do Projeto e Chaves API
+
+1. Ainda em **"Settings"**, clique em **"API"** (no submenu)
+2. Você verá:
+   - **Project URL** — ex: `https://xxxxxxxxx.supabase.co`
+     → Cole no `.env` em `SUPABASE_URL=`
+   - **anon / public key** — uma chave longa começando com `eyJ...`
+     → Cole no `.env` em `SUPABASE_ANON_KEY=`
+   - **service_role key** — outra chave longa (⚠️ SECRETA!)
+     → Cole no `.env` em `SUPABASE_SERVICE_KEY=`
+     > 🔴 **NUNCA** compartilhe a `service_role key` com ninguém!
+
+### O que cada chave faz?
+
+| Chave | O que é | Quem usa |
+|-------|---------|----------|
+| `DATABASE_URL` | Endereço completo do banco | Seu servidor Node.js |
+| `SUPABASE_URL` | Endereço do projeto na web | Pode ser usado no frontend |
+| `SUPABASE_ANON_KEY` | Chave pública (limitada) | Pode aparecer no frontend |
+| `SUPABASE_SERVICE_KEY` | Chave de admin (acesso total!) | **SÓ no servidor, NUNCA no frontend** |
+
+### Como deve ficar o .env final?
+
+Abra o arquivo `.env` na raiz do projeto e ele deve ficar parecido com isso (com SEUS valores):
+
+```bash
+# Variáveis de Ambiente — Reybraztech
+
+JWT_SECRET=reybraztech_super_secret_key_2026_mude_em_producao
+PORT=3001
+
+MERCADO_PAGO_LINK_MENSAL=https://mpago.la/SEU_LINK_MENSAL_AQUI
+MERCADO_PAGO_LINK_TRIMESTRAL=https://mpago.la/SEU_LINK_TRIMESTRAL_AQUI
+MERCADO_PAGO_LINK_SEMESTRAL=https://mpago.la/SEU_LINK_SEMESTRAL_AQUI
+MERCADO_PAGO_LINK_ANUAL=https://mpago.la/SEU_LINK_ANUAL_AQUI
+
+# == BANCO DE DADOS SUPABASE ==
+DATABASE_URL=postgresql://postgres.xxxxx:SuaSenha@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIs...
+```
+
+> ✅ **Pronto?** Me avise quando tiver colado todas as credenciais no `.env`!
+
+---
+
+# 📋 PASSO 5 — Testar a conexão
+
+### O que vamos fazer?
+Rodar o servidor backend para ver se ele consegue se conectar ao banco de dados do Supabase.
+
+### Como fazer:
+
+1. Abra um terminal novo no VS Code (`Ctrl + Shift + '`)
+2. Digite:
+   ```bash
+   npm run server
+   ```
+3. Se tudo estiver certo, você deve ver:
+   ```
+   ✅ Conectado ao Supabase (PostgreSQL)!
+   🚀 ================================
+   🚀  Servidor Reybraztech Online!
+   🚀  Porta: http://localhost:3001
+   🚀 ================================
+   ```
+
+Se der erro, me mande a mensagem de erro que eu te ajudo a resolver!
+
+---
+
+# ✅ Checklist Final
+
+- [ ] Conta criada no Supabase
+- [ ] Projeto `reybraztech` criado (região São Paulo)
+- [ ] SQL executado — tabelas `clients` e `payments` criadas
+- [ ] `DATABASE_URL` colada no `.env`
+- [ ] `SUPABASE_URL` colada no `.env`
+- [ ] `SUPABASE_ANON_KEY` colada no `.env`
+- [ ] `SUPABASE_SERVICE_KEY` colada no `.env`
+- [ ] `npm run server` funcionando sem erros

@@ -1,4 +1,7 @@
 // server/database.ts
+import dotenv from 'dotenv';
+dotenv.config(); // Carrega .env ANTES de ler DATABASE_URL
+
 import postgres from 'postgres';
 
 // A CONNECTION STRING vem do .env (segredo!)

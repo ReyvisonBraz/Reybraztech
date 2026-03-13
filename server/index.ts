@@ -1,10 +1,12 @@
+// ⚠️ IMPORTANTE: dotenv DEVE ser carregado ANTES de qualquer import
+// que use variáveis de ambiente (como database.ts)
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

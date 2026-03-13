@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
+import otpRoutes from './routes/otp.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +22,7 @@ app.use(express.json());
 // ─── Rotas ──────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/otp', otpRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

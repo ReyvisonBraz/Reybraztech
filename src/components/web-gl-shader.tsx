@@ -71,8 +71,8 @@ export function WebGLShader() {
 
         const initScene = () => {
             refs.scene = new THREE.Scene()
-            refs.renderer = new THREE.WebGLRenderer({ canvas })
-            refs.renderer.setPixelRatio(window.devicePixelRatio)
+            refs.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' })
+            refs.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
             refs.renderer.setClearColor(new THREE.Color(0x000000))
 
             refs.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, -1)
@@ -111,10 +111,17 @@ export function WebGLShader() {
             handleResize()
         }
 
+        const isMobile = window.innerWidth < 768
+        let frameCount = 0
+
         const animate = () => {
+            frameCount++
             if (refs.uniforms) refs.uniforms.time.value += 0.004
-            if (refs.renderer && refs.scene && refs.camera) {
-                refs.renderer.render(refs.scene, refs.camera)
+            // Em mobile, renderiza a cada 2 frames para economizar GPU
+            if (!isMobile || frameCount % 2 === 0) {
+                if (refs.renderer && refs.scene && refs.camera) {
+                    refs.renderer.render(refs.scene, refs.camera)
+                }
             }
             refs.animationId = requestAnimationFrame(animate)
         }

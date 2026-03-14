@@ -8,30 +8,16 @@ import { WebGLShader } from '../components/web-gl-shader';
 const Hero = () => {
   return (
     <section id="início" className="relative pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-48 lg:pb-32 overflow-hidden bg-transparent">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.2, 0.3, 0.2]
-          }}
-          transition={{ duration: 10, repeat: Infinity }}
-          className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px]"
-        ></motion.div>
-        <motion.div
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.2, 0.3, 0.2]
-          }}
-          transition={{ duration: 8, repeat: Infinity }}
-          className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-cyan-600/20 rounded-full blur-[120px]"
-        ></motion.div>
+      <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+        <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-purple-600/15 rounded-full" style={{ filter: 'blur(80px)' }} />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-cyan-600/15 rounded-full" style={{ filter: 'blur(80px)' }} />
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 2 }}
-          className="inline-block mb-6 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-sm font-medium backdrop-blur-sm"
+          className="inline-block mb-6 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-sm font-medium"
         >
           🚀 A revolução do streaming chegou
         </motion.div>
@@ -65,7 +51,7 @@ const Hero = () => {
             <PlayCircle className="w-7 h-7" />
             Assine Agora
           </a>
-          <a href="#dispositivos" className="bg-white/5 dark:bg-white/5 light:bg-slate-100 text-slate-900 dark:text-white border border-white/10 dark:border-white/10 light:border-slate-200 px-6 py-4 md:px-10 md:py-5 rounded-full text-base md:text-lg font-bold hover:bg-white/10 transition-all text-center backdrop-blur-md">
+          <a href="#dispositivos" className="bg-slate-900/80 text-white border border-white/10 px-6 py-4 md:px-10 md:py-5 rounded-full text-base md:text-lg font-bold hover:bg-slate-800/90 transition-all text-center">
             Saiba Mais
           </a>
         </motion.div>
@@ -109,7 +95,7 @@ const Compatibility = () => {
     <section id="dispositivos" className="py-20 sm:py-28 lg:py-32 bg-transparent relative overflow-hidden">
       {/* Background glow blobs */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-600/8 rounded-full" style={{ filter: 'blur(80px)' }} />
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
@@ -118,7 +104,7 @@ const Compatibility = () => {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs sm:text-sm font-bold tracking-widest uppercase backdrop-blur-sm"
+            className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs sm:text-sm font-bold tracking-widest uppercase"
           >
             <MonitorSmartphone className="w-4 h-4" />
             Compatibilidade
@@ -152,7 +138,7 @@ const Compatibility = () => {
               transition={{ delay: idx * 0.15, duration: 0.5 }}
               viewport={{ once: true }}
               className={`relative rounded-3xl p-6 sm:p-8 flex sm:flex-col items-center sm:items-start gap-5 sm:gap-0
-                bg-slate-900/60 backdrop-blur-xl border ${device.border} ${device.glow}
+                bg-slate-900/90 border ${device.border} ${device.glow}
                 hover:-translate-y-2 transition-all duration-300 overflow-hidden group`}
             >
               {/* Gradient accent top */}
@@ -182,7 +168,7 @@ const Compatibility = () => {
           className="mt-10 sm:mt-16 flex flex-wrap justify-center gap-3 sm:gap-4"
         >
           {['TV Box', 'Fire TV Stick', 'Android', 'Smart TV', 'iOS em breve'].map((b, i) => (
-            <span key={i} className="text-xs sm:text-sm text-slate-400 bg-white/5 border border-white/10 rounded-full px-4 py-2 backdrop-blur-sm">
+            <span key={i} className="text-xs sm:text-sm text-slate-400 bg-slate-900/80 border border-white/10 rounded-full px-4 py-2">
               ✓ {b}
             </span>
           ))}
@@ -283,8 +269,8 @@ const Pricing = () => {
   return (
     <section id="planos" className="py-20 sm:py-28 lg:py-32 bg-transparent relative overflow-hidden">
       {/* Ambient glows */}
-      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/8 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-orange-600/8 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -293,7 +279,7 @@ const Pricing = () => {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-400 text-xs sm:text-sm font-bold tracking-widest uppercase backdrop-blur-sm"
+            className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-400 text-xs sm:text-sm font-bold tracking-widest uppercase"
           >
             <Zap className="w-4 h-4 text-yellow-400" />
             Planos & Preços
@@ -327,7 +313,7 @@ const Pricing = () => {
               transition={{ delay: idx * 0.1, duration: 0.5 }}
               viewport={{ once: true }}
               className={`relative flex-shrink-0 w-72 sm:w-auto flex flex-col rounded-3xl sm:rounded-[2rem] lg:rounded-[2.5rem]
-                backdrop-blur-xl border transition-all duration-300 hover:-translate-y-2 snap-start
+                border transition-all duration-300 hover:-translate-y-2 snap-start
                 ${plan.highlight
                   ? `bg-slate-800/70 ${plan.borderColor} ${plan.glowColor} z-10`
                   : `bg-slate-900/50 border-white/8`
@@ -485,7 +471,7 @@ const Features = () => {
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div
                   whileHover={{ scale: 1.1 }}
-                  className="bg-cyan-500/20 backdrop-blur-xl p-6 rounded-full border border-cyan-500/30 cursor-pointer shadow-[0_0_30px_rgba(34,211,238,0.4)]"
+                  className="bg-cyan-500/30 p-6 rounded-full border border-cyan-500/30 cursor-pointer shadow-[0_0_30px_rgba(34,211,238,0.4)]"
                 >
                   <PlayCircle className="w-16 h-16 text-white" />
                 </motion.div>

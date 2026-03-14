@@ -154,7 +154,7 @@ export const ContentCarousel = () => {
                                 {/* Play/Pause toggle */}
                                 <button
                                     onClick={() => setIsPaused(!isPaused)}
-                                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-white/10 ${!isPaused ? 'text-cyan-400' : 'text-slate-400'}`}
+                                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/10 bg-slate-900/80 flex items-center justify-center transition-all hover:bg-slate-800/90 ${!isPaused ? 'text-cyan-400' : 'text-slate-400'}`}
                                 >
                                     {isPaused
                                         ? <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current ml-0.5" />
@@ -221,7 +221,7 @@ export const ContentCarousel = () => {
                                                         exit={{ scale: 0, opacity: 0 }}
                                                         className="absolute inset-0 flex items-center justify-center z-10"
                                                     >
-                                                        <div className={`bg-gradient-to-r ${itemGradient} bg-opacity-80 backdrop-blur-md p-3 sm:p-4 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-transform`}>
+                                                        <div className={`bg-gradient-to-r ${itemGradient} bg-opacity-80 p-3 sm:p-4 rounded-full shadow-lg border border-white/20 hover:scale-110 transition-transform`}>
                                                             {isPaused ? (
                                                                 <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white ml-0.5" />
                                                             ) : (
@@ -237,7 +237,7 @@ export const ContentCarousel = () => {
                                                 <span className={`text-[10px] sm:text-xs font-black px-2 py-0.5 sm:py-1 rounded-md mb-1.5 sm:mb-2 inline-block uppercase tracking-widest transition-all duration-300
                                         ${isActive
                                                         ? `bg-gradient-to-r ${itemGradient} text-white`
-                                                        : 'bg-white/10 backdrop-blur-md border border-white/20 text-white/70'
+                                                        : 'bg-slate-900/80 border border-white/20 text-white/70'
                                                     }`}
                                                 >
                                                     {item.category}

@@ -468,10 +468,10 @@ export const LoginPage = () => {
             {/* Right Login Section */}
             <div className="flex items-center justify-center px-4 py-10 lg:p-8 pt-[120px] lg:pt-24 bg-[#020617] relative overflow-hidden">
                 {/* Decorative ambient light for the right side */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-600/5 rounded-full blur-[120px] pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/5 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
 
-                <div className="w-full max-w-[420px] relative z-10 glow-card p-6 sm:p-10 rounded-3xl sm:rounded-[2rem] border-white/5 shadow-2xl backdrop-blur-xl">
+                <div className="w-full max-w-[420px] relative z-10 glow-card p-6 sm:p-10 rounded-3xl sm:rounded-[2rem] border-white/5 shadow-2xl">
                     {/* Header */}
                     <div className="text-center mb-10">
                         <h1 className="text-3xl font-black tracking-tight mb-2 text-white">Bem-vindo de volta!</h1>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Google Fonts loaded via <link> in index.html for performance */
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
@@ -53,8 +53,8 @@
 }
 
 .glass-nav {
-  @apply backdrop-blur-xl border-b transition-all duration-500;
-  background-color: var(--nav-bg);
+  @apply border-b transition-all duration-500;
+  background-color: rgba(2, 6, 23, 0.95);
   border-color: var(--nav-border);
 }
 
@@ -67,7 +67,7 @@
 }
 
 .glow-card {
-  @apply relative overflow-hidden border transition-all duration-300 backdrop-blur-sm;
+  @apply relative overflow-hidden border transition-all duration-300;
   background-color: var(--card-bg);
   border-color: var(--card-border);
 }

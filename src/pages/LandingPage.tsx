@@ -2,7 +2,6 @@ import { useEffect, lazy, Suspense } from 'react';
 import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown, MoveHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { ContentCarousel } from '../components/ContentCarousel';
 
 // Lazy load Three.js (maior dependência) — só carrega quando LandingPage renderiza
 const WebGLShader = lazy(() => import('../components/web-gl-shader').then(m => ({ default: m.WebGLShader })));
@@ -545,7 +544,6 @@ export const LandingPage = () => {
         <WebGLShader />
       </Suspense>
       <Hero />
-      <ContentCarousel />
       <Compatibility />
       <Pricing />
       <Features />

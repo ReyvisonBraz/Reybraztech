@@ -1,9 +1,9 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink, ShieldCheck, RefreshCw } from 'lucide-react';
+import { API_URL } from '../config/api';
 
-const API_URL = 'http://localhost:3001';
 const WHATSAPP_BOT_NUMBER = '559191715764';
 const WHATSAPP_ACTIVATION_MESSAGE = 'Olá! Quero solicitar meu código de verificação 🔐';
 
@@ -13,6 +13,12 @@ export const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [whatsappSent, setWhatsappSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [skippedOtp, setSkippedOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -25,6 +31,89 @@ export const RegisterPage = () => {
 
   const whatsappLink = `https://wa.me/${WHATSAPP_BOT_NUMBER}?text=${encodeURIComponent(WHATSAPP_ACTIVATION_MESSAGE)}`;
 
+  // ── Enviar OTP via backend ──
+  const sendOtp = async (): Promise<boolean> => {
+    setOtpSending(true);
+    setErrorMsg('');
+    try {
+      const response = await fetch(`${API_URL}/api/otp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp: formData.whatsapp, type: 'register' }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorMsg(data.error || 'Erro ao enviar o código.');
+        return false;
+      }
+      // Iniciar cooldown de 60 segundos para reenvio
+      startResendCooldown();
+      return true;
+    } catch {
+      setErrorMsg('Não foi possível conectar ao servidor.');
+      return false;
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  // ── Cooldown para reenvio ──
+  const startResendCooldown = () => {
+    setResendCooldown(60);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // ── Verificar OTP ──
+  const verifyOtp = async (): Promise<boolean> => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const response = await fetch(`${API_URL}/api/otp/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp: formData.whatsapp, token: otpCode, type: 'register' }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorMsg(data.error || 'Código inválido.');
+        return false;
+      }
+      setOtpVerified(true);
+      return true;
+    } catch {
+      setErrorMsg('Não foi possível conectar ao servidor.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Handler do "Já enviei" ──
+  const handleWhatsappSentClick = async () => {
+    const sent = await sendOtp();
+    if (sent) {
+      setStep(3);
+    }
+  };
+
+  // ── Handler do "Pular esta etapa" ──
+  const handleSkipClick = async () => {
+    setSkippedOtp(true);
+    // Tenta enviar o OTP mesmo ao pular (o bot pode ter recebido a mensagem)
+    await sendOtp();
+    setStep(3);
+  };
+
+  // ── Handler principal do form ──
   const handleNext = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -35,10 +124,26 @@ export const RegisterPage = () => {
       return;
     }
 
-    // Passo 2 → Passo 3 (não chega aqui via form submit, é via botão direto)
-
-    // Passo 3 → Finalizar cadastro
+    // Passo 3 → Verificar OTP → Passo 4
     if (step === 3) {
+      if (skippedOtp) {
+        // Se pulou, vai direto sem verificar
+        setStep(4);
+        return;
+      }
+      if (otpCode.length !== 6) {
+        setErrorMsg('Digite o código de 6 dígitos recebido no WhatsApp.');
+        return;
+      }
+      const valid = await verifyOtp();
+      if (valid) {
+        setStep(4);
+      }
+      return;
+    }
+
+    // Passo 4 → Finalizar cadastro
+    if (step === 4) {
       if (formData.password.length < 6) {
         setErrorMsg('A senha deve ter pelo menos 6 caracteres.');
         return;
@@ -69,8 +174,17 @@ export const RegisterPage = () => {
           return;
         }
 
-        // Sucesso → ir para login com mensagem
-        navigate('/login?registered=true');
+        // Auto-login: salvar token e dados no localStorage
+        localStorage.setItem('reyb_token', data.token);
+        localStorage.setItem('reyb_user', JSON.stringify(data.user));
+
+        // Salvar senha temporariamente para exibir na tela de boas-vindas
+        sessionStorage.setItem('reyb_welcome_password', formData.password);
+        sessionStorage.setItem('reyb_welcome_whatsapp', formData.whatsapp);
+        sessionStorage.setItem('reyb_welcome_email', formData.email || '');
+
+        // Redirecionar para o dashboard com flag de boas-vindas
+        navigate('/dashboard?welcome=true');
 
       } catch {
         setErrorMsg('Não foi possível conectar ao servidor. Tente novamente.');
@@ -80,7 +194,7 @@ export const RegisterPage = () => {
     }
   };
 
-  const progressWidth = step === 1 ? '33%' : step === 2 ? '66%' : '100%';
+  const progressWidth = step === 1 ? '25%' : step === 2 ? '50%' : step === 3 ? '75%' : '100%';
 
   return (
     <div className="min-h-screen bg-transparent pt-32 pb-20 flex items-center justify-center px-4">
@@ -99,7 +213,7 @@ export const RegisterPage = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
             <motion.div
               className="h-full bg-cyan-500"
-              initial={{ width: '33%' }}
+              initial={{ width: '25%' }}
               animate={{ width: progressWidth }}
             />
           </div>
@@ -109,7 +223,8 @@ export const RegisterPage = () => {
             <p className="text-slate-400">
               {step === 1 && 'Junte-se à Reybraz Tech hoje.'}
               {step === 2 && 'Ative seu WhatsApp para receber códigos.'}
-              {step === 3 && 'Quase lá! Crie sua senha.'}
+              {step === 3 && 'Digite o código recebido no WhatsApp.'}
+              {step === 4 && 'Quase lá! Crie sua senha.'}
             </p>
           </div>
 
@@ -220,18 +335,36 @@ export const RegisterPage = () => {
                   </a>
                 </div>
 
+                {/* Mensagem de erro */}
+                {errorMsg && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+                  >
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {errorMsg}
+                  </motion.div>
+                )}
+
                 {/* Botão "Já enviei" */}
                 <button
                   type="button"
-                  onClick={() => setStep(3)}
-                  disabled={!whatsappSent}
+                  onClick={handleWhatsappSentClick}
+                  disabled={!whatsappSent || otpSending}
                   className={`glow-button w-full py-4 font-black rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${
-                    whatsappSent
+                    whatsappSent && !otpSending
                       ? 'bg-primary text-white shadow-[0_0_30px_rgba(14,165,233,0.5)] border-cyan-400'
                       : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed'
                   }`}
                 >
-                  {whatsappSent ? (
+                  {otpSending ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
+                    />
+                  ) : whatsappSent ? (
                     <>
                       Já enviei a mensagem
                       <CheckCircle2 className="w-5 h-5" />
@@ -245,8 +378,9 @@ export const RegisterPage = () => {
                 <p className="text-center">
                   <button
                     type="button"
-                    onClick={() => setStep(3)}
-                    className="text-xs text-slate-600 hover:text-slate-400 transition-colors underline"
+                    onClick={handleSkipClick}
+                    disabled={otpSending}
+                    className="text-xs text-slate-600 hover:text-slate-400 transition-colors underline disabled:opacity-50"
                   >
                     Pular esta etapa (não recomendado)
                   </button>
@@ -254,13 +388,141 @@ export const RegisterPage = () => {
               </motion.div>
             )}
 
-            {/* ─── PASSO 3: E-mail e Senha ─── */}
+            {/* ─── PASSO 3: Código OTP ─── */}
             {step === 3 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-5"
+              >
+                {skippedOtp ? (
+                  // Se pulou a ativação, exibir aviso
+                  <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="text-amber-400 font-bold text-sm mb-1">Verificação não ativada</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed">
+                          Você pulou a etapa de ativação do WhatsApp. Se recebeu um código, digite-o abaixo. 
+                          Caso contrário, prossiga sem verificação.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Mensagem de sucesso do envio
+                  <div className="p-5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="text-cyan-400 font-bold text-sm mb-1">Código enviado!</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed">
+                          Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">{formData.whatsapp}</strong>. 
+                          Digite-o abaixo para verificar seu número.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Input do código OTP */}
+                <div className="relative">
+                  <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white text-center text-2xl font-mono tracking-[0.5em] focus:border-cyan-500 outline-none transition-all"
+                    value={otpCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setOtpCode(val);
+                    }}
+                  />
+                </div>
+
+                {/* Botão reenviar */}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    disabled={resendCooldown > 0 || otpSending}
+                    onClick={async () => {
+                      await sendOtp();
+                    }}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors disabled:text-slate-600 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar código'}
+                  </button>
+                </div>
+
+                {/* Mensagem de erro */}
+                {errorMsg && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+                  >
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {errorMsg}
+                  </motion.div>
+                )}
+
+                {/* Botão verificar / continuar */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400 disabled:opacity-60"
+                >
+                  {loading ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
+                    />
+                  ) : skippedOtp ? (
+                    <>
+                      {otpCode.length === 6 ? 'Verificar Código' : 'Continuar sem verificação'}
+                      <CheckCircle2 className="w-5 h-5" />
+                    </>
+                  ) : (
+                    <>
+                      Verificar Código
+                      <ShieldCheck className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+
+                {/* Se pulou e não tem código, pode pular verificação */}
+                {skippedOtp && otpCode.length === 0 && (
+                  <p className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setStep(4)}
+                      className="text-xs text-slate-600 hover:text-slate-400 transition-colors underline"
+                    >
+                      Continuar sem código
+                    </button>
+                  </p>
+                )}
+              </motion.div>
+            )}
+
+            {/* ─── PASSO 4: E-mail e Senha ─── */}
+            {step === 4 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="space-y-4"
               >
+                {otpVerified && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    WhatsApp verificado com sucesso!
+                  </div>
+                )}
+
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input
@@ -335,7 +597,8 @@ export const RegisterPage = () => {
           <div className="mt-8 flex justify-center gap-2">
             <div className={`h-1.5 w-8 rounded-full transition-all ${step === 1 ? 'bg-cyan-500' : 'bg-white/10'}`} />
             <div className={`h-1.5 w-8 rounded-full transition-all ${step === 2 ? 'bg-emerald-500' : 'bg-white/10'}`} />
-            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 3 ? 'bg-cyan-500' : 'bg-white/10'}`} />
+            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 3 ? 'bg-amber-500' : 'bg-white/10'}`} />
+            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 4 ? 'bg-cyan-500' : 'bg-white/10'}`} />
           </div>
         </motion.div>
       </div>

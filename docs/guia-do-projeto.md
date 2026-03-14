@@ -13,9 +13,9 @@ O projeto é uma **plataforma completa de streaming por assinatura** com fronten
 |--------|-----------|-------|---------|
 | **Frontend** | React + Vite + TypeScript + Tailwind CSS | `3000` | `npm run dev` |
 | **Backend** | Node.js + Express + TypeScript | `3001` | `npm run server` |
-| **Banco de Dados** | SQLite (`reybraztech.db`) | — | Automático |
+| **Banco de Dados** | Supabase (PostgreSQL) | — | Nuvem |
 
-> O frontend faz chamadas HTTP (`fetch`) para o backend, que lê e grava dados no banco SQLite.
+> O frontend faz chamadas HTTP (`fetch`) para o backend, que interage com o banco Supabase na nuvem.
 
 ---
 
@@ -46,15 +46,14 @@ Reybraztech/
 │
 ├── server/                     ← Backend (Express/Node.js)
 │   ├── index.ts                ← Servidor Express
-│   ├── database.ts             ← Conexão e criação do banco SQLite
+│   ├── database.ts             ← Configuração de conexão Supabase
 │   ├── middleware/
 │   │   └── auth.ts             ← Middleware JWT
 │   └── routes/
-│       ├── auth.ts             ← /api/auth/* (login e registro)
+│       ├── auth.ts             ← /api/auth/* (login e registro com OTP)
 │       └── dashboard.ts        ← /api/dashboard (dados do cliente)
 │
-├── reybraztech.db              ← Banco de dados SQLite
-├── .env                        ← Variáveis de ambiente (segredos)
+├── .env                        ← Variáveis de ambiente (Chaves Supabase e SendPulse)
 └── vite.config.ts              ← Configuração do Vite (proxy e aliases)
 ```
 
@@ -76,23 +75,23 @@ O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.t
 
 ---
 
-## 🗄️ Banco de Dados (SQLite)
+## 🗄️ Banco de Dados (Supabase / PostgreSQL)
 
 ### Tabela `clients`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| `id` | INTEGER | Chave primária, auto-gerada |
+| `id` | UUID | Chave primária, gerada pelo Supabase |
 | `name` | TEXT | Nome completo |
-| `whatsapp` | TEXT | Número do WhatsApp |
+| `whatsapp` | TEXT UNIQUE | Número do WhatsApp (Login) |
 | `device` | TEXT | Dispositivo (Android, Smart TV, etc.) |
-| `email` | TEXT UNIQUE | E-mail (login) |
+| `email` | TEXT | E-mail (Opcional, Login) |
 | `password_hash` | TEXT | Senha criptografada com bcrypt |
 | `plan` | TEXT | Plano contratado (mensal, trimestral…) |
-| `status` | TEXT | `Ativo` / `Inativo` |
+| `status` | TEXT | `Ativo` / `Inativo` / `Pendente` |
 | `days_remaining` | INTEGER | Dias restantes na assinatura |
 | `app_account` | TEXT | Login do app do cliente |
 | `app_password` | TEXT | Senha do app do cliente |
-| `created_at` | TEXT | Data/hora do cadastro |
+| `created_at` | TIMESTAMPTZ | Data/hora do cadastro |
 
 ### Tabela `payments`
 | Campo | Tipo | Descrição |
@@ -126,11 +125,17 @@ O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.t
 
 ---
 
-## 🔐 Autenticação JWT
+## 🔐 Autenticação e Registro
 
-1. Usuário preenche e-mail + senha na `LoginPage.tsx`
+### Registro em 3 Etapas (OTP WhatsApp)
+1. Usuário preenche dados pessoais (Nome, WhatsApp, Dispositivo).
+2. **Ativação via WhatsApp:** O usuário envia uma mensagem para o bot da SendPulse para abrir a janela de 24h. O backend envia um código OTP.
+3. **Senhas e Opcionais:** O usuário confirma o OTP e define uma senha e e-mail (opcional).
+
+### Login JWT
+1. Usuário preenche WhatsApp ou e-mail + senha na `LoginPage.tsx`
 2. Frontend faz `POST /api/auth/login`
-3. Backend valida a senha com `bcryptjs`
+3. Backend valida a credencial (WhatsApp/email) e a senha com `bcryptjs`
 4. Se correto, gera token JWT (válido por 2h)
 5. Frontend salva no `localStorage` (`reyb_token`)
 6. Rotas protegidas enviam `Authorization: Bearer <token>`
@@ -151,6 +156,9 @@ O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.t
 ---
 
 ## 🚀 Como Rodar o Projeto
+
+**Pré-requisitos:**
+Configure as variáveis de ambiente no arquivo `.env` com as credenciais do Supabase e as chaves da API SendPulse.
 
 **Terminal 1 — Backend:**
 ```bash
@@ -237,8 +245,9 @@ import { Link } from 'react-router-dom';
 
 | Data | Mudança |
 |------|---------|
+| Mar/2026 | **Migração Supabase:** Banco migrado para PostgreSQL na nuvem (Supabase). |
+| Mar/2026 | **OTP WhatsApp:** Autenticação via envio de OTP com o SendPulse API. |
+| Mar/2026 | **Segurança:** Adicionados reCAPTCHA v3, honeypots, proteção CSRF e sanitização. |
+| Mar/2026 | E-mail opcional no cadastro e login com WhatsApp ou E-mail. |
 | Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto |
-| Mar/2026 | `LoginPage` reformulada com personagens animados interativos |
-| Mar/2026 | Componentes shadcn/ui (button, input, label, checkbox) integrados |
-| Mar/2026 | Toggle dark/light removido — projeto fixado em modo escuro permanente |
-| Mar/2026 | Overlay escuro adicionado sobre a onda para melhorar legibilidade |
+| Mar/2026 | `LoginPage` e seções de Destaques/Planos reformuladas; shadcn/ui integrado |

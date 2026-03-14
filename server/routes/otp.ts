@@ -22,6 +22,9 @@ router.post('/send', async (req: Request, res: Response) => {
   }
 
   try {
+    // Limpar tokens expirados/usados de toda a tabela
+    await sql`DELETE FROM otp_tokens WHERE expires_at < NOW() OR used = TRUE`;
+
     // Para login/reset, verificar se o número existe no banco
     if (type === 'login' || type === 'reset_password') {
       const [client] = await sql`
@@ -46,6 +49,34 @@ router.post('/send', async (req: Request, res: Response) => {
     res.json({ message: 'Código enviado com sucesso!' });
   } catch (error) {
     console.error('Erro ao enviar OTP:', error);
+    res.status(500).json({ error: 'Erro interno. Tente novamente.' });
+  }
+});
+
+/**
+ * POST /api/otp/verify
+ * Body: { whatsapp: '11999998888', token: '123456', type: 'register' | 'login' | 'reset_password' }
+ * Verifica se o código OTP é válido (genérico, funciona para qualquer tipo)
+ */
+router.post('/verify', async (req: Request, res: Response) => {
+  const { whatsapp, token, type } = req.body;
+
+  if (!whatsapp || !token || !type) {
+    res.status(400).json({ error: 'WhatsApp, código e tipo são obrigatórios.' });
+    return;
+  }
+
+  try {
+    const valid = await verifyOTP(whatsapp, token, type);
+
+    if (!valid) {
+      res.status(401).json({ error: 'Código inválido ou expirado.' });
+      return;
+    }
+
+    res.json({ valid: true, message: 'Código verificado com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao verificar OTP:', error);
     res.status(500).json({ error: 'Erro interno. Tente novamente.' });
   }
 });

@@ -56,9 +56,23 @@ router.post('/register', async (req: Request, res: Response) => {
 
         console.log(`✅ Novo cliente cadastrado: ${name} (ID: ${newClient.id})`);
 
+        // Gerar JWT para auto-login após cadastro
+        const token = jwt.sign(
+            { id: newClient.id, email: email || whatsapp },
+            JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+
         res.status(201).json({
             success: true,
-            message: 'Cadastro realizado com sucesso! Faça login para continuar.',
+            token,
+            user: {
+                name: newClient.name,
+                plan: newClient.plan,
+                status: newClient.status,
+                whatsapp,
+                email: email || null,
+            },
         });
     } catch (error) {
         console.error('Erro no cadastro:', error);

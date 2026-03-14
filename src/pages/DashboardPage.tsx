@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2 } from 'lucide-react';
-
-const API_URL = 'http://localhost:3001';
+import { motion, AnimatePresence } from 'motion/react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 interface UserData {
   name: string;
@@ -24,9 +23,33 @@ interface UserData {
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [copiedField, setCopiedField] = useState('');
+
+  // Dados de boas-vindas (temporários via sessionStorage)
+  const [welcomeData, setWelcomeData] = useState<{
+    whatsapp: string;
+    password: string;
+    email: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // Verificar se é primeiro acesso após cadastro
+    if (searchParams.get('welcome') === 'true') {
+      const password = sessionStorage.getItem('reyb_welcome_password');
+      const whatsapp = sessionStorage.getItem('reyb_welcome_whatsapp');
+      const email = sessionStorage.getItem('reyb_welcome_email');
+
+      if (password && whatsapp) {
+        setWelcomeData({ whatsapp, password, email: email || '' });
+        setShowWelcome(true);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -42,7 +65,6 @@ export const DashboardPage = () => {
         });
 
         if (response.status === 401 || response.status === 403) {
-          // Token expirado ou inválido
           localStorage.removeItem('reyb_token');
           localStorage.removeItem('reyb_user');
           navigate('/login');
@@ -70,6 +92,22 @@ export const DashboardPage = () => {
     localStorage.removeItem('reyb_token');
     localStorage.removeItem('reyb_user');
     navigate('/');
+  };
+
+  const handleCloseWelcome = () => {
+    setShowWelcome(false);
+    // Limpar dados temporários
+    sessionStorage.removeItem('reyb_welcome_password');
+    sessionStorage.removeItem('reyb_welcome_whatsapp');
+    sessionStorage.removeItem('reyb_welcome_email');
+    // Remover ?welcome=true da URL
+    setSearchParams({});
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(''), 2000);
   };
 
   // Estado de carregamento
@@ -109,6 +147,140 @@ export const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-transparent pt-24 pb-12 px-4 md:pt-32 md:pb-20">
+      {/* ─── Modal de Boas-vindas ─── */}
+      <AnimatePresence>
+        {showWelcome && welcomeData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glow-card neon-border-cyan p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] border-2 max-w-lg w-full relative"
+            >
+              {/* Botão fechar */}
+              <button
+                onClick={handleCloseWelcome}
+                className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white mb-2">
+                  Cadastro <span className="text-gradient">Concluído!</span>
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Bem-vindo à Reybraz Tech! Aqui estão seus dados de acesso.
+                </p>
+              </div>
+
+              {/* Credenciais */}
+              <div className="space-y-3 mb-6">
+                {/* Telefone */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Telefone (Login)</p>
+                    <p className="text-white font-bold font-mono">{welcomeData.whatsapp}</p>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(welcomeData.whatsapp, 'whatsapp')}
+                    className={`p-2 rounded-xl transition-all ${
+                      copiedField === 'whatsapp'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {copiedField === 'whatsapp' ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Senha */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Senha</p>
+                    <p className="text-white font-bold font-mono">{welcomeData.password}</p>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(welcomeData.password, 'password')}
+                    className={`p-2 rounded-xl transition-all ${
+                      copiedField === 'password'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {copiedField === 'password' ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {/* E-mail (se fornecido) */}
+                {welcomeData.email && (
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">E-mail (Login alternativo)</p>
+                      <p className="text-white font-bold font-mono text-sm truncate max-w-[220px]">{welcomeData.email}</p>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(welcomeData.email, 'email')}
+                      className={`p-2 rounded-xl transition-all ${
+                        copiedField === 'email'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {copiedField === 'email' ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Aviso importante */}
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-amber-400 font-bold text-sm mb-1">Importante!</h4>
+                    <p className="text-slate-400 text-xs leading-relaxed">
+                      Guarde esses dados em um lugar seguro. Você vai precisar do <strong className="text-white">telefone</strong> (ou e-mail) e da <strong className="text-white">senha</strong> para acessar sua conta.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botão fechar */}
+              <button
+                onClick={handleCloseWelcome}
+                className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400"
+              >
+                Entendi, ir para o painel
+                <CheckCircle2 className="w-5 h-5" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div>

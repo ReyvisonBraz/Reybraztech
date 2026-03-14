@@ -2,7 +2,7 @@ import { Mail, MessageSquare, Send, Instagram } from 'lucide-react';
 
 // ► Para trocar a logo: substitua o arquivo  public/logo/logo.png
 // ► Formatos aceitos: PNG, JPG, SVG, WEBP
-const LOGO_URL = "/logo/logo.png";
+const LOGO_URL = "/logo/logo.avif";
 const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT_PyoMkB59P3OzTV_FbTxjdvtzFgyoxemqDJwBcszLBk9vonzWpUiC2ZVcrQvOmbqY0zjk7FdF0CSKQP2t7wS1k61vO5FQUS-5qpoyzrsYbPRE0sJvWqqkjPTTG-RVStF2gd78ThnlxpXPO4He6FboapYSBvaZ3RPBRm3USRYgxtIK3ggMuLX8nwsgytGrMmzDCFhAipovqbRi-S3ahXOqlUnnDKyJLrsIyOMUU_iAsruVUNJkCByYeE9GmQcYhNLjMlQWQxue";
 
 export const Footer = () => {
@@ -13,7 +13,7 @@ export const Footer = () => {
                     <div className="col-span-1 md:col-span-1">
                         <img
                             alt="Reybraz Tech Logo"
-                            className="h-20 w-auto mb-8 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]"
+                            className="h-14 md:h-16 w-auto object-contain mb-8 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]"
                             src={LOGO_URL}
                             onError={(e) => { (e.target as HTMLImageElement).src = LOGO_FALLBACK; }}
                         />

@@ -199,26 +199,30 @@ export const RegisterPage = () => {
   return (
     <div className="min-h-screen bg-transparent pt-32 pb-20 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        <Link to="/login" className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group">
-          <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-          Já tem uma conta? Entrar
-        </Link>
+        {step > 1 ? (
+          <button 
+            type="button" 
+            onClick={() => setStep(step - 1)} 
+            className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors group px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-bold"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            Voltar etapa
+          </button>
+        ) : (
+          <Link to="/login" className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-sm font-bold">
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            Já tem uma conta? Entrar
+          </Link>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glow-card neon-border-cyan p-6 md:p-10 rounded-3xl md:rounded-[3rem] relative overflow-hidden border-2"
+          className="glow-card p-6 md:p-10 rounded-3xl md:rounded-[3rem] relative overflow-hidden border border-white/10"
         >
-          {/* Barra de progresso */}
-          <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
-            <motion.div
-              className="h-full bg-cyan-500"
-              initial={{ width: '25%' }}
-              animate={{ width: progressWidth }}
-            />
-          </div>
 
-          <div className="text-center mb-10">
+
+          <div className="text-center mb-8 mt-2">
             <h2 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Criar <span className="text-gradient">Conta</span></h2>
             <p className="text-slate-400">
               {step === 1 && 'Junte-se à Reybraz Tech hoje.'}
@@ -226,6 +230,41 @@ export const RegisterPage = () => {
               {step === 3 && 'Digite o código recebido no WhatsApp.'}
               {step === 4 && 'Quase lá! Crie sua senha.'}
             </p>
+          </div>
+
+          {/* Indicadores de passo numéricos */}
+          <div className="mb-10 sm:mb-12 px-2 pb-6">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800/80 rounded-full -z-10"></div>
+              <div 
+                className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-700 ease-out -z-10" 
+                style={{ width: `${((step - 1) / 3) * 100}%` }}
+              ></div>
+              
+              {[
+                { num: 1, label: 'Dados' },
+                { num: 2, label: 'Ativação' },
+                { num: 3, label: 'Código' },
+                { num: 4, label: 'Senha' }
+              ].map((s) => (
+                <div key={s.num} className="flex flex-col items-center gap-2 relative z-10">
+                  <div className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full font-black text-xs sm:text-sm transition-all duration-500 ${
+                    step === s.num
+                      ? 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-110 border-2 border-white/20'
+                      : step > s.num
+                        ? 'bg-slate-800 text-cyan-400 border-2 border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                        : 'bg-slate-900 text-slate-600 border-2 border-slate-700'
+                  }`}>
+                    {step > s.num ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : s.num}
+                  </div>
+                  <span className={`absolute -bottom-6 text-[9px] sm:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-colors duration-500 ${
+                    step === s.num ? 'text-cyan-400' : step > s.num ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <form onSubmit={handleNext} className="space-y-6">
@@ -242,7 +281,7 @@ export const RegisterPage = () => {
                     required
                     type="text"
                     placeholder="Nome"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   />
@@ -253,7 +292,7 @@ export const RegisterPage = () => {
                     required
                     type="text"
                     placeholder="Sobrenome"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   />
@@ -279,7 +318,7 @@ export const RegisterPage = () => {
                     required
                     type="tel"
                     placeholder="WhatsApp (com DDD)"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.whatsapp}
                     onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                   />
@@ -313,7 +352,7 @@ export const RegisterPage = () => {
                     <div>
                       <h3 className="text-emerald-400 font-bold text-base mb-1">Ative seu WhatsApp</h3>
                       <p className="text-slate-400 text-sm leading-relaxed">
-                        Para receber códigos de verificação, envie uma mensagem para nosso bot. 
+                        Para receber códigos de verificação, envie uma mensagem para nosso bot.
                         Clique no botão abaixo — a mensagem já vai pronta, é só apertar <strong className="text-emerald-300">Enviar</strong>!
                       </p>
                     </div>
@@ -352,11 +391,10 @@ export const RegisterPage = () => {
                   type="button"
                   onClick={handleWhatsappSentClick}
                   disabled={!whatsappSent || otpSending}
-                  className={`glow-button w-full py-4 font-black rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${
-                    whatsappSent && !otpSending
+                  className={`glow-button w-full py-4 font-black rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${whatsappSent && !otpSending
                       ? 'bg-primary text-white shadow-[0_0_30px_rgba(14,165,233,0.5)] border-cyan-400'
                       : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   {otpSending ? (
                     <motion.div
@@ -403,7 +441,7 @@ export const RegisterPage = () => {
                       <div>
                         <h3 className="text-amber-400 font-bold text-sm mb-1">Verificação não ativada</h3>
                         <p className="text-slate-400 text-sm leading-relaxed">
-                          Você pulou a etapa de ativação do WhatsApp. Se recebeu um código, digite-o abaixo. 
+                          Você pulou a etapa de ativação do WhatsApp. Se recebeu um código, digite-o abaixo.
                           Caso contrário, prossiga sem verificação.
                         </p>
                       </div>
@@ -417,7 +455,7 @@ export const RegisterPage = () => {
                       <div>
                         <h3 className="text-cyan-400 font-bold text-sm mb-1">Código enviado!</h3>
                         <p className="text-slate-400 text-sm leading-relaxed">
-                          Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">{formData.whatsapp}</strong>. 
+                          Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">{formData.whatsapp}</strong>.
                           Digite-o abaixo para verificar seu número.
                         </p>
                       </div>
@@ -433,7 +471,7 @@ export const RegisterPage = () => {
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="000000"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white text-center text-2xl font-mono tracking-[0.5em] focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white text-center text-2xl font-mono tracking-[0.5em] focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={otpCode}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -528,7 +566,7 @@ export const RegisterPage = () => {
                   <input
                     type="text"
                     placeholder="E-mail (opcional)"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
@@ -539,7 +577,7 @@ export const RegisterPage = () => {
                     required
                     type="password"
                     placeholder="Crie uma senha (mín. 6 caracteres)"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
@@ -550,7 +588,7 @@ export const RegisterPage = () => {
                     required
                     type="password"
                     placeholder="Confirme a senha"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   />
@@ -593,13 +631,7 @@ export const RegisterPage = () => {
             )}
           </form>
 
-          {/* Indicadores de passo */}
-          <div className="mt-8 flex justify-center gap-2">
-            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 1 ? 'bg-cyan-500' : 'bg-white/10'}`} />
-            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 2 ? 'bg-emerald-500' : 'bg-white/10'}`} />
-            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 3 ? 'bg-amber-500' : 'bg-white/10'}`} />
-            <div className={`h-1.5 w-8 rounded-full transition-all ${step === 4 ? 'bg-cyan-500' : 'bg-white/10'}`} />
-          </div>
+
         </motion.div>
       </div>
     </div>

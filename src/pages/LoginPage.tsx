@@ -534,8 +534,9 @@ export const LoginPage = () => {
                             </div>
                             <a
                                 href="#"
-                                className="text-sm text-cyan-400 hover:text-cyan-300 hover:underline font-medium transition-colors"
+                                className="flex items-center gap-2 text-base text-cyan-400 hover:text-cyan-300 underline underline-offset-4 font-black transition-colors"
                             >
+                                <AlertCircle className="w-4 h-4 ml-1" />
                                 Esqueceu a senha?
                             </a>
                         </div>
@@ -560,10 +561,10 @@ export const LoginPage = () => {
                     {/* Social Login REMOVED AS REQUESTED */}
 
                     {/* Sign Up Link */}
-                    <div className="text-center text-sm text-slate-400 mt-8 pt-6 border-t border-white/5">
-                        Ainda não tem uma conta?{" "}
-                        <Link to="/register" className="text-cyan-400 font-bold hover:text-cyan-300 hover:underline transition-colors">
-                            Cadastre-se
+                    <div className="text-center mt-8 pt-6 border-t border-white/10">
+                        <p className="text-base font-medium text-slate-300 mb-4">Ainda não tem uma conta?</p>
+                        <Link to="/register" className="inline-flex items-center justify-center w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600/40 to-cyan-600/40 border-2 border-cyan-400 text-white font-black text-lg hover:border-cyan-300 shadow-[0_0_30px_rgba(34,211,238,0.4)] transition-all animate-pulse">
+                            🚀 CRIAR MINHA CONTA AGORA
                         </Link>
                     </div>
                 </div>

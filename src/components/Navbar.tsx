@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 // ► Para trocar a logo: substitua o arquivo  public/logo/logo.png
 // ► Formatos aceitos: PNG, JPG, SVG, WEBP
-const LOGO_URL = "/logo/logo.png";
+const LOGO_URL = "/logo/logo.avif";
 const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT_PyoMkB59P3OzTV_FbTxjdvtzFgyoxemqDJwBcszLBk9vonzWpUiC2ZVcrQvOmbqY0zjk7FdF0CSKQP2t7wS1k61vO5FQUS-5qpoyzrsYbPRE0sJvWqqkjPTTG-RVStF2gd78ThnlxpXPO4He6FboapYSBvaZ3RPBRm3USRYgxtIK3ggMuLX8nwsgytGrMmzDCFhAipovqbRi-S3ahXOqlUnnDKyJLrsIyOMUU_iAsruVUNJkCByYeE9GmQcYhNLjMlQWQxue";
 
 export const Navbar = () => {
@@ -32,7 +32,7 @@ export const Navbar = () => {
                         <Link to="/">
                             <img
                                 alt="Reybraz Tech Logo"
-                                className="h-16 w-auto filter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
+                                className="h-10 md:h-12 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
                                 src={LOGO_URL}
                                 onError={(e) => { (e.target as HTMLImageElement).src = LOGO_FALLBACK; }}
                             />
@@ -56,12 +56,16 @@ export const Navbar = () => {
                             Acesso
                         </Link>
                     </div>
-                    <div className="-mr-2 flex md:hidden items-center gap-2">
+                    <div className="-mr-2 flex md:hidden items-center gap-3">
+                        <Link to="/login" className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-full text-base font-black shadow-[0_0_20px_rgba(14,165,233,0.6)] border-2 border-cyan-400">
+                            Acesso
+                        </Link>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="inline-flex items-center justify-center p-2 rounded-md text-slate-200 hover:text-cyan-400 focus:outline-none"
+                            className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-xl border-2 border-cyan-400 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-all shadow-[0_0_20px_rgba(34,211,238,0.5)] animate-pulse"
                         >
-                            {isMobileMenuOpen ? <X /> : <Menu />}
+                            <span className="font-black tracking-wider uppercase text-sm">Menu</span>
+                            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </button>
                     </div>
                 </div>

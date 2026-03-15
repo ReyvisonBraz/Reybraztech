@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -11,17 +11,28 @@ const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT
 export const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const navRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };
+        const handleClickOutside = (event: MouseEvent) => {
+            if (navRef.current && !navRef.current.contains(event.target as Node)) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+
         window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, []);
 
     return (
-        <nav className={`fixed w-full z-50 transition-all duration-500 ${isScrolled ? 'glass-nav py-2' : 'bg-transparent py-4'}`}>
+        <nav ref={navRef} className={`fixed w-full z-50 transition-all duration-500 ${isScrolled ? 'glass-nav py-2' : 'bg-transparent py-4'}`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     <motion.div
@@ -74,9 +85,10 @@ export const Navbar = () => {
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
                         className="md:hidden glass-nav shadow-[0_10px_30px_rgba(34,211,238,0.2)] border-b-2 border-cyan-400/30"
                     >
                         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">

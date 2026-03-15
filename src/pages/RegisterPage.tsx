@@ -1,4 +1,4 @@
-import { useState, FormEvent, useRef } from 'react';
+import { useState, FormEvent, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink, ShieldCheck, RefreshCw } from 'lucide-react';
@@ -19,6 +19,13 @@ export const RegisterPage = () => {
   const [skippedOtp, setSkippedOtp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (localStorage.getItem('reyb_token')) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',

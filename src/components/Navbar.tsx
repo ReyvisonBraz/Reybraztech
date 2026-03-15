@@ -52,13 +52,13 @@ export const Navbar = () => {
                         </div>
                     </div>
                     <div className="hidden md:flex items-center gap-4">
-                        <Link to="/login" className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
-                            Acesso
+                        <Link to={localStorage.getItem('reyb_token') ? "/dashboard" : "/login"} className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
+                            {localStorage.getItem('reyb_token') ? "Painel" : "Acesso"}
                         </Link>
                     </div>
                     <div className="-mr-2 flex md:hidden items-center gap-3">
-                        <Link to="/login" className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-full text-base font-black shadow-[0_0_20px_rgba(14,165,233,0.6)] border-2 border-cyan-400">
-                            Acesso
+                        <Link to={localStorage.getItem('reyb_token') ? "/dashboard" : "/login"} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-full text-base font-black shadow-[0_0_20px_rgba(14,165,233,0.6)] border-2 border-cyan-400">
+                            {localStorage.getItem('reyb_token') ? "Painel" : "Acesso"}
                         </Link>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -91,11 +91,11 @@ export const Navbar = () => {
                                 </a>
                             ))}
                             <Link
-                                to="/login"
+                                to={localStorage.getItem('reyb_token') ? "/dashboard" : "/login"}
                                 className="w-full text-center glow-button bg-primary text-white px-3 py-4 rounded-xl text-base font-black block mt-4 shadow-[0_0_20px_rgba(14,165,233,0.4)] border-2 border-cyan-400"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                Acesso
+                                {localStorage.getItem('reyb_token') ? "Painel" : "Acesso"}
                             </Link>
                         </div>
                     </motion.div>

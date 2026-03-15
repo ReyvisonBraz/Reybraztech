@@ -144,6 +144,12 @@ export const LoginPage = () => {
     const [errorMsg, setErrorMsg] = useState("");
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        if (localStorage.getItem('reyb_token')) {
+            navigate('/dashboard');
+        }
+    }, [navigate]);
+
     const [mouseX, setMouseX] = useState<number>(0);
     const [mouseY, setMouseY] = useState<number>(0);
     const [isPurpleBlinking, setIsPurpleBlinking] = useState(false);

@@ -1,4 +1,4 @@
-# 📱 Guia 2 — SendPulse API (WhatsApp OTP)
+# 📱 Guia 04 — SendPulse API (WhatsApp OTP)
 
 > **Objetivo:** Usar a **SendPulse** (provedor oficial da API do WhatsApp Business) para enviar **códigos de verificação (OTP)** via WhatsApp para:
 > - Cadastro (verificação do número)

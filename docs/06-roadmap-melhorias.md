@@ -1,4 +1,4 @@
-# 🚀 Guia 5 — Plano de Melhorias e Integrações
+# 🗺️ Guia 06 — Roadmap e Melhorias
 
 > **Objetivo:** Um roadmap detalhado e incremental para evoluir o sistema Reybraztech, feito para ser seguido **um passo por dia**, aprendendo e entendendo cada conceito antes de avançar.
 
@@ -13,29 +13,28 @@ Antes de planejar, precisamos saber **onde estamos**. Analisei todo o código e 
 |------|---------|--------|
 | Frontend com 5 páginas | `src/pages/*.tsx` | ✅ Funcionando |
 | Backend Express na porta 3001 | `server/index.ts` | ✅ Funcionando |
-| Banco SQLite com 2 tabelas | `server/database.ts` | ✅ Funcionando |
+| Banco Supabase (PostgreSQL) | `server/database.ts` | ✅ Funcionando |
 | Cadastro de clientes | `server/routes/auth.ts` | ✅ Funcionando |
-| Login com JWT | `server/routes/auth.ts` | ✅ Funcionando |
+| Login com JWT e OTP WhatsApp | `server/routes/auth.ts` | ✅ Funcionando |
 | Dashboard protegido | `server/routes/dashboard.ts` | ✅ Funcionando |
 | Middleware de autenticação | `server/middleware/auth.ts` | ✅ Funcionando |
 | Animação WebGL de fundo | `src/components/web-gl-shader.tsx` | ✅ Funcionando |
 | Componentes shadcn/ui | `src/components/ui/` | ✅ Funcionando |
+| Deploy do Frontend | Cloudflare Pages | ✅ Funcionando |
+| Deploy do Backend | Render | ✅ Funcionando |
 
 ### ⚠️ O que FALTA implementar (gaps entre docs e código):
 | Item | Onde está descrito | Prioridade |
 |------|-------------------|------------|
-| JWT_SECRET é um valor fixo no código | Guia 3 (§1.1) | 🔴 Crítico |
-| `.env.example` não tem `JWT_SECRET` | Guia 3 (§1.1) | 🔴 Crítico |
-| Servidor NÃO valida variáveis de ambiente | Guia 3 (§1.2) | 🔴 Crítico |
-| Sem `helmet` (headers de segurança) | Guia 3 (§2.1) | 🟡 Importante |
-| Sem `express-rate-limit` (proteção contra brute-force) | Guia 3 (§2.1) | 🟡 Importante |
-| Sem validação Zod nas rotas | Guia 3 (§2.3) | 🟡 Importante |
-| `ProtectedRoute` não verifica expiração do token | Guia 3 (§3.3) | 🟡 Importante |
-| `vite.config.ts` sem proxy para `/api` | Guia 4 (§6) | 🟡 Importante |
-| `app_password` em texto puro no banco | Guia 3 (§4.1) | 🟡 Importante |
-| Sem tabela `otp_tokens` | Guia 2 | 🟢 Futuro |
-| Sem Evolution API / WhatsApp | Guia 2 | 🟢 Futuro |
-| Sem Supabase | Guia 1 | 🟢 Futuro |
+| JWT_SECRET é um valor fixo no código | Guia 02 (§1.1) | 🔴 Crítico |
+| `.env.example` não tem `JWT_SECRET` | Guia 02 (§1.1) | 🔴 Crítico |
+| Servidor NÃO valida variáveis de ambiente | Guia 02 (§1.2) | 🔴 Crítico |
+| Sem `helmet` (headers de segurança) | Guia 02 (§2.1) | 🟡 Importante |
+| Sem `express-rate-limit` (proteção contra brute-force) | Guia 02 (§2.1) | 🟡 Importante |
+| Sem validação Zod nas rotas | Guia 02 (§2.3) | 🟡 Importante |
+| `ProtectedRoute` não verifica expiração do token | Guia 02 (§3.3) | 🟡 Importante |
+| `app_password` em texto puro no banco | Guia 02 (§4.1) | 🟡 Importante |
+| Medidas Avançadas Anti-Bot (reCAPTCHA, Honeypot) | Guia 02 | 🟡 Importante |
 | Sem Painel Admin | Roadmap (guia-do-projeto) | 🟢 Futuro |
 | Sem node-cron (jobs) | Roadmap (guia-do-projeto) | 🟢 Futuro |
 | Sem Mercado Pago | Roadmap (guia-do-projeto) | 🟢 Futuro |
@@ -48,7 +47,7 @@ O plano está dividido em **Semanas**. Cada semana é uma área de foco. Cada di
 
 ---
 
-### 📦 SEMANA 1 — Segurança Básica (Guia 3, Nível 1 e 2)
+### 📦 SEMANA 1 — Segurança Básica (Guia 02, Nível 1 e 2)
 
 > **Conceito para aprender:** "Antes de construir novas funcionalidades, proteja o que já existe."
 
@@ -203,7 +202,7 @@ server: {
 
 ---
 
-### 📦 SEMANA 2 — ProtectedRoute + `.gitignore` + Proxy (Guia 3, Nível 3)
+### 📦 SEMANA 2 — ProtectedRoute + `.gitignore` + Proxy (Guia 02, Nível 3)
 
 #### Dia 6 — Melhorar o ProtectedRoute com verificação de expiração
 **O que você vai aprender:** Como decodificar um JWT no frontend sem precisar do backend.
@@ -372,12 +371,12 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 
 ### 📦 SEMANA 5+ — Integrações Externas
 
-> Essas são etapas mais avançadas. Os guias 1 e 2 já detalham tudo passo a passo.
+> Essas são etapas mais avançadas. Os guias 03 e 04 já detalham tudo passo a passo.
 
 | Semana | Foco | Guia |
 |--------|------|------|
-| 5 | Migrar para Supabase (PostgreSQL na nuvem) | [Guia 1](./1-supabase-setup.md) |
-| 6 | Integrar Evolution API (OTP WhatsApp) | [Guia 2](./2-evolution-api-whatsapp.md) |
+| 5 | Migrar para Supabase (PostgreSQL na nuvem) | [Guia 03](./03-banco-supabase.md) |
+| 6 | Integrar SendPulse API (OTP WhatsApp) | [Guia 04](./04-auth-whatsapp-otp.md) |
 | 7 | Integrar Mercado Pago (pagamentos automáticos) | Futuro guia |
 
 ---
@@ -407,8 +406,8 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 - [ ] Dia 14: Exibir dias restantes no dashboard
 
 ### Semana 5+ — Integrações
-- [ ] Supabase (Guia 1)
-- [ ] Evolution API (Guia 2)
+- [ ] Supabase (Guia 03)
+- [ ] SendPulse (Guia 04)
 - [ ] Mercado Pago
 
 ---

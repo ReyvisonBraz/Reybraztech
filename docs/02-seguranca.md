@@ -1,6 +1,8 @@
-# 🔒 Guia 3 — Segurança do Site e Banco de Dados
+# 🔒 Guia 02 — Segurança do Site e Banco de Dados
 
 > **Objetivo:** Aplicar medidas de segurança reais, do nível mais básico ao avançado, para proteger o site, o banco de dados e os dados dos clientes.
+> 
+> **⚠️ Status Atual:** Estas implementações são os **próximos passos** do projeto. O código atual do projeto ainda *não* possui essas proteções ativas.
 
 ---
 

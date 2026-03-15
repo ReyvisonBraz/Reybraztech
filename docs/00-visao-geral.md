@@ -1,4 +1,4 @@
-# 📘 Guia do Projeto — Reybraztech
+# 📘 Guia 00 — Visão Geral do Projeto
 
 > **Última atualização:** Março de 2026  
 > Este é o guia vivo do projeto. Aqui você aprende como tudo funciona, como está organizado e o que pode ser melhorado.
@@ -233,7 +233,7 @@ import { Link } from 'react-router-dom';
 
 | # | Melhoria | Por quê é importante |
 |---|----------|----------------------|
-| 10 | **Deploy (Hosting)** | Hoje o site só roda localmente. Backend → Railway ou Render. Frontend → Vercel ou Netlify |
+| 10 | **Deploy (Hosting)** | ✅ FEITO! Frontend no Cloudflare Pages e Backend no Render. |
 | 11 | **SEO e meta tags** | Adicionar Open Graph (imagem de prévia ao compartilhar o link no WhatsApp), título e descrição otimizados |
 | 12 | **Testes automatizados** | Garantir que ao adicionar novas funcionalidades nada quebra. Usar Vitest (frontend) e Jest (backend) |
 | 13 | **Variáveis de ambiente obrigatórias** | O servidor não deve subir sem `JWT_SECRET` definido. Adicionar validação no `server/index.ts` |
@@ -245,9 +245,10 @@ import { Link } from 'react-router-dom';
 
 | Data | Mudança |
 |------|---------|
+| Mar/2026 | **Deploy:** Frontend no Cloudflare Pages e Backend no Render com sucesso. |
 | Mar/2026 | **Migração Supabase:** Banco migrado para PostgreSQL na nuvem (Supabase). |
 | Mar/2026 | **OTP WhatsApp:** Autenticação via envio de OTP com o SendPulse API. |
-| Mar/2026 | **Segurança:** Adicionados reCAPTCHA v3, honeypots, proteção CSRF e sanitização. |
 | Mar/2026 | E-mail opcional no cadastro e login com WhatsApp ou E-mail. |
-| Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto |
-| Mar/2026 | `LoginPage` e seções de Destaques/Planos reformuladas; shadcn/ui integrado |
+| Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto. |
+| Mar/2026 | `LoginPage` e seções de Destaques/Planos reformuladas; shadcn/ui integrado. |
+| Mar/2026 | **Próximos Passos:** Implementação pendente das medidas de segurança (reCAPTCHA, helmet, rate-limit, zod). |

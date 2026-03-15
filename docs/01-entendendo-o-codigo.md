@@ -1,4 +1,4 @@
-# 📚 Guia 4 — Entendendo o Projeto por Partes
+# 📚 Guia 01 — Entendendo o Código por Partes
 
 > **Objetivo:** Explicar o projeto inteiro de forma didática, como se estivesse lendo um mapa. Da parte mais simples à mais complexa.
 
@@ -389,8 +389,8 @@ REYBRAZTECH
 
 ## Próximos passos sugeridos
 
-1. **Leia o Guia 1** → Migrar para Supabase (banco em nuvem)
-2. **Leia o Guia 2** → Adicionar OTP pelo WhatsApp
-3. **Leia o Guia 3** → Aplicar segurança
+1. **Leia o Guia 02** → Aplicar segurança
+2. **Leia o Guia 03** → Migrar para Supabase (já feito)
+3. **Leia o Guia 04** → Adicionar OTP pelo WhatsApp (já feito)
 4. **Implemente o Painel Admin** → Gerenciar clientes pelo site
 5. **Integre o Mercado Pago** → Ativar clientes automaticamente após pagamento

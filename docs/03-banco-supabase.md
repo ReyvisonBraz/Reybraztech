@@ -1,4 +1,4 @@
-# 🗄️ Guia 1 — Configurar o Supabase (Banco de Dados na Nuvem)
+# 🗄️ Guia 03 — Configurar o Supabase (Banco de Dados na Nuvem)
 
 > **Para quem é esse guia?** Para quem nunca mexeu com banco de dados online.
 > Vamos ir devagar, explicando TUDO.

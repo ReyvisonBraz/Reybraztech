@@ -1,6 +1,6 @@
 # 📂 Docs — Guias do Projeto Reybraztech
 
-Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem abaixo para melhor compreensão.
+Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem numérica abaixo para melhor compreensão.
 
 ---
 
@@ -8,28 +8,30 @@ Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem aba
 
 | # | Arquivo | Conteúdo |
 |---|---------|----------|
-| 1 | [1-supabase-setup.md](./1-supabase-setup.md) | Como migrar do SQLite para o Supabase (PostgreSQL na nuvem) |
-| 2 | [2-sendpulse-whatsapp.md](./2-sendpulse-whatsapp.md) | Integração da SendPulse API — envio de OTP via WhatsApp (API oficial) para login, cadastro e recuperação de senha |
-| 3 | [3-seguranca.md](./3-seguranca.md) | Segurança do site e banco de dados — do básico ao avançado + anti-bot (reCAPTCHA, Honeypot, XSS, CSRF) |
-| 4 | [4-entendendo-o-projeto.md](./4-entendendo-o-projeto.md) | Entendendo o projeto por partes, de forma didática |
-| 5 | [5-melhorias-e-integracoes.md](./5-melhorias-e-integracoes.md) | Painel Admin, Automações (Jobs) e Integração Mercado Pago |
+| 00 | [00-visao-geral.md](./00-visao-geral.md) | O ponto de partida: Visão geral da arquitetura, rotas, tabelas de BD e como rodar o projeto. (Roadmap oficial). |
+| 01 | [01-entendendo-o-codigo.md](./01-entendendo-o-codigo.md) | Entendendo como o código funciona sob o capô, arquivo por arquivo de forma didática. |
+| 02 | [02-seguranca.md](./02-seguranca.md) | Segurança do site e banco de dados — do básico ao avançado + anti-bot (reCAPTCHA, Honeypot, XSS, CSRF). |
+| 03 | [03-banco-supabase.md](./03-banco-supabase.md) | Como o banco local foi migrado para o Supabase (PostgreSQL na nuvem). |
+| 04 | [04-auth-whatsapp-otp.md](./04-auth-whatsapp-otp.md) | Integração da SendPulse API — envio de OTP via WhatsApp. |
+| 05 | [05-hospedagem-deploy.md](./05-hospedagem-deploy.md) | Como foi feito o deploy do frontend (Vercel/Cloudflare Pages) e do backend (Render). |
+| 06 | [06-roadmap-melhorias.md](./06-roadmap-melhorias.md) | Diário de plano de melhorias futuras (Jobs Cron, Mercado Pago, Painel Admin). |
 
 ---
 
-## 🔮 Ordem de Implementação Sugerida
+## 🔮 Ordem de Implementação Sugerida e Status
 
 ```
-1. Ler o Guia 4 (entender o projeto todo)
+✅ 00. Visão Geral e Setup Local — FEITO
       ↓
-2. Aplicar o Guia 3 (segurança básica — não custa nada e é crítico)
+✅ 01. Entender o Código (Didático) — FEITO
       ↓
-3. Implementar o Guia 1 (Supabase — banco em produção)
+🔴 02. Aplicar Guia 02: Segurança básica e avançada — PRÓXIMO PASSO
       ↓
-4. Implementar o Guia 2 (SendPulse — OTP WhatsApp)
+✅ 03. Estudar Guia 03: Supabase (Já validado em prod) — FEITO
       ↓
-5. Seguir o Guia 5 (Novas Melhorias e Integrações)
+✅ 04. Estudar Guia 04: SendPulse OTP WhatsApp — FEITO
+      ↓
+✅ 05. Guia 05: Hospedagem Deploy — FEITO
+      ↓
+🔵 06. Guia 06: Novas Melhorias, Painel Admin e Integrações Futuras
 ```
-
----
-
-> Para a visão geral do projeto e roadmap de melhorias, veja: [`guia-do-projeto.md`](../guia-do-projeto.md)

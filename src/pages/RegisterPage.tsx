@@ -386,8 +386,6 @@ export const RegisterPage = () => {
                     onClick={() => setWhatsappSent(true)}
                     className="group relative w-full overflow-hidden bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl flex items-center gap-4 transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] p-4 border border-emerald-400/50 hover:border-emerald-400"
                   >
-                    {/* Efeito de brilho que passa */}
-                    <div className="absolute inset-0 -translate-x-[150%] animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
                     
                     <div className="bg-emerald-600/80 p-3 rounded-xl shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                       <svg viewBox="0 0 24 24" className="w-7 h-7 fill-white drop-shadow-md">

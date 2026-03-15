@@ -62,7 +62,7 @@ export const Navbar = () => {
                         </Link>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-xl border-2 border-cyan-400 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-all shadow-[0_0_20px_rgba(34,211,238,0.5)] animate-pulse"
+                            className="inline-flex items-center gap-2 justify-center px-4 py-3 rounded-xl border-2 border-cyan-400 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 transition-all shadow-[0_0_20px_rgba(34,211,238,0.5)]"
                         >
                             <span className="font-black tracking-wider uppercase text-sm">Menu</span>
                             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

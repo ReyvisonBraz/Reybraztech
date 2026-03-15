@@ -139,6 +139,8 @@ const EyeBall = ({
 export const LoginPage = () => {
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
+    const [loginMethod, setLoginMethod] = useState<'whatsapp' | 'email'>('whatsapp');
+    const [countryCode, setCountryCode] = useState("55");
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -258,10 +260,12 @@ export const LoginPage = () => {
         setErrorMsg('');
 
         try {
+            const finalIdentifier = loginMethod === 'whatsapp' ? `${countryCode}${identifier}` : identifier;
+
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier, password }),
+                body: JSON.stringify({ identifier: finalIdentifier, password }),
             });
 
             const data = await response.json();
@@ -486,21 +490,72 @@ export const LoginPage = () => {
 
                     {/* Login Form */}
                     <form onSubmit={handleLogin} className="space-y-5">
-                        <div className="space-y-2">
-                            <Label htmlFor="identifier" className="text-sm font-medium text-slate-300">WhatsApp ou E-mail</Label>
-                            <Input
-                                id="identifier"
-                                type="text"
-                                placeholder="Seu WhatsApp ou e-mail"
-                                value={identifier}
-                                autoComplete="off"
-                                onChange={(e) => setIdentifier(e.target.value)}
-                                onFocus={() => setIsTyping(true)}
-                                onBlur={() => setIsTyping(false)}
-                                required
-                                className="h-12 bg-white/5 border-white/10 focus:border-cyan-500 text-white placeholder:text-slate-500 transition-all rounded-xl"
-                            />
+                        {/* Login Method Toggle */}
+                        <div className="flex bg-white/5 rounded-xl p-1 mb-6">
+                            <button
+                                type="button"
+                                onClick={() => setLoginMethod('whatsapp')}
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginMethod === 'whatsapp' ? 'bg-cyan-500 text-slate-900 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Por WhatsApp
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setLoginMethod('email')}
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginMethod === 'email' ? 'bg-cyan-500 text-slate-900 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Por E-mail
+                            </button>
                         </div>
+
+                        {loginMethod === 'email' ? (
+                            <div className="space-y-2">
+                                <Label htmlFor="identifier" className="text-sm font-medium text-slate-300">E-mail</Label>
+                                <Input
+                                    id="identifier"
+                                    type="email"
+                                    placeholder="Seu endereço de e-mail"
+                                    value={identifier}
+                                    autoComplete="off"
+                                    onChange={(e) => setIdentifier(e.target.value)}
+                                    onFocus={() => setIsTyping(true)}
+                                    onBlur={() => setIsTyping(false)}
+                                    required
+                                    className="h-12 bg-white/5 border-white/10 focus:border-cyan-500 text-white placeholder:text-slate-500 transition-all rounded-xl"
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <Label htmlFor="identifier" className="text-sm font-medium text-slate-300">Seu número de WhatsApp</Label>
+                                <div className="flex gap-2">
+                                    <div className="relative w-[110px] shrink-0">
+                                        <select
+                                            className="w-full h-12 px-4 bg-slate-900 border border-white/10 rounded-xl text-white focus:border-cyan-500 outline-none transition-all appearance-none text-sm"
+                                            value={countryCode}
+                                            onChange={(e) => setCountryCode(e.target.value)}
+                                        >
+                                            <option value="55">🇧🇷 +55</option>
+                                            <option value="351">🇵🇹 +351</option>
+                                            <option value="1">🇺🇸 +1</option>
+                                            <option value="44">🇬🇧 +44</option>
+                                            <option value="34">🇪🇸 +34</option>
+                                        </select>
+                                    </div>
+                                    <Input
+                                        id="identifier"
+                                        type="tel"
+                                        placeholder="Ex: 91988887777"
+                                        value={identifier}
+                                        autoComplete="off"
+                                        onChange={(e) => setIdentifier(e.target.value)}
+                                        onFocus={() => setIsTyping(true)}
+                                        onBlur={() => setIsTyping(false)}
+                                        required
+                                        className="flex-1 h-12 bg-white/5 border-white/10 focus:border-cyan-500 text-white placeholder:text-slate-500 transition-all rounded-xl"
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="password" className="text-sm font-medium text-slate-300">Senha</Label>

@@ -30,6 +30,7 @@ export const RegisterPage = () => {
     firstName: '',
     lastName: '',
     device: '',
+    countryCode: '55',
     whatsapp: '',
     email: '',
     password: '',
@@ -46,7 +47,7 @@ export const RegisterPage = () => {
       const response = await fetch(`${API_URL}/api/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whatsapp: formData.whatsapp, type: 'register' }),
+        body: JSON.stringify({ whatsapp: formData.countryCode + formData.whatsapp, type: 'register' }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -87,7 +88,7 @@ export const RegisterPage = () => {
       const response = await fetch(`${API_URL}/api/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whatsapp: formData.whatsapp, token: otpCode, type: 'register' }),
+        body: JSON.stringify({ whatsapp: formData.countryCode + formData.whatsapp, token: otpCode, type: 'register' }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -167,7 +168,7 @@ export const RegisterPage = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: `${formData.firstName} ${formData.lastName}`.trim(),
-            whatsapp: formData.whatsapp,
+            whatsapp: formData.countryCode + formData.whatsapp,
             device: formData.device,
             email: formData.email,
             password: formData.password,
@@ -187,7 +188,7 @@ export const RegisterPage = () => {
 
         // Salvar senha temporariamente para exibir na tela de boas-vindas
         sessionStorage.setItem('reyb_welcome_password', formData.password);
-        sessionStorage.setItem('reyb_welcome_whatsapp', formData.whatsapp);
+        sessionStorage.setItem('reyb_welcome_whatsapp', formData.countryCode + formData.whatsapp);
         sessionStorage.setItem('reyb_welcome_email', formData.email || '');
 
         // Redirecionar para o dashboard com flag de boas-vindas
@@ -319,16 +320,31 @@ export const RegisterPage = () => {
                     <option value="outro">Outro</option>
                   </select>
                 </div>
-                <div className="relative">
-                  <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    required
-                    type="tel"
-                    placeholder="WhatsApp (com DDD)"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
-                    value={formData.whatsapp}
-                    onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative w-[110px] shrink-0">
+                    <select
+                      className="w-full p-4 bg-slate-900 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all appearance-none text-sm"
+                      value={formData.countryCode}
+                      onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                    >
+                      <option value="55">🇧🇷 +55</option>
+                      <option value="351">🇵🇹 +351</option>
+                      <option value="1">🇺🇸 +1</option>
+                      <option value="44">🇬🇧 +44</option>
+                      <option value="34">🇪🇸 +34</option>
+                    </select>
+                  </div>
+                  <div className="relative flex-1">
+                    <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                    <input
+                      required
+                      type="tel"
+                      placeholder="Ex: 91988887777"
+                      className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                      value={formData.whatsapp}
+                      onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <button
@@ -462,7 +478,7 @@ export const RegisterPage = () => {
                       <div>
                         <h3 className="text-cyan-400 font-bold text-sm mb-1">Código enviado!</h3>
                         <p className="text-slate-400 text-sm leading-relaxed">
-                          Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">{formData.whatsapp}</strong>.
+                          Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">+{formData.countryCode} {formData.whatsapp}</strong>.
                           Digite-o abaixo para verificar seu número.
                         </p>
                       </div>

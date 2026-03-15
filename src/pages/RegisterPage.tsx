@@ -113,12 +113,10 @@ export const RegisterPage = () => {
     }
   };
 
-  // ── Handler do "Pular esta etapa" ──
-  const handleSkipClick = async () => {
+  // ── Handler do "Usar Email" ──
+  const handleSkipClick = () => {
     setSkippedOtp(true);
-    // Tenta enviar o OTP mesmo ao pular (o bot pode ter recebido a mensagem)
-    await sendOtp();
-    setStep(3);
+    setStep(4);
   };
 
   // ── Handler principal do form ──
@@ -134,11 +132,6 @@ export const RegisterPage = () => {
 
     // Passo 3 → Verificar OTP → Passo 4
     if (step === 3) {
-      if (skippedOtp) {
-        // Se pulou, vai direto sem verificar
-        setStep(4);
-        return;
-      }
       if (otpCode.length !== 6) {
         setErrorMsg('Digite o código de 6 dígitos recebido no WhatsApp.');
         return;
@@ -152,6 +145,10 @@ export const RegisterPage = () => {
 
     // Passo 4 → Finalizar cadastro
     if (step === 4) {
+      if (!otpVerified && !formData.email) {
+        setErrorMsg('Como você não verificou o WhatsApp, o E-mail é obrigatório para cadastro.');
+        return;
+      }
       if (formData.password.length < 6) {
         setErrorMsg('A senha deve ter pelo menos 6 caracteres.');
         return;
@@ -449,10 +446,9 @@ export const RegisterPage = () => {
                   <button
                     type="button"
                     onClick={handleSkipClick}
-                    disabled={otpSending}
-                    className="text-xs text-slate-600 hover:text-slate-400 transition-colors underline disabled:opacity-50"
+                    className="text-xs text-slate-500 hover:text-white transition-colors underline"
                   >
-                    Pular esta etapa (não recomendado)
+                    Não consigo usar o WhatsApp (Cadastrar por E-mail)
                   </button>
                 </p>
               </motion.div>
@@ -465,35 +461,18 @@ export const RegisterPage = () => {
                 animate={{ opacity: 1, x: 0 }}
                 className="space-y-5"
               >
-                {skippedOtp ? (
-                  // Se pulou a ativação, exibir aviso
-                  <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
-                      <div>
-                        <h3 className="text-amber-400 font-bold text-sm mb-1">Verificação não ativada</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed">
-                          Você pulou a etapa de ativação do WhatsApp. Se recebeu um código, digite-o abaixo.
-                          Caso contrário, prossiga sem verificação.
-                        </p>
-                      </div>
+                <div className="p-5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-cyan-400 font-bold text-sm mb-1">Código enviado!</h3>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                        Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">+{formData.countryCode} {formData.whatsapp}</strong>.
+                        Digite-o abaixo para verificar seu número.
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  // Mensagem de sucesso do envio
-                  <div className="p-5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
-                    <div className="flex items-start gap-3">
-                      <ShieldCheck className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
-                      <div>
-                        <h3 className="text-cyan-400 font-bold text-sm mb-1">Código enviado!</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed">
-                          Enviamos um código de 6 dígitos para o WhatsApp <strong className="text-white">+{formData.countryCode} {formData.whatsapp}</strong>.
-                          Digite-o abaixo para verificar seu número.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 {/* Input do código OTP */}
                 <div className="relative">
@@ -551,11 +530,6 @@ export const RegisterPage = () => {
                       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                       className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
                     />
-                  ) : skippedOtp ? (
-                    <>
-                      {otpCode.length === 6 ? 'Verificar Código' : 'Continuar sem verificação'}
-                      <CheckCircle2 className="w-5 h-5" />
-                    </>
                   ) : (
                     <>
                       Verificar Código
@@ -564,18 +538,16 @@ export const RegisterPage = () => {
                   )}
                 </button>
 
-                {/* Se pulou e não tem código, pode pular verificação */}
-                {skippedOtp && otpCode.length === 0 && (
-                  <p className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => setStep(4)}
-                      className="text-xs text-slate-600 hover:text-slate-400 transition-colors underline"
-                    >
-                      Continuar sem código
-                    </button>
-                  </p>
-                )}
+                {/* Fallback para email se não funcionar */}
+                <p className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleSkipClick}
+                    className="text-xs text-slate-500 hover:text-white transition-colors underline mt-2"
+                  >
+                    Estou com problemas para receber o código (Usar E-mail)
+                  </button>
+                </p>
               </motion.div>
             )}
 
@@ -596,8 +568,9 @@ export const RegisterPage = () => {
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input
-                    type="text"
-                    placeholder="E-mail (opcional)"
+                    type="email"
+                    required={!otpVerified}
+                    placeholder={!otpVerified ? "E-mail (Obrigatório para este tipo de cadastro)" : "E-mail (Opcional)"}
                     className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -626,7 +599,9 @@ export const RegisterPage = () => {
                   />
                 </div>
                 <p className="text-xs text-slate-500 text-center px-4">
-                  Use seu WhatsApp e senha para acessar o painel. E-mail é opcional.
+                  {otpVerified 
+                    ? "Use seu WhatsApp e senha para acessar o painel. E-mail é opcional." 
+                    : "Como o seu WhatsApp não foi verificado, pedimos o e-mail obrigatoriamente para recuperar a conta no futuro."}
                 </p>
 
                 {/* Mensagem de erro */}

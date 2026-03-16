@@ -70,7 +70,7 @@ O plano está dividido em **Semanas**. Cada semana é uma área de foco. Cada di
 
 **Conceito:** A chave JWT é como a chave-mestra de um prédio. Se alguém a adivinha, pode forjar tokens e acessar qualquer conta.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -102,7 +102,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 **Conceito:** O `!` no TypeScript diz "eu sei que esse valor existe". Como já validamos no `index.ts`, é seguro.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -384,8 +384,8 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 ## ✅ Checklist Geral de Progresso
 
 ### Semana 1 — Segurança Básica
-- [ ] Dia 1: JWT_SECRET seguro no `.env`
-- [ ] Dia 2: Validação de variáveis de ambiente
+- [x] Dia 1: JWT_SECRET seguro no `.env`
+- [x] Dia 2: Validação de variáveis de ambiente
 - [ ] Dia 3: Helmet + Rate Limit
 - [ ] Dia 4: Proxy do Vite
 - [ ] Dia 5: Validação Zod no registro

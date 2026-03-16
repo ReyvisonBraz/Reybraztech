@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import sql from '../database.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'reybraztech_secret_key_change_in_production';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 // ============================================================
 // POST /api/auth/register — Cadastrar novo cliente

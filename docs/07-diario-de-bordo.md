@@ -66,4 +66,72 @@ Em produção, se nosso serviço de hospedagem (Render) desse pane e por alguma 
 
 ***
 
-**Próximo Passo (Dia 4):** Ocultar/apagar arquivos sensíveis do repositório público (criar `.gitignore` e checar vazamentos).
+### Dia 4: Proxy no Frontend (Vite)
+**Data:** 16/03/2026
+
+**O que foi feito:**
+1. Atualizamos o `vite.config.ts`, inserindo a regra `proxy`.
+2. Essa regra força o navegador em ambiente de desenvolvimento a redirecionar internamente toda chamada `/api/*` da porta do React (3000/5173) direto para o servidor Express (3001).
+
+**Por que isso importa?**
+* Elimina a necessidade de colocar `http://localhost:3001` chumbado no código do Frontend. Agora ele imita perfeitamente como funcionará quando for pro Cloudflare/Render, sem gerar bloqueios chatos de CORS enquanto estamos testando na nossa própria máquina.
+
+***
+
+### Dia 5: Blindagem de Dados com Zod
+**Data:** 16/03/2026
+
+**O que foi feito:**
+1. Instalamos a biblioteca `zod` (`npm install zod`).
+2. Entramos no arquivo de registro (`server/routes/auth.ts`) e substituímos os vários `if/else` básicos (que só checavam se a variável existia) por um "Schema Zod" super restrito.
+3. Agora, quando o front envia o pedido de cadastro, o banco de dados nem abre a boca se o e-mail estiver mal formatado, a senha tiver menos de 6 números ou faltar o dispositivo.
+
+**Por que isso importa?**
+* Segurança e Custo. Antes, se faltasse algum dado estrutural no pacote recebido, isso chegaria ao Supabase e *ele* que daria erro fatal no servidor. O Zod é um segurança de balada na porta: ele barra a requisição maliciosa *antes* dela consumir processamento da sua API ou recursos no banco de dados.
+
+***
+
+### Dia 7: Prevenção Contra Vazamentos e `.gitignore` Segura
+**Data:** 16/03/2026
+
+**O que foi feito:**
+1. Reescrevemos por completo o arquivo `.gitignore` na raiz do projeto. Ele serve para dizer ao Git: *"Quando eu for enviar minhas coisas pro GitHub, certifique-se de ignorar tudo o que estiver listado aqui"*.
+2. Adicionamos restrições rígidas para diretórios de log, do Windows/Mac (`.DS_Store`, `Thumbs.db`), pastas de *build* que só pesam o repositório e de editores de código (`.vscode/`).
+3. **Ponto Crítico:** Garanti que os bancos de dados antigos do SQLite (`*.db`, `*.sqlite`, etc.) fiquem para sempre restritos ao seu computador.
+4. Identificamos que arquivos do seu banco de dados local (`reybraztech.db`, `reybraztech.db-shm`, `reybraztech.db-wal`) estavam, de fato, sendo rastreados pelo Git, e usamos o comando `git rm --cached <arquivos>` para desvincular imediatamente eles do Github, apagando esse rastro de lá no próximo commit, mas sem deletar do seu PC.
+
+**Por que isso importa?**
+* Se um arquivo de banco de dados SQLite com as informações dos seus usuários locais for parar no Github, basta alguém baixar o repositório, abrir o `.db` e acessar tudo o que você testou (as vezes, CPFs, e-mails de clientes reais se não for só teste).
+* Manter lixo no repositório (como a pasta do VS Code ou arquivos ocultos do Windows/Mac) gera conflitos quando outras pessoas e computadores vão trabalhar no código, e apenas torna tudo de difícil manutenção.
+
+***
+
+### Dia 6: Expiração de Token e Limpeza do Navegador
+**Data:** 16/03/2026
+
+**O que foi feito:**
+1. Instalamos a biblioteca `jwt-decode` no frontend (`npm install jwt-decode`).
+2. Atualizamos o componente guardião do React, o `src/components/ProtectedRoute.tsx`.
+3. Criamos uma função de verificação constante (`isTokenValid`) que decodifica o JWT local que fica salvo no navegador do usuário e lê o campo `exp` (data de expiração) dele.
+4. Se o usuário estiver tentando acessar o Dashboard e o token dele for um lixo digital (malformado) ou já tiver passado da data de validade, o componente imediatamente apaga esse registro morto do navegador (`localStorage.removeItem`) e manda o usuário de volta para a tela de Login.
+
+**Por que isso importa?**
+* **Experiência do Usuário (UX):** Antes, o React apenas olhava se "existia alguma coisa" salva com o nome de token no navegador e te deixava passar. Mas como a validade no backend é estrita (ex: expira em x horas ou x dias), o usuário entrava no painel, a API do backend negava carregar os dados, e a tela ficava toda preta ou desconfigurada porque os dados dele não chegavam. Agora, o próprio React percebe que o tempo do token venceu antes de carregar a tela e despacha ele com educação para refazer o login perfeitamente.
+
+***
+
+### Dia 8, 9 e 10: Estrutura do Painel Administrativo e Permissões Seguras
+**Data:** 16/03/2026
+
+**O que foi feito:**
+1. **(Dia 8) Modificação no Banco:** Criamos um script que injetou a coluna de poder (`is_admin BOOLEAN NOT NULL DEFAULT FALSE`) lá no seu banco da Supabase (PostgreSQL), diretamente nos dados de clientes já existentes. Ninguém precisou refazer conta.
+2. **Setup do seu usuário Admin:** Criei um arquivo temporário em `server/scripts/make-admin.ts` com um script automatizado. Basta você colocar seu e-mail/whatsapp nele e rodar para magicamente transformar a sua conta em "Super Usuário" do sistema, caso ainda não tenha feito pelo próprio site da Supabase!
+3. **(Dia 9) Proteção Dupla (Middleware de Admin):** Criamos a pasta base para o servidor ter o cargo de checagem em `server/middleware/admin.ts`. Agora, se um usuário tentar acessar dados do Admin com um token JWT válido, a API ainda assim faz uma última validação no banco: *"Ah, ok, você tem o passaporte, mas você também é da diretoria (is_admin é TRUE)?"*. Se não for, barra por Permissão Negada (Status 403).
+4. **(Dia 10) Ponto de Acesso (Rotas do Admin):** Criamos o arquivo especial `server/routes/admin.ts` inteiro blindado pela checagem de logado (`verifyToken`) e diretor (`verifyAdmin`). E já registramos a criação de nossa primeira rota exclusiva, que no caso permite um GET em `/api/admin/clients` listando, ordenados do mais novo para o mais velho, os usuários registrados.
+
+**Por que isso importa?**
+* Escalonamento e Independência. Agora você não depende de olhar no banco de dados para ver números, status da mensalidade ou gerenciar perfis. Você como lojista possui rotas onde as engrenagens já rodam, com toda a rigidez de segurança nas portas criadas nas Semanas 1 e 2!
+
+***
+
+**Próximo Passo (Semana 3 - Dia 11 e 12):** Construir a interface real Frontend do `/admin`, conectando ela na nossa nova Rota GET para criar uma tabela elegante, com botões visuais para ativar ou inativar as mensalidades dos clientes.

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -6,22 +7,27 @@ import sql from '../database.js';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// Schema de validação usando Zod
+const registerSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  whatsapp: z.string().min(10, 'WhatsApp inválido'),
+  device: z.string().min(1, 'Informe o dispositivo'),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
+
 // ============================================================
 // POST /api/auth/register — Cadastrar novo cliente
 // ============================================================
 router.post('/register', async (req: Request, res: Response) => {
-    const { name, whatsapp, device, email, password } = req.body;
-
-    // Validação básica — email é OPCIONAL
-    if (!name || !whatsapp || !device || !password) {
-        res.status(400).json({ error: 'Nome, WhatsApp, dispositivo e senha são obrigatórios.' });
+    // Usar Zod para validar os dados do pacote enviado pelo front
+    const result = registerSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ error: result.error.issues[0].message });
         return;
     }
 
-    if (password.length < 6) {
-        res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
-        return;
-    }
+    const { name, whatsapp, device, email, password } = result.data;
 
     try {
         // Verificar se o WhatsApp já existe

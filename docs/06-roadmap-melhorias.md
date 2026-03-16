@@ -139,7 +139,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 **Conceito:** `Helmet` adiciona ~14 headers HTTP automaticamente (como `X-Frame-Options`). `Rate Limit` impede ataques de força bruta — um hacker não pode tentar milhares de senhas por minuto.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -162,7 +162,7 @@ server: {
 
 **Conceito:** Sem o proxy, o navegador bloqueia chamadas `fetch('/api/...')` porque vão para a porta 3000 (Vite) e não para a 3001 (Express). O proxy resolve isso redirecionando internamente.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -198,7 +198,7 @@ server: {
 
 **Conceito:** `safeParse` tenta validar os dados. Se falhar, retorna os erros sem derrubar o servidor. É mais seguro e profissional que checar `if (!name)`.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -242,7 +242,7 @@ server: {
 
 **Conceito:** Hoje o `ProtectedRoute` apenas verifica se o token _existe_. Mas se ele já expirou, o dashboard vai carregar e depois dar erro. Com `jwt-decode`, verificamos a expiração localmente.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -267,7 +267,7 @@ server: {
 
 **Conceito:** Se o `.env` já foi commitado alguma vez, ele continua no histórico do Git, mesmo após adicionar ao `.gitignore`. Nesse caso, é preciso rodar `git rm --cached .env`.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -285,7 +285,7 @@ E depois definir seu usuário como admin diretamente no banco.
 
 **Conceito:** SQLite não permite `ALTER TABLE` com valores complexos, mas `INTEGER DEFAULT 0` funciona como booleano (0 = false, 1 = true).
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -311,7 +311,7 @@ export const verifyAdmin = (req: AuthRequest, res: Response, next: NextFunction)
 
 **Conceito:** Middlewares são como "filtros em cadeia". A requisição passa por `verifyToken` → `verifyAdmin` → rota final. Se falhar em qualquer filtro, para ali.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -321,7 +321,7 @@ Criar `server/routes/admin.ts` com a rota que lista todos os clientes, e registr
 
 **Conceito:** Esta será sua primeira rota protegida com **duas camadas** de middleware (auth + admin).
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -386,18 +386,18 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 ### Semana 1 — Segurança Básica
 - [x] Dia 1: JWT_SECRET seguro no `.env`
 - [x] Dia 2: Validação de variáveis de ambiente
-- [ ] Dia 3: Helmet + Rate Limit
-- [ ] Dia 4: Proxy do Vite
-- [ ] Dia 5: Validação Zod no registro
+- [x] Dia 3: Helmet + Rate Limit
+- [x] Dia 4: Proxy do Vite
+- [x] Dia 5: Validação Zod no registro
 
 ### Semana 2 — Frontend + Git
-- [ ] Dia 6: ProtectedRoute com verificação de expiração
-- [ ] Dia 7: `.gitignore` revisado
+- [x] Dia 6: ProtectedRoute com verificação de expiração
+- [x] Dia 7: `.gitignore` revisado
 
 ### Semana 3 — Painel Admin
-- [ ] Dia 8: Coluna `is_admin` no banco
-- [ ] Dia 9: Middleware admin
-- [ ] Dia 10: Rota GET clientes
+- [x] Dia 8: Coluna `is_admin` no banco
+- [x] Dia 9: Middleware admin
+- [x] Dia 10: Rota GET clientes
 - [ ] Dia 11: Página admin frontend
 - [ ] Dia 12: Ações ativar/inativar
 

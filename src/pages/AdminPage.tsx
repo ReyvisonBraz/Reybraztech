@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config/api';
 
 interface Client {
     id: number;
@@ -29,7 +30,7 @@ export const AdminPage = () => {
             }
 
             try {
-                const response = await fetch('/api/admin/clients', {
+                const response = await fetch(`${API_URL}/api/admin/clients`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

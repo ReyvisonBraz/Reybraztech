@@ -373,11 +373,11 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 
 > Essas são etapas mais avançadas. Os guias 03 e 04 já detalham tudo passo a passo.
 
-| Semana | Foco | Guia |
-|--------|------|------|
-| 5 | Migrar para Supabase (PostgreSQL na nuvem) | [Guia 03](./03-banco-supabase.md) |
-| 6 | Integrar SendPulse API (OTP WhatsApp) | [Guia 04](./04-auth-whatsapp-otp.md) |
-| 7 | Integrar Mercado Pago (pagamentos automáticos) | Futuro guia |
+| Semana | Foco | Guia | Status |
+|--------|------|------|--------|
+| 5 | Migrar para Supabase (PostgreSQL na nuvem) | [Guia 03](./03-banco-supabase.md) | ✅ Feito |
+| 6 | Integrar SendPulse API (OTP WhatsApp) | [Guia 04](./04-auth-whatsapp-otp.md) | ✅ Feito |
+| 7 | Integrar Mercado Pago (pagamentos automáticos) | Futuro guia | 🔵 Pendente |
 
 ---
 
@@ -406,8 +406,8 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 - [ ] Dia 14: Exibir dias restantes no dashboard
 
 ### Semana 5+ — Integrações
-- [ ] Supabase (Guia 03)
-- [ ] SendPulse (Guia 04)
+- [x] Supabase (Guia 03) — ✅ Migrado e em produção
+- [x] SendPulse (Guia 04) — ✅ OTP funcionando
 - [ ] Mercado Pago
 
 ---

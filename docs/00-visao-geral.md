@@ -27,31 +27,43 @@ Reybraztech/
 │   ├── App.tsx                 ← Roteador principal (define as URLs)
 │   ├── main.tsx                ← Ponto de entrada (força modo escuro)
 │   ├── index.css               ← Estilos globais, paleta de cores, classes utilitárias
+│   ├── config/
+│   │   └── api.ts              ← URL central da API (dev vs produção)
 │   ├── lib/
 │   │   └── utils.ts            ← Helper cn() para shadcn/ui
 │   ├── pages/
 │   │   ├── LandingPage.tsx     ← Página inicial (marketing)
 │   │   ├── CheckoutPage.tsx    ← Escolha de plano e pagamento
-│   │   ├── RegisterPage.tsx    ← Cadastro de novo cliente
-│   │   ├── LoginPage.tsx       ← Tela de login com personagens animados
-│   │   └── DashboardPage.tsx   ← Painel do cliente logado
+│   │   ├── RegisterPage.tsx    ← Cadastro de novo cliente (3 etapas + OTP)
+│   │   ├── LoginPage.tsx       ← Tela de login (senha ou OTP WhatsApp)
+│   │   ├── DashboardPage.tsx   ← Painel do cliente logado
+│   │   └── AdminPage.tsx       ← Painel administrativo (rota oculta)
 │   └── components/             ← Peças reutilizáveis de interface
 │       ├── Navbar.tsx          ← Cabeçalho de navegação (modo escuro fixo)
 │       ├── Footer.tsx          ← Rodapé
 │       ├── FloatingWhatsApp.tsx← Botão flutuante do WhatsApp
 │       ├── ContentCarousel.tsx ← Carrossel de conteúdo animado
-│       ├── ProtectedRoute.tsx  ← Guarda das rotas privadas
-│       ├── web-gl-shader.tsx   ← Onda WebGL animada do fundo (em uso)
+│       ├── ProtectedRoute.tsx  ← Guarda das rotas privadas (com verificação de expiração JWT)
+│       ├── web-gl-shader.tsx   ← Onda WebGL animada do fundo
 │       └── ui/                 ← Componentes shadcn/ui (button, input, etc.)
 │
 ├── server/                     ← Backend (Express/Node.js)
-│   ├── index.ts                ← Servidor Express
-│   ├── database.ts             ← Configuração de conexão Supabase
+│   ├── index.ts                ← Servidor Express (com Helmet + Rate Limit)
+│   ├── database.ts             ← Conexão com Supabase (PostgreSQL via `postgres`)
 │   ├── middleware/
-│   │   └── auth.ts             ← Middleware JWT
-│   └── routes/
-│       ├── auth.ts             ← /api/auth/* (login e registro com OTP)
-│       └── dashboard.ts        ← /api/dashboard (dados do cliente)
+│   │   ├── auth.ts             ← Middleware JWT (verifica token)
+│   │   └── admin.ts            ← Middleware Admin (verifica is_admin)
+│   ├── routes/
+│   │   ├── auth.ts             ← /api/auth/* (login e registro com validação Zod)
+│   │   ├── dashboard.ts        ← /api/dashboard (dados do cliente)
+│   │   ├── otp.ts              ← /api/otp/* (envio e verificação de códigos OTP)
+│   │   └── admin.ts            ← /api/admin/* (gerenciamento de clientes)
+│   ├── services/
+│   │   ├── otp.ts              ← Geração, salvamento e validação de códigos OTP
+│   │   └── whatsapp.ts         ← Integração SendPulse (envio de mensagens WhatsApp)
+│   └── scripts/
+│       ├── make-admin.ts       ← Script para promover um usuário a admin
+│       └── migrate-admin.ts    ← Script de migração da coluna is_admin
 │
 ├── .env                        ← Variáveis de ambiente (Chaves Supabase e SendPulse)
 └── vite.config.ts              ← Configuração do Vite (proxy e aliases)
@@ -96,12 +108,23 @@ O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.t
 ### Tabela `payments`
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| `id` | INTEGER | Chave primária |
-| `client_id` | INTEGER | FK referenciando o cliente |
+| `id` | BIGSERIAL | Chave primária |
+| `client_id` | BIGINT | FK referenciando o cliente |
 | `plan` | TEXT | Plano pago |
 | `value` | TEXT | Valor pago |
 | `status` | TEXT | Status (`Pago`) |
-| `paid_at` | TEXT | Data do pagamento |
+| `paid_at` | TIMESTAMPTZ | Data do pagamento |
+
+### Tabela `otp_tokens`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | BIGSERIAL | Chave primária |
+| `whatsapp` | TEXT | Número do cliente |
+| `token` | TEXT | Código OTP de 6 dígitos |
+| `type` | TEXT | Tipo: `register`, `login`, `reset_password` |
+| `used` | BOOLEAN | Se o código já foi usado |
+| `expires_at` | TIMESTAMPTZ | Data/hora de expiração (5 min) |
+| `created_at` | TIMESTAMPTZ | Data/hora de criação |
 
 ---
 
@@ -110,13 +133,25 @@ O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.t
 ### Autenticação — `/api/auth/`
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `POST` | `/api/auth/register` | Cadastra novo cliente |
+| `POST` | `/api/auth/register` | Cadastra novo cliente (com validação Zod) |
 | `POST` | `/api/auth/login` | Login — retorna token JWT |
 
-### Painel — `/api/dashboard/`
+### OTP WhatsApp — `/api/otp/`
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/otp/send` | Envia código OTP via WhatsApp (SendPulse) |
+| `POST` | `/api/otp/verify-login` | Verifica código e faz login |
+| `POST` | `/api/otp/reset-password` | Verifica código e redefine senha |
+
+### Painel do Cliente — `/api/dashboard/`
 | Método | Rota | Descrição | Auth |
 |--------|------|-----------|------|
 | `GET` | `/api/dashboard` | Dados + histórico do cliente | **JWT** |
+
+### Admin — `/api/admin/`
+| Método | Rota | Descrição | Auth |
+|--------|------|-----------|------|
+| `GET` | `/api/admin/clients` | Lista todos os clientes | **JWT + Admin** |
 
 ### Saúde
 | Método | Rota | Descrição |
@@ -151,7 +186,8 @@ O gradiente logo é: `cyan → blue → purple` (usado em `.gradient-logo` e `.t
 | `/checkout` | `CheckoutPage` | Não |
 | `/login` | `LoginPage` | Não |
 | `/register` | `RegisterPage` | Não |
-| `/dashboard` | `DashboardPage` | **Sim** |
+| `/dashboard` | `DashboardPage` | **Sim** (JWT) |
+| `/admlogin` | `AdminPage` | **Sim** (JWT + Admin) — rota oculta |
 
 ---
 
@@ -245,10 +281,11 @@ import { Link } from 'react-router-dom';
 
 | Data | Mudança |
 |------|---------|
+| Mar/2026 | **Painel Admin:** Página `/admlogin` criada com middleware duplo (JWT + Admin). |
+| Mar/2026 | **Segurança:** Helmet, Rate Limit, Zod e jwt-decode implementados. |
 | Mar/2026 | **Deploy:** Frontend no Cloudflare Pages e Backend no Render com sucesso. |
 | Mar/2026 | **Migração Supabase:** Banco migrado para PostgreSQL na nuvem (Supabase). |
 | Mar/2026 | **OTP WhatsApp:** Autenticação via envio de OTP com o SendPulse API. |
 | Mar/2026 | E-mail opcional no cadastro e login com WhatsApp ou E-mail. |
 | Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto. |
 | Mar/2026 | `LoginPage` e seções de Destaques/Planos reformuladas; shadcn/ui integrado. |
-| Mar/2026 | **Próximos Passos:** Implementação pendente das medidas de segurança (reCAPTCHA, helmet, rate-limit, zod). |

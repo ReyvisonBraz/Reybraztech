@@ -261,11 +261,11 @@ Se der erro, me mande a mensagem de erro que eu te ajudo a resolver!
 
 # ✅ Checklist Final
 
-- [ ] Conta criada no Supabase
-- [ ] Projeto `reybraztech` criado (região São Paulo)
-- [ ] SQL executado — tabelas `clients` e `payments` criadas
-- [ ] `DATABASE_URL` colada no `.env`
-- [ ] `SUPABASE_URL` colada no `.env`
-- [ ] `SUPABASE_ANON_KEY` colada no `.env`
-- [ ] `SUPABASE_SERVICE_KEY` colada no `.env`
-- [ ] `npm run server` funcionando sem erros
+- [x] Conta criada no Supabase
+- [x] Projeto `reybraztech` criado (região São Paulo)
+- [x] SQL executado — tabelas `clients` e `payments` criadas
+- [x] `DATABASE_URL` colada no `.env`
+- [x] `SUPABASE_URL` colada no `.env`
+- [x] `SUPABASE_ANON_KEY` colada no `.env`
+- [x] `SUPABASE_SERVICE_KEY` colada no `.env`
+- [x] `npm run server` funcionando sem erros

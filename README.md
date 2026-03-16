@@ -1,20 +1,54 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🎬 Reybraztech — Plataforma de Streaming por Assinatura
 
-# Run and deploy your AI Studio app
+> Sistema completo de streaming IPTV com frontend moderno, backend seguro e integração WhatsApp.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/e84d649d-67ba-428b-9df5-ebbdb415d12f
+## 🛠️ Stack Tecnológica
 
-## Run Locally
+| Camada | Tecnologia |
+|--------|-----------|
+| **Frontend** | React + Vite + TypeScript + Tailwind CSS |
+| **Backend** | Node.js + Express + TypeScript |
+| **Banco de Dados** | Supabase (PostgreSQL na nuvem) |
+| **Autenticação** | JWT + OTP via WhatsApp (SendPulse API) |
+| **Deploy** | Frontend → Cloudflare Pages · Backend → Render |
 
-**Prerequisites:**  Node.js
+---
 
+## 🚀 Como Rodar Localmente
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+**Pré-requisitos:** Node.js instalado e variáveis de ambiente configuradas no `.env` (veja `.env.example`).
+
+**Terminal 1 — Backend:**
+```bash
+npm run server
+```
+> Saída esperada: `🚀 Servidor Reybraztech Online! → http://localhost:3001`
+
+**Terminal 2 — Frontend:**
+```bash
+npm run dev
+```
+> Acesse: `http://localhost:3000`
+
+---
+
+## 📂 Documentação
+
+Toda a documentação técnica e didática está na pasta [`docs/`](./docs/README.md), numerada de 00 a 07.
+
+Leia o [índice dos guias](./docs/README.md) para começar.
+
+---
+
+## 📌 Status Atual
+
+- ✅ Frontend com 6 páginas (Landing, Login, Register, Checkout, Dashboard, Admin)
+- ✅ Backend Express com Helmet, Rate Limit e validação Zod
+- ✅ Banco Supabase (PostgreSQL) em produção
+- ✅ OTP WhatsApp via SendPulse
+- ✅ Deploy: Cloudflare Pages + Render
+- ✅ Painel Admin (rota oculta `/admlogin`)
+- 🟡 Ações admin (ativar/inativar clientes) — próximo passo
+- 🔵 Mercado Pago (pagamento automático) — futuro

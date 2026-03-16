@@ -12,7 +12,7 @@ Imagine o projeto como um **restaurante**:
 |----------|--------|-----------------|
 | O salão (o que o cliente vê) | **Frontend React** | Páginas, botões, formulários |
 | A cozinha (os processos) | **Backend Node.js** | Regras de negócio, segurança |
-| O estoque (onde ficam os dados) | **Banco de Dados SQLite/Supabase** | Clientes, planos, pagamentos |
+| O estoque (onde ficam os dados) | **Banco de Dados Supabase (PostgreSQL)** | Clientes, planos, pagamentos |
 | O cardápio (comunicação entre salão e cozinha) | **API REST** | Rotas HTTP `/api/...` |
 
 ---
@@ -151,33 +151,42 @@ O `server/middleware/auth.ts` verifica se o token JWT é válido antes de libera
 ### O que é o banco de dados?
 É onde os dados ficam guardados permanentemente. Sem banco, tudo seria perdido ao desligar o servidor.
 
-### Estrutura atual (SQLite)
+### Estrutura atual (Supabase / PostgreSQL)
+
+O banco fica na **nuvem** (Supabase), acessível de qualquer lugar:
 
 ```
-reybraztech.db
+Supabase PostgreSQL
 ├── tabela: clients     ← Um registro por cliente
 │   ├── id, name, email, whatsapp
 │   ├── password_hash   ← Senha criptografada (nunca em texto puro)
-│   ├── plan, status, days_remaining
+│   ├── plan, status, days_remaining, is_admin
 │   └── app_account, app_password
 │
-└── tabela: payments    ← Histórico de pagamentos
-    ├── id, client_id (liga ao cliente)
-    ├── plan, value, status
-    └── paid_at
+├── tabela: payments    ← Histórico de pagamentos
+│   ├── id, client_id (liga ao cliente)
+│   ├── plan, value, status
+│   └── paid_at
+│
+└── tabela: otp_tokens  ← Códigos OTP de verificação
+    ├── id, whatsapp, token, type
+    ├── used, expires_at
+    └── created_at
 ```
 
 ### Como o banco é acessado
 
-O backend usa a biblioteca `better-sqlite3` para fazer perguntas ao banco:
+O backend usa a biblioteca `postgres` (tagged template) para fazer perguntas ao banco:
 
 ```typescript
 // Pergunta: "Me dê o cliente com este e-mail"
-const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(email);
+const [client] = await sql`SELECT * FROM clients WHERE email = ${email}`;
 
 // Ação: "Insira um novo cliente"
-db.prepare('INSERT INTO clients (...) VALUES (?, ?, ?)').run(nome, email, hash);
+await sql`INSERT INTO clients (name, email, password_hash) VALUES (${nome}, ${email}, ${hash})`;
 ```
+
+> 💡 Repare que os valores são inseridos com `${}` direto no template — a biblioteca `postgres` faz a proteção contra SQL Injection automaticamente.
 
 ### Por que a senha é um "hash" e não a senha real?
 
@@ -259,13 +268,13 @@ Então quando o React faz `fetch('/api/auth/login')`, o Vite **internamente** ch
 
 ### Em produção
 
-- Frontend está no **Netlify** (ex: `https://reybraztech.netlify.app`)
-- Backend está no **Render/Railway** (ex: `https://reybraztech-api.onrender.com`)
+- Frontend está no **Cloudflare Pages** (ex: `https://reybraztech.pages.dev`)
+- Backend está no **Render** (ex: `https://reybraztech-api.onrender.com`)
 - O arquivo `src/config/api.ts` define qual URL usar:
   ```typescript
   export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
   ```
-- Em produção, defina `VITE_API_URL` no Netlify como a URL do backend
+- Em produção, defina `VITE_API_URL` no Cloudflare Pages como a URL do backend
 
 ---
 
@@ -314,10 +323,13 @@ Frontend remove o token do localStorage
 | Pacote | Para que serve |
 |--------|---------------|
 | `express` | Servidor HTTP / API |
-| `better-sqlite3` | Banco de dados SQLite (local) |
+| `postgres` | Conexão com Supabase (PostgreSQL na nuvem) |
 | `bcryptjs` | Criptografia de senhas |
 | `jsonwebtoken` | Geração e validação de tokens JWT |
 | `cors` | Controle de origens permitidas |
+| `helmet` | Headers HTTP de segurança automáticos |
+| `express-rate-limit` | Proteção contra força bruta / DDoS |
+| `zod` | Validação de dados de entrada |
 
 ---
 
@@ -356,31 +368,41 @@ REYBRAZTECH
 │
 ├── FRONTEND (src/)
 │   ├── App.tsx → define as rotas
+│   ├── config/api.ts → URL da API (dev vs produção)
 │   ├── pages/ → uma página por arquivo
 │   │   ├── LandingPage → vitrine do produto
-│   │   ├── LoginPage → entrada do cliente
-│   │   ├── RegisterPage → cadastro
+│   │   ├── LoginPage → entrada do cliente (senha ou OTP)
+│   │   ├── RegisterPage → cadastro (3 etapas + OTP)
 │   │   ├── CheckoutPage → planos
-│   │   └── DashboardPage → área do cliente
+│   │   ├── DashboardPage → área do cliente
+│   │   └── AdminPage → painel admin (rota oculta /admlogin)
 │   └── components/ → peças reutilizáveis
 │       ├── Navbar, Footer, FloatingWhatsApp
-│       ├── ProtectedRoute → guarda /dashboard
+│       ├── ProtectedRoute → guarda rotas com verificação de expiração JWT
 │       └── web-gl-shader → animação de fundo
 │
 ├── BACKEND (server/)
-│   ├── index.ts → servidor na porta 3001
-│   ├── database.ts → conexão com o banco
-│   ├── middleware/auth.ts → verifica JWT
-│   └── routes/
-│       ├── auth.ts → /register e /login
-│       └── dashboard.ts → dados do cliente
+│   ├── index.ts → servidor na porta 3001 (Helmet + Rate Limit)
+│   ├── database.ts → conexão com Supabase (PostgreSQL)
+│   ├── middleware/
+│   │   ├── auth.ts → verifica JWT
+│   │   └── admin.ts → verifica is_admin
+│   ├── routes/
+│   │   ├── auth.ts → /register e /login (com Zod)
+│   │   ├── dashboard.ts → dados do cliente
+│   │   ├── otp.ts → envio e verificação OTP
+│   │   └── admin.ts → gerenciamento de clientes
+│   └── services/
+│       ├── otp.ts → geração/validação de códigos OTP
+│       └── whatsapp.ts → integração SendPulse
 │
-├── BANCO (reybraztech.db)
-│   ├── clients → dados dos clientes
-│   └── payments → histórico financeiro
+├── BANCO (Supabase na nuvem)
+│   ├── clients → dados dos clientes (+ is_admin)
+│   ├── payments → histórico financeiro
+│   └── otp_tokens → códigos de verificação
 │
 └── CONFIGURAÇÃO
-    ├── .env → segredos
+    ├── .env → segredos (JWT, Supabase, SendPulse)
     ├── vite.config.ts → proxy dev
     └── package.json → dependências
 ```
@@ -389,8 +411,9 @@ REYBRAZTECH
 
 ## Próximos passos sugeridos
 
-1. **Leia o Guia 02** → Aplicar segurança
-2. **Leia o Guia 03** → Migrar para Supabase (já feito)
-3. **Leia o Guia 04** → Adicionar OTP pelo WhatsApp (já feito)
-4. **Implemente o Painel Admin** → Gerenciar clientes pelo site
-5. **Integre o Mercado Pago** → Ativar clientes automaticamente após pagamento
+1. ✅ **Guia 02** → Segurança básica (Helmet, Rate Limit, Zod, jwt-decode) — **JÁ FEITO**
+2. ✅ **Guia 03** → Migrar para Supabase — **JÁ FEITO**
+3. ✅ **Guia 04** → OTP WhatsApp (SendPulse) — **JÁ FEITO**
+4. ✅ **Guia 05** → Deploy (Cloudflare Pages + Render) — **JÁ FEITO**
+5. 🟡 **Guia 06** → Implementar ações do Admin (ativar/inativar) — PRÓXIMO
+6. 🟡 **Integrar Mercado Pago** → Ativar clientes automaticamente após pagamento

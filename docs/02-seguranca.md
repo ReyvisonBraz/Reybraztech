@@ -2,7 +2,7 @@
 
 > **Objetivo:** Aplicar medidas de segurança reais, do nível mais básico ao avançado, para proteger o site, o banco de dados e os dados dos clientes.
 > 
-> **⚠️ Status Atual:** Estas implementações são os **próximos passos** do projeto. O código atual do projeto ainda *não* possui essas proteções ativas.
+> **⚠️ Status Atual:** Algumas medidas já foram implementadas (✅ Helmet, Rate Limit, Zod, jwt-decode, `.gitignore` seguro). As seções restantes (reCAPTCHA, Honeypot, criptografia AES) são os **próximos passos**.
 
 ---
 
@@ -581,14 +581,14 @@ Crie o arquivo `public/_headers` para adicionar headers de segurança ao Netlify
 ## Checklist de Segurança
 
 ### 🔴 Crítico (fazer hoje)
-- [ ] Gerar novo `JWT_SECRET` com `crypto.randomBytes(64).toString('hex')`
-- [ ] Confirmar que `.env` está no `.gitignore`
-- [ ] Adicionar validação de variáveis de ambiente no servidor
+- [x] Gerar novo `JWT_SECRET` com `crypto.randomBytes(64).toString('hex')`
+- [x] Confirmar que `.env` está no `.gitignore`
+- [x] Adicionar validação de variáveis de ambiente no servidor
 
 ### 🟡 Importante (fazer em breve)
-- [ ] Instalar e configurar `helmet`, `cors`, `express-rate-limit`
-- [ ] Adicionar validação de entrada com Zod nas rotas
-- [ ] Instalar `jwt-decode` e verificar expiração no `ProtectedRoute`
+- [x] Instalar e configurar `helmet`, `cors`, `express-rate-limit`
+- [x] Adicionar validação de entrada com Zod nas rotas
+- [x] Instalar `jwt-decode` e verificar expiração no `ProtectedRoute`
 - [ ] Criptografar `app_password` com AES
 
 ### 🟢 Anti-Bot (recomendado)
@@ -601,7 +601,7 @@ Crie o arquivo `public/_headers` para adicionar headers de segurança ao Netlify
 
 ### 🔵 Produção
 - [ ] Ativar RLS no Supabase
-- [ ] Criar `public/_headers` no Netlify (com CSP para reCAPTCHA)
+- [ ] Criar `public/_headers` no Cloudflare Pages (com CSP para reCAPTCHA)
 - [ ] Garantir que todas as URLs de produção usam `https://`
 - [ ] Configurar backup automático do banco
 

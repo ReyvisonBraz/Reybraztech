@@ -604,13 +604,13 @@ await sendTemplateMessage(
 
 ## Checklist Final
 
-- [ ] Credenciais copiadas do painel SendPulse (`Client ID` e `Client Secret`)
-- [ ] Nome do bot WhatsApp identificado
-- [ ] Tabela `otp_tokens` criada no banco
-- [ ] `server/services/otp.ts` criado
-- [ ] `server/services/whatsapp.ts` criado (com autenticação SendPulse)
-- [ ] `server/routes/otp.ts` criado
-- [ ] Rota registrada no `server/index.ts`
-- [ ] Variáveis de ambiente adicionadas ao `.env` e `.env.example`
-- [ ] Frontend atualizado para suportar login via WhatsApp
+- [x] Credenciais copiadas do painel SendPulse (`Client ID` e `Client Secret`)
+- [x] Nome do bot WhatsApp identificado
+- [x] Tabela `otp_tokens` criada no banco
+- [x] `server/services/otp.ts` criado
+- [x] `server/services/whatsapp.ts` criado (com autenticação SendPulse)
+- [x] `server/routes/otp.ts` criado
+- [x] Rota registrada no `server/index.ts`
+- [x] Variáveis de ambiente adicionadas ao `.env` e `.env.example`
+- [x] Frontend atualizado para suportar login via WhatsApp
 - [ ] (Opcional) Templates de mensagem criados no painel da SendPulse

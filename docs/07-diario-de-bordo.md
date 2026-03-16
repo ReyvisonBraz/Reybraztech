@@ -134,4 +134,17 @@ Em produção, se nosso serviço de hospedagem (Render) desse pane e por alguma 
 
 ***
 
-**Próximo Passo (Semana 3 - Dia 11 e 12):** Construir a interface real Frontend do `/admin`, conectando ela na nossa nova Rota GET para criar uma tabela elegante, com botões visuais para ativar ou inativar as mensalidades dos clientes.
+### Dia 11: Frontend do Painel Admin (Caminho Oculto)
+**Data:** 16/03/2026
+
+**O que foi feito:**
+1. Criamos a página visual principal do administrador em `src/pages/AdminPage.tsx`. Essa tela se conecta à nossa API restrita (`/api/admin/clients`) e lista todos os clientes usando uma visualização moderna e com design minimalista.
+2. Em vez de adicionar um botão escrito "Admin" explícito no site, injetamos uma Rota Oculta (`/admlogin`) no roteador principal (`App.tsx`). 
+3. Toda a tela do backend exibe uma barreira visual que repele e expulsa clientes normais que por acaso tentarem adivinhar o link do painel, mostrando uma tela imersiva de "Acesso Bloqueado", antes de jogá-los de volta para o Dashboard normal.
+
+**Por que isso importa?**
+* Se não existe porta, não existe tentativa de arrombamento da porta. Usar um caminho isolado na URL não linkado em lugar nenhum e protegido ativamente impede qualquer intruso ou atacante de ver qual é a base do seu painel e testar senhas. 
+
+***
+
+**Próximo Passo (Semana 3 - Dia 12):** Funcionalidade Interativa. Agora precisaremos implementar a lógica pra interagir com essa tabela, colocando botões que conseguem ativar/inativar o acesso dos clientes ou suspender a assinatura do plano.

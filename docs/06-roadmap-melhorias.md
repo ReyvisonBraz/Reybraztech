@@ -331,7 +331,7 @@ Criar `src/pages/AdminPage.tsx` com uma tabela que exibe os clientes (fetch dos 
 
 **Conceito:** Aprender a usar `useEffect` para buscar dados da API e `useState` para armazená-los.
 
-- [ ] Concluído
+- [x] Concluído
 
 ---
 
@@ -398,7 +398,7 @@ Atualizar `DashboardPage.tsx` para mostrar os dias restantes com um visual de ba
 - [x] Dia 8: Coluna `is_admin` no banco
 - [x] Dia 9: Middleware admin
 - [x] Dia 10: Rota GET clientes
-- [ ] Dia 11: Página admin frontend
+- [x] Dia 11: Página admin frontend
 - [ ] Dia 12: Ações ativar/inativar
 
 ### Semana 4 — Automação

@@ -5,6 +5,7 @@ import { sendOTPMessage } from '../services/whatsapp.js';
 import sql from '../database.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.post('/send', async (req: Request, res: Response) => {
 
     res.json({ message: 'Código enviado com sucesso!' });
   } catch (error) {
-    console.error('Erro ao enviar OTP:', error);
+    logger.error('Erro ao enviar OTP:', error);
     res.status(500).json({ error: 'Erro interno. Tente novamente.' });
   }
 });
@@ -76,7 +77,7 @@ router.post('/verify', async (req: Request, res: Response) => {
 
     res.json({ valid: true, message: 'Código verificado com sucesso!' });
   } catch (error) {
-    console.error('Erro ao verificar OTP:', error);
+    logger.error('Erro ao verificar OTP:', error);
     res.status(500).json({ error: 'Erro interno. Tente novamente.' });
   }
 });
@@ -112,7 +113,7 @@ router.post('/verify-login', async (req: Request, res: Response) => {
       { expiresIn: '30d' }
     );
 
-    console.log(`✅ Login via OTP: ${client.name} (${client.whatsapp})`);
+    logger.info(`✅ Login via OTP: ${client.name} (${client.whatsapp})`);
 
     res.json({
       success: true,
@@ -125,7 +126,7 @@ router.post('/verify-login', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Erro ao verificar OTP login:', error);
+    logger.error('Erro ao verificar OTP login:', error);
     res.status(500).json({ error: 'Erro interno. Tente novamente.' });
   }
 });
@@ -157,11 +158,11 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       UPDATE clients SET password_hash = ${newHash} WHERE whatsapp = ${whatsapp}
     `;
 
-    console.log(`✅ Senha redefinida via OTP para: ${whatsapp}`);
+    logger.info(`✅ Senha redefinida via OTP para: ${whatsapp}`);
 
     res.json({ message: 'Senha redefinida com sucesso!' });
   } catch (error) {
-    console.error('Erro ao redefinir senha:', error);
+    logger.error('Erro ao redefinir senha:', error);
     res.status(500).json({ error: 'Erro interno. Tente novamente.' });
   }
 });

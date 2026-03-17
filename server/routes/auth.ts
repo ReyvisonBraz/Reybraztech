@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import sql from '../database.js';
+import logger from '../utils/logger.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -60,7 +61,7 @@ router.post('/register', async (req: Request, res: Response) => {
           RETURNING id, name, email, plan, status
         `;
 
-        console.log(`✅ Novo cliente cadastrado: ${name} (ID: ${newClient.id})`);
+        logger.info(`✅ Novo cliente cadastrado: ${name} (ID: ${newClient.id})`);
 
         // Gerar JWT para auto-login após cadastro
         const token = jwt.sign(
@@ -81,7 +82,7 @@ router.post('/register', async (req: Request, res: Response) => {
             },
         });
     } catch (error) {
-        console.error('Erro no cadastro:', error);
+        logger.error('Erro no cadastro:', error);
         res.status(500).json({ error: 'Erro interno. Tente novamente mais tarde.' });
     }
 });
@@ -136,7 +137,7 @@ router.post('/login', async (req: Request, res: Response) => {
             { expiresIn: '30d' }
         );
 
-        console.log(`✅ Login realizado: ${client.name} (${client.email || client.whatsapp})`);
+        logger.info(`✅ Login realizado: ${client.name} (${client.email || client.whatsapp})`);
 
         res.json({
             success: true,
@@ -149,7 +150,7 @@ router.post('/login', async (req: Request, res: Response) => {
             },
         });
     } catch (error) {
-        console.error('Erro no login:', error);
+        logger.error('Erro no login:', error);
         res.status(500).json({ error: 'Erro interno. Tente novamente mais tarde.' });
     }
 });

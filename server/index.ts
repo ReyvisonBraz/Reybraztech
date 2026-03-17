@@ -1,14 +1,23 @@
-// ⚠️ IMPORTANTE: dotenv DEVE ser carregado ANTES de qualquer import
-// que use variáveis de ambiente (como database.ts)
 import dotenv from 'dotenv';
 dotenv.config();
+
+import * as Sentry from "@sentry/node";
+import logger from './utils/logger.js';
+
+// Inicializar Sentry (v10+)
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        tracesSampleRate: 1.0,
+    });
+}
 
 // O servidor NÃO pode rodar sem essas variáveis
 const REQUIRED_ENV = ['JWT_SECRET'];
 
 for (const key of REQUIRED_ENV) {
     if (!process.env[key]) {
-        console.error(`❌ ERRO FATAL: Variável "${key}" não encontrada no .env!`);
+        logger.error(`❌ ERRO FATAL: Variável "${key}" não encontrada no .env!`);
         process.exit(1); // fecha o servidor imediatamente
     }
 }
@@ -58,6 +67,9 @@ const limiter = rateLimit({
 // Aplica o Rate Limit em todas as rotas (pode ser ajustado apenas para /api/auth se desejar)
 app.use('/api/', limiter);
 
+// ─── Rastreamento de Erros (Sentry) ──────────────────────────
+// Sentry v10+ captura automaticamente a maior parte das coisas com init
+
 
 // ─── Rotas ──────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -70,12 +82,34 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Servidor Reybraztech rodando!' });
 });
 
+// Rota de teste de erro
+app.get('/api/test-error', (req, res) => {
+    logger.error('Isto é um erro de teste disparado manualmente!');
+    throw new Error('Erro de teste para o Sentry e Telegram!');
+});
+
+// O handler de erros do Sentry v10+ deve vir antes dos outros middlewares de erro
+if (process.env.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
+}
+
+// Global Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    logger.error(`Erro na rota ${req.method} ${req.path}:`, err);
+    
+    const statusCode = err.status || 500;
+    res.status(statusCode).json({
+        error: true,
+        message: process.env.NODE_ENV === 'production' 
+            ? 'Ocorreu um erro interno no servidor.' 
+            : err.message
+    });
+});
+
 // ─── Iniciar servidor ────────────────────────────────────────
 app.listen(PORT, () => {
-    console.log('');
-    console.log('🚀 ================================');
-    console.log(`🚀  Servidor Reybraztech Online!`);
-    console.log(`🚀  Porta: http://localhost:${PORT}`);
-    console.log('🚀 ================================');
-    console.log('');
+    logger.info('🚀 ================================');
+    logger.info(`🚀  Servidor Reybraztech Online!`);
+    logger.info(`🚀  Porta: http://localhost:${PORT}`);
+    logger.info('🚀 ================================');
 });

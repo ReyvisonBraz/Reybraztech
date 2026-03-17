@@ -3,11 +3,13 @@ import dotenv from 'dotenv';
 dotenv.config(); // Carrega .env ANTES de ler DATABASE_URL
 
 import postgres from 'postgres';
+import logger from './utils/logger.js';
 
 // A CONNECTION STRING vem do .env (segredo!)
 const connectionString = process.env.DATABASE_URL!;
 
 if (!connectionString) {
+  logger.error('❌ DATABASE_URL não definida no .env!');
   throw new Error('❌ DATABASE_URL não definida no .env!');
 }
 
@@ -18,6 +20,6 @@ const sql = postgres(connectionString, {
   idle_timeout: 20,
 });
 
-console.log('✅ Conectado ao Supabase (PostgreSQL)!');
+logger.info('✅ Conectado ao Supabase (PostgreSQL)!');
 
 export default sql;

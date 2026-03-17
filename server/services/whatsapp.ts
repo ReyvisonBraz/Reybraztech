@@ -1,4 +1,4 @@
-// server/services/whatsapp.ts
+import logger from '../utils/logger.js';
 
 // ---- Cache do token OAuth2 ----
 let cachedToken: string | null = null;
@@ -26,7 +26,7 @@ async function getAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('❌ Erro ao obter token SendPulse:', errorText);
+    logger.error('❌ Erro ao obter token SendPulse:', errorText);
     throw new Error('Falha na autenticação com SendPulse');
   }
 
@@ -34,7 +34,7 @@ async function getAccessToken(): Promise<string> {
   cachedToken = data.access_token;
   tokenExpiresAt = Date.now() + data.expires_in * 1000;
 
-  console.log('🔑 Token SendPulse obtido com sucesso!');
+  logger.info('🔑 Token SendPulse obtido com sucesso!');
   return cachedToken!;
 }
 
@@ -113,23 +113,23 @@ export async function sendWhatsApp(number: string, message: string): Promise<boo
       const result = await trySendToPhone(token, phone, message);
 
       if (result.ok) {
-        console.log(`✅ WhatsApp enviado para ${phone} via SendPulse`);
+        logger.info(`✅ WhatsApp enviado para ${phone} via SendPulse`);
         return true;
       }
 
       // Se o erro não for "Contact does not exist", não tente o próximo formato
       if (result.error && !result.error.includes('Contact does not exist')) {
-        console.error(`❌ Erro ao enviar WhatsApp para ${phone}:`, result.error);
+        logger.error(`❌ Erro ao enviar WhatsApp para ${phone}: ${result.error}`);
         return false;
       }
 
-      console.log(`⚠️ Contato ${phone} não encontrado, tentando formato alternativo...`);
+      logger.info(`⚠️ Contato ${phone} não encontrado, tentando formato alternativo...`);
     }
 
-    console.error(`❌ Nenhum formato de telefone funcionou para: ${number}`);
+    logger.error(`❌ Nenhum formato de telefone funcionou para: ${number}`);
     return false;
   } catch (error) {
-    console.error('❌ Falha na conexão com SendPulse:', error);
+    logger.error('❌ Falha na conexão com SendPulse:', error);
     return false;
   }
 }

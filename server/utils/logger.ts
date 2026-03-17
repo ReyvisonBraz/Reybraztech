@@ -36,16 +36,29 @@ const logger = winston.createLogger({
   ],
 });
 
-// Função para enviar alertas ao Telegram
-export const sendTelegramAlert = async (message: string, error?: any) => {
+/**
+ * Envia uma notificação ao Telegram.
+ * @param message Mensagem principal
+ * @param type 'error' para alertas de erro, 'info' para notificações gerais
+ * @param error Objeto de erro opcional para stack trace
+ */
+export const sendTelegramNotification = async (message: string, type: 'error' | 'info' = 'info', error?: any) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   
   if (!token || !chatId) return;
 
   try {
-    const stack = error?.stack ? `\n\n<b>Stack Trace:</b>\n<code>${error.stack.substring(0, 500)}</code>` : '';
-    const text = `🚨 <b>Alerta de Erro - Reybraztech</b>\n\n${message}${stack}`;
+    const isError = type === 'error';
+    const icon = isError ? '🚨' : '✨';
+    const title = isError ? '<b>Alerta de Erro - Reybraztech</b>' : '<b>Nova Notificação - Reybraztech</b>';
+    
+    let text = `${icon} ${title}\n\n${message}`;
+
+    if (isError && error?.stack) {
+      const sanitizedStack = error.stack.replace(/<|>/g, '');
+      text += `\n\n<b>Stack Trace:</b>\n<code>${sanitizedStack.substring(0, 800)}</code>`;
+    }
 
     await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
       chat_id: chatId,
@@ -53,14 +66,22 @@ export const sendTelegramAlert = async (message: string, error?: any) => {
       parse_mode: 'HTML'
     });
   } catch (err) {
-    logger.error('Falha ao enviar alerta para o Telegram', err);
+    console.error('Falha crítica ao enviar notificação para o Telegram:', err);
   }
 };
 
-// Middleware para interceptar erros do Winston e enviar para o Telegram se for crítico
+// Mantemos o nome antigo por compatibilidade se necessário, mas apontando para a nova
+export const sendTelegramAlert = (message: string, error?: any) => sendTelegramNotification(message, 'error', error);
+
+// Middleware para interceptar logs do Winston
 logger.on('data', (log) => {
+  // Enviar erros automaticamente
   if (log.level === 'error') {
-    sendTelegramAlert(`Erro detectado: ${log.message}`, log);
+    sendTelegramNotification(log.message, 'error', log);
+  } 
+  // Enviar mensagens de sucesso que começam com ✅
+  else if (log.level === 'info' && log.message.includes('✅')) {
+    sendTelegramNotification(log.message, 'info');
   }
 });
 

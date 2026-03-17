@@ -10,11 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 // Schema de validação usando Zod
 const registerSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  whatsapp: z.string().min(10, 'WhatsApp inválido'),
-  device: z.string().min(1, 'Informe o dispositivo'),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+    name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+    whatsapp: z.string().min(10, 'WhatsApp inválido'),
+    device: z.string().min(1, 'Informe o dispositivo'),
+    email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
 // ============================================================
@@ -61,7 +61,16 @@ router.post('/register', async (req: Request, res: Response) => {
           RETURNING id, name, email, plan, status
         `;
 
-        logger.info(`✅ Novo cliente cadastrado: ${name} (ID: ${newClient.id})`);
+        const logMsg = [
+            `✅ <b>Novo cliente cadastrado!</b>`,
+            `👤 <b>Nome:</b> ${name}`,
+            `📱 <b>WhatsApp:</b> ${whatsapp}`,
+            `🖥️ <b>Dispositivo:</b> ${device}`,
+            `📧 <b>E-mail:</b> ${email || 'Não informado'}`,
+            `🆔 <b>ID no Banco:</b> ${newClient.id}`
+        ].join('\n');
+
+        logger.info(logMsg);
 
         // Gerar JWT para auto-login após cadastro
         const token = jwt.sign(

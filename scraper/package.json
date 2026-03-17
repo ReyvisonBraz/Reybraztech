@@ -1,0 +1,24 @@
+{
+  "name": "reybraztech-scraper",
+  "version": "1.0.0",
+  "description": "Scraper do painel StarHome ResellerSystem para extração de dados de clientes",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "axios": "^1.13.6",
+    "dotenv": "^16.4.7",
+    "form-data": "^4.0.5",
+    "jsdom": "^29.0.0",
+    "puppeteer": "^24.4.0",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

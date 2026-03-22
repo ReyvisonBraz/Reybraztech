@@ -33,7 +33,7 @@ export async function saveOTP(whatsapp: string, token: string, type: string): Pr
  * Valida o token OTP.
  * Retorna true se válido, false se inválido/expirado/já usado.
  */
-export async function verifyOTP(whatsapp: string, token: string, type: string): Promise<boolean> {
+export async function verifyOTP(whatsapp: string, token: string, type: string, consume: boolean = true): Promise<boolean> {
   const [record] = await sql`
     SELECT id FROM otp_tokens
     WHERE whatsapp = ${whatsapp} AND token = ${token} AND type = ${type}
@@ -44,7 +44,9 @@ export async function verifyOTP(whatsapp: string, token: string, type: string): 
 
   if (!record) return false;
 
-  // Marcar como usado
-  await sql`UPDATE otp_tokens SET used = TRUE WHERE id = ${record.id}`;
+  if (consume) {
+    // Marcar como usado
+    await sql`UPDATE otp_tokens SET used = TRUE WHERE id = ${record.id}`;
+  }
   return true;
 }

@@ -68,7 +68,8 @@ router.post('/verify', async (req: Request, res: Response) => {
   }
 
   try {
-    const valid = await verifyOTP(whatsapp, token, type);
+    const consume = type !== 'reset_password';
+    const valid = await verifyOTP(whatsapp, token, type, consume);
 
     if (!valid) {
       res.status(401).json({ error: 'Código inválido ou expirado.' });
@@ -148,6 +149,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     const valid = await verifyOTP(whatsapp, token, 'reset_password');
 
     if (!valid) {
+      logger.error(`🚨 Falha ao redefinir senha: Código inválido ou expirado para o número ${whatsapp}`);
       res.status(401).json({ error: 'Código inválido ou expirado.' });
       return;
     }

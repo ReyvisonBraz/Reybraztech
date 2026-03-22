@@ -6,7 +6,12 @@ import sql from '../database.js';
 import logger from '../utils/logger.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET!;
+
+// Schema de validação do login
+const loginSchema = z.object({
+    identifier: z.string().min(1, 'WhatsApp/E-mail é obrigatório'),
+    password: z.string().min(1, 'Senha é obrigatória'),
+});
 
 // Schema de validação usando Zod
 const registerSchema = z.object({
@@ -52,6 +57,7 @@ router.post('/register', async (req: Request, res: Response) => {
         }
 
         // Criptografar senha
+        const JWT_SECRET = process.env.JWT_SECRET!;
         const passwordHash = await bcrypt.hash(password, 12);
 
         // Salvar no banco (email pode ser null)
@@ -102,19 +108,23 @@ router.post('/register', async (req: Request, res: Response) => {
 // identifier pode ser um WhatsApp (telefone) ou um e-mail
 // ============================================================
 router.post('/login', async (req: Request, res: Response) => {
-    const { identifier, password } = req.body;
-
-    if (!identifier || !password) {
-        res.status(400).json({ error: 'WhatsApp/E-mail e senha são obrigatórios.' });
+    const result = loginSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ error: result.error.issues[0].message });
         return;
     }
 
+    const { identifier, password } = result.data;
+
     try {
+        const startTime = performance.now();
+
         // Verificar se parece email (contém @) ou telefone
         const isEmail = identifier.includes('@');
 
         let client: any;
 
+        const dbStart = performance.now();
         if (isEmail) {
             [client] = await sql`
               SELECT * FROM clients WHERE email = ${identifier}
@@ -126,6 +136,7 @@ router.post('/login', async (req: Request, res: Response) => {
               SELECT * FROM clients WHERE whatsapp = ${cleanPhone}
             `;
         }
+        const dbEnd = performance.now();
 
         if (!client) {
             res.status(401).json({ error: 'Credenciais inválidas.' });
@@ -133,20 +144,31 @@ router.post('/login', async (req: Request, res: Response) => {
         }
 
         // Comparar senha
+        const bcryptStart = performance.now();
         const passwordMatch = await bcrypt.compare(password, client.password_hash);
+        const bcryptEnd = performance.now();
+
         if (!passwordMatch) {
             res.status(401).json({ error: 'Credenciais inválidas.' });
             return;
         }
 
-        // Gerar token JWT (expira em 2 horas por segurança)
+        const jwtStart = performance.now();
+        const JWT_SECRET = process.env.JWT_SECRET!;
         const token = jwt.sign(
             { id: client.id, email: client.email || client.whatsapp },
             JWT_SECRET,
             { expiresIn: '30d' }
         );
+        const jwtEnd = performance.now();
 
-        logger.info(`✅ Login realizado: ${client.name} (${client.email || client.whatsapp})`);
+        const totalTime = performance.now() - startTime;
+
+        logger.info(`⚡ [Performance] Login ${client.name}:
+  - DB Lookup: ${(dbEnd - dbStart).toFixed(2)}ms
+  - Bcrypt: ${(bcryptEnd - bcryptStart).toFixed(2)}ms
+  - JWT: ${(jwtEnd - jwtStart).toFixed(2)}ms
+  - Total: ${totalTime.toFixed(2)}ms`);
 
         res.json({
             success: true,

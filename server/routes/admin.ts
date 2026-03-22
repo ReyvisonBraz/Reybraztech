@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import sql from '../database.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { verifyAdmin } from '../middleware/admin.js';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
@@ -24,7 +25,7 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
 
         res.json({ clients });
     } catch (error) {
-        console.error('Erro ao buscar clientes no admin:', error);
+        logger.error('Erro ao buscar clientes no admin:', error);
         res.status(500).json({ error: 'Erro ao buscar a lista de clientes.' });
     }
 });

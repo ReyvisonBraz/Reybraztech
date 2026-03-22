@@ -60,13 +60,30 @@ export const sendTelegramNotification = async (message: string, type: 'error' | 
       text += `\n\n<b>Stack Trace:</b>\n<code>${sanitizedStack.substring(0, 800)}</code>`;
     }
 
-    await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-      chat_id: chatId,
-      text: text,
-      parse_mode: 'HTML'
-    });
-  } catch (err) {
-    console.error('Falha crítica ao enviar notificação para o Telegram:', err);
+    try {
+      await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'HTML'
+      });
+    } catch (err: any) {
+      // Se o erro for 400 (Bad Request), provavelmente é HTML malformado (ex: unclosed tags)
+      if (err.response && err.response.status === 400) {
+        try {
+          // Tentar enviar novamente SEM parse_mode (como texto puro)
+          await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+            chat_id: chatId,
+            text: text, // Envia o texto original, tags aparecerão como texto
+          });
+          return; // Sucesso no fallback!
+        } catch (retryErr) {
+          console.error('Falha crítica no fallback do Telegram:', retryErr);
+        }
+      }
+      console.error('Falha crítica ao enviar notificação para o Telegram:', err);
+    }
+  } catch (outerErr) {
+    console.error('Erro inesperado em sendTelegramNotification:', outerErr);
   }
 };
 

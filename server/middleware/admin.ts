@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import sql from '../database.js';
 import { AuthRequest } from './auth.js';
+import logger from '../utils/logger.js';
 
 export const verifyAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
@@ -21,7 +22,7 @@ export const verifyAdmin = async (req: AuthRequest, res: Response, next: NextFun
 
         next();
     } catch (error) {
-        console.error('Erro na verificação de admin:', error);
+        logger.error('Erro na verificação de admin:', error);
         res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 };

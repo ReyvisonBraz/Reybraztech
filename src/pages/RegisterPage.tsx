@@ -183,13 +183,14 @@ export const RegisterPage = () => {
         localStorage.setItem('reyb_token', data.token);
         localStorage.setItem('reyb_user', JSON.stringify(data.user));
 
-        // Salvar senha temporariamente para exibir na tela de boas-vindas
-        sessionStorage.setItem('reyb_welcome_password', formData.password);
-        sessionStorage.setItem('reyb_welcome_whatsapp', formData.countryCode + formData.whatsapp);
-        sessionStorage.setItem('reyb_welcome_email', formData.email || '');
-
-        // Redirecionar para o dashboard com flag de boas-vindas
-        navigate('/dashboard?welcome=true');
+        // Redirecionar para o dashboard com dados de boas-vindas via navigate state
+        navigate('/dashboard?welcome=true', {
+          state: {
+            welcomePassword: formData.password,
+            welcomeWhatsapp: formData.countryCode + formData.whatsapp,
+            welcomeEmail: formData.email || '',
+          }
+        });
 
       } catch {
         setErrorMsg('Não foi possível conectar ao servidor. Tente novamente.');
@@ -199,7 +200,7 @@ export const RegisterPage = () => {
     }
   };
 
-  const progressWidth = step === 1 ? '25%' : step === 2 ? '50%' : step === 3 ? '75%' : '100%';
+
 
   return (
     <div className="min-h-screen bg-transparent pt-32 pb-20 flex items-center justify-center px-4">

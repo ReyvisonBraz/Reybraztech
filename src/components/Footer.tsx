@@ -67,7 +67,7 @@ export const Footer = () => {
                     </div>
                 </div>
                 <div className="border-t border-white/5 pt-12 text-center">
-                    <p className="text-slate-500 text-sm font-medium tracking-widest uppercase">© 2023 Reybraz Tech. Todos os direitos reservados.</p>
+                    <p className="text-slate-500 text-sm font-medium tracking-widest uppercase">© {new Date().getFullYear()} Reybraz Tech. Todos os direitos reservados.</p>
                 </div>
             </div>
         </footer>

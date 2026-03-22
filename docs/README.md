@@ -16,6 +16,7 @@ Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem num
 | 05 | [05-hospedagem-deploy.md](./05-hospedagem-deploy.md) | Como foi feito o deploy do frontend (Cloudflare Pages) e do backend (Render). |
 | 06 | [06-roadmap-melhorias.md](./06-roadmap-melhorias.md) | Roadmap incremental de melhorias futuras (Jobs Cron, Mercado Pago, etc). |
 | 07 | [07-diario-de-bordo.md](./07-diario-de-bordo.md) | Diário de bordo — registro detalhado de cada alteração feita no projeto. |
+| 09 | [09-analise-performance-login.md](./09-analise-performance-login.md) | Diagnóstico detalhado de performance da rota de login e causas de lentidão. |
 
 ---
 
@@ -37,4 +38,6 @@ Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem num
 🟡 06. Guia 06: Roadmap de Melhorias — EM ANDAMENTO (Painel Admin parcial)
       ↓
 📖 07. Diário de Bordo — Atualizado automaticamente
+      ↓
+✅ 09. Análise de Performance: Rota de Login — FEITO
 ```

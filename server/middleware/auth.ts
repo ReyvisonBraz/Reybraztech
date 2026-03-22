@@ -1,14 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-
 export interface AuthRequest extends Request {
     clientId?: number;
     clientEmail?: string;
 }
 
 export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+        res.status(500).json({ error: 'Erro interno de configuração do servidor.' });
+        return;
+    }
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 

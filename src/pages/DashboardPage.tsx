@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X } from 'lucide-react';
 import { API_URL } from '../config/api';
 
@@ -37,19 +37,23 @@ export const DashboardPage = () => {
     email: string;
   } | null>(null);
 
+  const location = useLocation();
+
   useEffect(() => {
     // Verificar se é primeiro acesso após cadastro
     if (searchParams.get('welcome') === 'true') {
-      const password = sessionStorage.getItem('reyb_welcome_password');
-      const whatsapp = sessionStorage.getItem('reyb_welcome_whatsapp');
-      const email = sessionStorage.getItem('reyb_welcome_email');
+      const state = location.state as { welcomePassword?: string; welcomeWhatsapp?: string; welcomeEmail?: string } | null;
 
-      if (password && whatsapp) {
-        setWelcomeData({ whatsapp, password, email: email || '' });
+      if (state?.welcomePassword && state?.welcomeWhatsapp) {
+        setWelcomeData({
+          whatsapp: state.welcomeWhatsapp,
+          password: state.welcomePassword,
+          email: state.welcomeEmail || '',
+        });
         setShowWelcome(true);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, location.state]);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -96,12 +100,10 @@ export const DashboardPage = () => {
 
   const handleCloseWelcome = () => {
     setShowWelcome(false);
-    // Limpar dados temporários
-    sessionStorage.removeItem('reyb_welcome_password');
-    sessionStorage.removeItem('reyb_welcome_whatsapp');
-    sessionStorage.removeItem('reyb_welcome_email');
     // Remover ?welcome=true da URL
     setSearchParams({});
+    // Limpar o state da navegação
+    window.history.replaceState({}, '');
   };
 
   const copyToClipboard = (text: string, field: string) => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 // ► Para trocar a logo: substitua o arquivo  public/logo/logo.png
 // ► Formatos aceitos: PNG, JPG, SVG, WEBP
@@ -11,7 +11,14 @@ const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT
 export const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const navRef = useRef<HTMLElement>(null);
+    const location = useLocation();
+
+    // Reavalia o token sempre que a rota muda (login/logout/navegação)
+    useEffect(() => {
+        setIsLoggedIn(!!localStorage.getItem('reyb_token'));
+    }, [location]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -63,13 +70,13 @@ export const Navbar = () => {
                         </div>
                     </div>
                     <div className="hidden md:flex items-center gap-4">
-                        <Link to={localStorage.getItem('reyb_token') ? "/dashboard" : "/login"} className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
-                            {localStorage.getItem('reyb_token') ? "Painel" : "Acesso"}
+                        <Link to={isLoggedIn ? "/dashboard" : "/login"} className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
+                            {isLoggedIn ? "Painel" : "Acesso"}
                         </Link>
                     </div>
                     <div className="-mr-2 flex md:hidden items-center gap-3">
-                        <Link to={localStorage.getItem('reyb_token') ? "/dashboard" : "/login"} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-full text-base font-black shadow-[0_0_20px_rgba(14,165,233,0.6)] border-2 border-cyan-400">
-                            {localStorage.getItem('reyb_token') ? "Painel" : "Acesso"}
+                        <Link to={isLoggedIn ? "/dashboard" : "/login"} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-full text-base font-black shadow-[0_0_20px_rgba(14,165,233,0.6)] border-2 border-cyan-400">
+                            {isLoggedIn ? "Painel" : "Acesso"}
                         </Link>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -103,11 +110,11 @@ export const Navbar = () => {
                                 </a>
                             ))}
                             <Link
-                                to={localStorage.getItem('reyb_token') ? "/dashboard" : "/login"}
+                                to={isLoggedIn ? "/dashboard" : "/login"}
                                 className="w-full text-center glow-button bg-primary text-white px-3 py-4 rounded-xl text-base font-black block mt-4 shadow-[0_0_20px_rgba(14,165,233,0.4)] border-2 border-cyan-400"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                {localStorage.getItem('reyb_token') ? "Painel" : "Acesso"}
+                                {isLoggedIn ? "Painel" : "Acesso"}
                             </Link>
                         </div>
                     </motion.div>

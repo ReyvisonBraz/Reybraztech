@@ -1,0 +1,74 @@
+{
+  "indexes": [
+    {
+      "indexname": "clients_pkey",
+      "indexdef": "CREATE UNIQUE INDEX clients_pkey ON public.clients USING btree (id)"
+    },
+    {
+      "indexname": "clients_whatsapp_key",
+      "indexdef": "CREATE UNIQUE INDEX clients_whatsapp_key ON public.clients USING btree (whatsapp)"
+    },
+    {
+      "indexname": "idx_clients_email",
+      "indexdef": "CREATE INDEX idx_clients_email ON public.clients USING btree (email)"
+    },
+    {
+      "indexname": "idx_clients_whatsapp",
+      "indexdef": "CREATE INDEX idx_clients_whatsapp ON public.clients USING btree (whatsapp)"
+    }
+  ],
+  "columns": [
+    {
+      "column_name": "id",
+      "data_type": "bigint"
+    },
+    {
+      "column_name": "name",
+      "data_type": "text"
+    },
+    {
+      "column_name": "whatsapp",
+      "data_type": "text"
+    },
+    {
+      "column_name": "device",
+      "data_type": "text"
+    },
+    {
+      "column_name": "email",
+      "data_type": "text"
+    },
+    {
+      "column_name": "password_hash",
+      "data_type": "text"
+    },
+    {
+      "column_name": "plan",
+      "data_type": "text"
+    },
+    {
+      "column_name": "status",
+      "data_type": "text"
+    },
+    {
+      "column_name": "days_remaining",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "app_account",
+      "data_type": "text"
+    },
+    {
+      "column_name": "app_password",
+      "data_type": "text"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "column_name": "is_admin",
+      "data_type": "boolean"
+    }
+  ]
+}

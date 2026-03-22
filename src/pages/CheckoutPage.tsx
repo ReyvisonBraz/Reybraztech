@@ -4,8 +4,9 @@ import { motion } from 'motion/react';
 import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle } from 'lucide-react';
 
 // 🔗 Links do Mercado Pago — cole seus links aqui!
-const MP_LINKS: Record<string, string> = {
-  mensal: '#', // Ex: 'https://mpago.la/xxxxxxx'
+// 🔗 Links do Mercado Pago (Fallbacks caso a API falhe)
+const MP_FALLBACK_LINKS: Record<string, string> = {
+  mensal: 'https://mpago.la/2S5S5S5', // Exemplo
   trimestral: '#',
   semestral: '#',
   anual: '#',
@@ -46,18 +47,56 @@ export const CheckoutPage = () => {
   };
 
   const selectedPlan = planDetails[plan] || planDetails.mensal;
-  const mpLink = MP_LINKS[plan] || '#';
+  const mpLink = MP_FALLBACK_LINKS[plan] || '#';
 
-  const handleProceed = (e: FormEvent) => {
+  const handleProceed = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isLoggedIn) {
-      // Salvar localmente apenas se for cliente novo, para uso futuro
+    
+    // Pegar token de autenticação
+    const token = localStorage.getItem('reyb_token');
+    
+    if (!isLoggedIn || !token) {
+      // Se não estiver logado, salvamos as info e redirecionamos para login/registro
+      // ou apenas avisamos que precisa estar logado para gerar o pagamento dinâmico.
       const clientInfo = { name, phone, plan, timestamp: new Date().toISOString() };
       localStorage.setItem('reyb_checkout_info', JSON.stringify(clientInfo));
+      // Fallback para link estático se não estiver logado (opcional)
+      window.open(MP_FALLBACK_LINKS[plan] || '#', '_blank');
+      setSubmitted(true);
+      return;
     }
-    setSubmitted(true);
-    // Redirecionar para o Mercado Pago
-    window.open(mpLink, '_blank');
+
+    try {
+      setSubmitted(true);
+      
+      const response = await fetch('/api/payments/create-preference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          planId: plan,
+          amount: selectedPlan.price.replace(',', '.'),
+          title: `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)} - Reybraztech`
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha ao gerar pagamento');
+
+      const data = await response.json();
+      
+      // Redirecionar para o Mercado Pago
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        throw new Error('URL de pagamento não encontrada');
+      }
+    } catch (error) {
+      console.error('Erro ao processar pagamento:', error);
+      alert('Erro ao gerar o link de pagamento. Tente novamente ou use o suporte via WhatsApp.');
+      setSubmitted(false);
+    }
   };
 
   return (

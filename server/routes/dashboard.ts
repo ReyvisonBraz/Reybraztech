@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import sql from '../database.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             paymentHistory: payments,
         });
     } catch (error) {
-        console.error('Erro no dashboard:', error);
+        logger.error('Erro no dashboard:', error);
         res.status(500).json({ error: 'Erro ao carregar dados.' });
     }
 });

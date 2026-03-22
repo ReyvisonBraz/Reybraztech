@@ -6,7 +6,7 @@ import postgres from 'postgres';
 import logger from './utils/logger.js';
 
 // A CONNECTION STRING vem do .env (segredo!)
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
   logger.error('❌ DATABASE_URL não definida no .env!');

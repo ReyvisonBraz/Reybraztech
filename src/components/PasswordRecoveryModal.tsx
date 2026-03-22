@@ -221,9 +221,19 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
 
                                         <div className="space-y-2">
                                             <Label className="text-slate-300 text-sm">2. Digite seu WhatsApp de Cadastro</Label>
-                                            <div className="flex gap-2">
+                                            <div 
+                                                className="flex gap-2 relative"
+                                                onClickCapture={() => {
+                                                    if (!whatsappSent) {
+                                                        setErrorMsg("⚠️ Ação Requerida: Você precisa clicar no botão verde e enviar a mensagem no WhatsApp antes de digitar.");
+                                                    }
+                                                }}
+                                            >
+                                                {/* Escudo invisível para capturar o clique quando estiver desabilitado */}
+                                                {!whatsappSent && <div className="absolute inset-0 z-10 cursor-not-allowed" />}
+                                                
                                                 <select
-                                                    className="h-11 px-3 bg-slate-800 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500 text-sm"
+                                                    className={`h-11 px-3 bg-slate-800 border rounded-xl text-white outline-none focus:border-cyan-500 text-sm ${!whatsappSent ? 'opacity-50 border-transparent cursor-not-allowed' : 'border-white/10'}`}
                                                     value={countryCode}
                                                     onChange={(e) => setCountryCode(e.target.value)}
                                                     disabled={!whatsappSent}
@@ -238,7 +248,7 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                                                     value={whatsapp}
                                                     onChange={(e) => setWhatsapp(e.target.value)}
                                                     required
-                                                    className="h-11 bg-white/5 border-white/10 focus:border-cyan-500 text-white rounded-xl"
+                                                    className={`h-11 bg-white/5 text-white rounded-xl ${!whatsappSent ? 'opacity-50 border-transparent cursor-not-allowed' : 'border-white/10 focus:border-cyan-500'}`}
                                                     disabled={!whatsappSent}
                                                 />
                                             </div>

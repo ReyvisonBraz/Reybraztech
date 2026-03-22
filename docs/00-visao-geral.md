@@ -289,3 +289,6 @@ import { Link } from 'react-router-dom';
 | Mar/2026 | E-mail opcional no cadastro e login com WhatsApp ou E-mail. |
 | Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto. |
 | Mar/2026 | `LoginPage` e seções de Destaques/Planos reformuladas; shadcn/ui integrado. |
+| Mar/2026 | **Recuperação de Senha:** Modal Responsivo React com fluxo de OTP e Bypass de limite de 24h WhatsApp. |
+| Mar/2026 | **Anti-Bypass de UX:** Implementado `<div absolute>` overlay que captura cliques prematuros como Validation Shield. |
+| Mar/2026 | **Refatoração OTP (Backend):** Parâmetro opcional `consume` adicionado no utilitário de validação para impedir a queima precoce de tokens de OTP. |

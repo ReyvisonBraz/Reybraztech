@@ -1,43 +1,38 @@
 # 📂 Docs — Guias do Projeto Reybraztech
 
-Esta pasta contém os guias técnicos e didáticos do projeto. Leia na ordem numérica abaixo para melhor compreensão.
+Bem-vindo(a) à documentação central! Ela foi estruturada para ser um **curso intensivo prático** de Análise e Desenvolvimento de Sistemas (ADS), focando em problemas reais, arquiteturas e soluções implementadas no código.
 
 ---
 
-## 📖 Índice dos Guias
+## 📖 Índice Didático
 
-| # | Arquivo | Conteúdo |
-|---|---------|----------|
-| 00 | [00-visao-geral.md](./00-visao-geral.md) | O ponto de partida: Visão geral da arquitetura, rotas, tabelas de BD e como rodar o projeto. |
-| 01 | [01-entendendo-o-codigo.md](./01-entendendo-o-codigo.md) | Entendendo como o código funciona sob o capô, arquivo por arquivo de forma didática. |
-| 02 | [02-seguranca.md](./02-seguranca.md) | Segurança do site e banco de dados — do básico ao avançado + anti-bot (reCAPTCHA, Honeypot, XSS, CSRF). |
-| 03 | [03-banco-supabase.md](./03-banco-supabase.md) | Como o banco local foi migrado para o Supabase (PostgreSQL na nuvem). |
-| 04 | [04-auth-whatsapp-otp.md](./04-auth-whatsapp-otp.md) | Integração da SendPulse API — envio de OTP via WhatsApp. |
-| 05 | [05-hospedagem-deploy.md](./05-hospedagem-deploy.md) | Como foi feito o deploy do frontend (Cloudflare Pages) e do backend (Render). |
-| 06 | [06-roadmap-melhorias.md](./06-roadmap-melhorias.md) | Roadmap incremental de melhorias futuras (Jobs Cron, Mercado Pago, etc). |
-| 07 | [07-diario-de-bordo.md](./07-diario-de-bordo.md) | Diário de bordo — registro detalhado de cada alteração feita no projeto. |
-| 09 | [09-analise-performance-login.md](./09-analise-performance-login.md) | Diagnóstico detalhado de performance da rota de login e causas de lentidão. |
+| # | Arquivo (Nível / Assunto) | Conteúdo |
+|---|---------------------------|----------|
+| **00** | [00-visao-geral.md](./00-visao-geral.md) | O ponto de partida: Visão geral da arquitetura MVC, rotas, tabelas de Banco e Mapas Mentais. |
+| **01** | [01-entendendo-o-codigo.md](./01-entendendo-o-codigo.md) | Entendendo como as pastas React e as pastas Node.js Express se comunicam via Proxy. |
+| **02** | [02-seguranca.md](./02-seguranca.md) | Aula de Cibersegurança: Rate Limiting Contra DDoS, Helmet para Blindagem de Servidor, e HoneyPots. |
+| **03** | [03-banco-supabase.md](./03-banco-supabase.md) | Arquitetura de Nuvem: Do SQLite local ao robusto PostgreSQL em PaaS Serverless. |
+| **04** | [04-auth-whatsapp-otp.md](./04-auth-whatsapp-otp.md) | Integração de Terceiros: WhatsApp API (SendPulse), o fluxo de envio de senhas via Cronometria (OTP). |
+| **05** | [05-hospedagem-deploy.md](./05-hospedagem-deploy.md) | Integração Contínua (CI/CD) - Subindo seus módulos pra internet (Cloudflare Front / Render Back). |
+| **07** | [07-diario-de-bordo.md](./07-diario-de-bordo.md) | O Log diário das vitórias — Onde cada bug corrigido inicial foi anotado. |
+| **10** | [10-recuperacao-senha-e-ux.md](./10-recuperacao-senha-e-ux.md) | **UX Engineering:** Bypass das leis inflexíveis da Mêta + Fluxo Opcional de Consumo no Backend. |
+| **11** | [11-compilado-melhorias-gerais.md](./11-compilado-melhorias-gerais.md) | **[AULA DE HOJE]** O compilado absoluto de Física CSS, Polling Limits da API Web, Manipulação de Regex e Segurança DOM em formulários. |
+| **ZZ** | [Pasta ``zz-arquivo``](./zz-arquivo) | **Arquivo Morto:** Documentações velhas que deixaram de ser "A próxima Meta" e foram engavetadas para limpar a sua tela e focarem o essencial. |
 
 ---
 
-## 🔮 Ordem de Implementação e Status
+## 🔮 Roadmap Acadêmico e Prático de Estudo
+
+> **Dica para Estudante (ADS):** Não leia como um livro. Leia um guia, abra a pasta `src` ou `server` no seu VS Code, e veja *exatamente como o guia 02 descreveu a regra de segurança no arquivo server/index.ts*. Mexa com o código, altere uma linha guiando-se pela teoria, e observe o site piscar.
 
 ```
-✅ 00. Visão Geral e Setup Local — FEITO
+✅ 00. Analisar Tabelas e Pastas
       ↓
-✅ 01. Entender o Código (Didático) — FEITO
+✅ 01. Estudar Client-Server via Fetch/Proxy 
       ↓
-🟡 02. Aplicar Guia 02: Segurança — PARCIALMENTE FEITO (Helmet, Rate Limit, Zod, jwt-decode ✅ | reCAPTCHA, Honeypot ⏳)
+🟡 02. Melhorar a Segurança Gradualmente
       ↓
-✅ 03. Estudar Guia 03: Supabase (Já validado em prod) — FEITO
+✅ 03 e 04. Entender APIs em Nuvem (Supabase + SendPulse)
       ↓
-✅ 04. Estudar Guia 04: SendPulse OTP WhatsApp — FEITO
-      ↓
-✅ 05. Guia 05: Hospedagem Deploy — FEITO
-      ↓
-🟡 06. Guia 06: Roadmap de Melhorias — EM ANDAMENTO (Painel Admin parcial)
-      ↓
-📖 07. Diário de Bordo — Atualizado automaticamente
-      ↓
-✅ 09. Análise de Performance: Rota de Login — FEITO
+✅ 10 e 11. Refinar UX, Bloquear Comportamento Pobre do Usuário e Higienizar Strings
 ```

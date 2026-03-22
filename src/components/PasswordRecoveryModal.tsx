@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Eye, EyeOff, AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { API_URL } from '../config/api';
+
+const WHATSAPP_BOT_NUMBER = '559191715764';
+const WHATSAPP_ACTIVATION_MESSAGE = 'Olá! Quero solicitar meu código de verificação 🔐';
 
 interface PasswordRecoveryModalProps {
     isOpen: boolean;
@@ -23,6 +26,9 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
+    const [whatsappSent, setWhatsappSent] = useState(false);
+
+    const whatsappLink = `https://wa.me/${WHATSAPP_BOT_NUMBER}?text=${encodeURIComponent(WHATSAPP_ACTIVATION_MESSAGE)}`;
 
     const resetState = () => {
         setStep(1);
@@ -33,6 +39,7 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
         setErrorMsg('');
         setSuccessMsg('');
         setLoading(false);
+        setWhatsappSent(false);
     };
 
     const handleClose = () => {
@@ -88,6 +95,7 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                 return;
             }
 
+            setStep(2); // Vai pro passo 3
             setStep(3);
         } catch {
             setErrorMsg('Erro ao verificar código.');
@@ -129,7 +137,6 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
 
             setSuccessMsg('Senha alterada com sucesso! Você já pode entrar.');
             
-            // Auto close after 2 seconds
             setTimeout(() => {
                 handleClose();
             }, 2500);
@@ -141,9 +148,8 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
         }
     };
 
-    // Formatação visual do passo a passo
     const stepHeaders = {
-        1: { title: "Recuperar Senha", desc: "Insira seu WhatsApp para receber o código" },
+        1: { title: "Ativar Recuperação", desc: "Abra o WhatsApp abaixo para inciar" },
         2: { title: "Verificar Código", desc: `Código enviado para +${countryCode} ${whatsapp}` },
         3: { title: "Nova Senha", desc: "Crie sua nova senha de acesso" }
     };
@@ -152,16 +158,8 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
         <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={handleClose}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                    />
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
 
-                    {/* Modal Content */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -169,25 +167,15 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                         transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
                         className="relative w-full max-w-md bg-slate-900/90 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl z-10 overflow-hidden"
                     >
-                        {/* Decorative background gradients */}
                         <div className="absolute -top-40 -right-40 w-80 h-80 bg-cyan-500/20 rounded-full filter blur-[80px] -z-1" />
                         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full filter blur-[80px] -z-1" />
 
-                        {/* Close Button */}
-                        <button
-                            onClick={handleClose}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all"
-                        >
+                        <button onClick={handleClose} className="absolute top-4 right-4 text-slate-400 hover:text-white hover:bg-white/10 p-2 rounded-xl transition-all">
                             <X className="size-5" />
                         </button>
 
-                        {/* Success Message Header */}
                         {successMsg ? (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="flex flex-col items-center justify-center text-center py-6"
-                            >
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center text-center py-6">
                                 <div className="size-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30">
                                     <CheckCircle2 className="size-8 text-emerald-400" />
                                 </div>
@@ -196,17 +184,33 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                             </motion.div>
                         ) : (
                             <>
-                                {/* Header */}
                                 <div className="text-center mb-6">
                                     <h3 className="text-xl font-black text-white">{stepHeaders[step].title}</h3>
                                     <p className="text-slate-400 text-sm mt-1">{stepHeaders[step].desc}</p>
                                 </div>
 
-                                {/* Step 1: Send OTP */}
                                 {step === 1 && (
                                     <form onSubmit={handleSendOtp} className="space-y-4">
+                                        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
+                                            <p className="text-slate-300 text-xs mb-3">
+                                                Clique no botão verde para enviar a mensagem de ativação pro Bot. Em seguida, digite seu número e clique em "Já enviei".
+                                            </p>
+                                            <a
+                                                href={whatsappLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={() => setWhatsappSent(true)}
+                                                className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg hover:shadow-emerald-500/20 border border-emerald-400"
+                                            >
+                                                <svg viewBox="0 0 24 24" className="size-5 fill-white">
+                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                                </svg>
+                                                Solicitar Código <ExternalLink className="size-3" />
+                                            </a>
+                                        </div>
+
                                         <div className="space-y-2">
-                                            <Label className="text-slate-300 text-sm">WhatsApp</Label>
+                                            <Label className="text-slate-300 text-sm">Seu WhatsApp</Label>
                                             <div className="flex gap-2">
                                                 <select
                                                     className="h-11 px-3 bg-slate-800 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500 text-sm"
@@ -224,6 +228,7 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                                                     onChange={(e) => setWhatsapp(e.target.value)}
                                                     required
                                                     className="h-11 bg-white/5 border-white/10 focus:border-cyan-500 text-white rounded-xl"
+                                                    disabled={!whatsappSent}
                                                 />
                                             </div>
                                         </div>
@@ -232,13 +237,20 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                                                 <AlertCircle className="size-4 shrink-0" /> {errorMsg}
                                             </div>
                                         )}
-                                        <Button type="submit" disabled={loading} className="w-full h-11 font-bold bg-cyan-500 hover:bg-cyan-600 text-slate-900 rounded-xl shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-                                            {loading ? "Enviando..." : "Enviar Código"}
+                                        <Button 
+                                            type="submit" 
+                                            disabled={!whatsappSent || loading} 
+                                            className={`w-full h-11 font-bold rounded-xl transition-all ${
+                                                whatsappSent 
+                                                ? 'bg-cyan-500 hover:bg-cyan-600 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.3)]' 
+                                                : 'bg-white/5 text-slate-500 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            {loading ? "Processando..." : "Já enviei a mensagem"}
                                         </Button>
                                     </form>
                                 )}
 
-                                {/* Step 2: Verify OTP */}
                                 {step === 2 && (
                                     <form onSubmit={handleVerifyOtp} className="space-y-4">
                                         <div className="space-y-2">
@@ -261,17 +273,10 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                                         <Button type="submit" disabled={loading} className="w-full h-11 font-bold bg-cyan-500 hover:bg-cyan-600 text-slate-900 rounded-xl">
                                             {loading ? "Verificando..." : "Verificar Código"}
                                         </Button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setStep(1)} 
-                                            className="w-full text-center text-xs text-slate-400 hover:text-cyan-400 transition-colors"
-                                        >
-                                            Voltar e alterar número
-                                        </button>
+                                        <button type="button" onClick={() => setStep(1)} className="w-full text-center text-xs text-slate-400 hover:text-cyan-400 transition-colors">Voltar e alterar número</button>
                                     </form>
                                 )}
 
-                                {/* Step 3: Reset Password */}
                                 {step === 3 && (
                                     <form onSubmit={handleResetPassword} className="space-y-4">
                                         <div className="space-y-2">
@@ -326,3 +331,4 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
         </AnimatePresence>
     );
 };
+

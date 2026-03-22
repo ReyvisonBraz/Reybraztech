@@ -71,12 +71,12 @@ export const Navbar = () => {
                     </div>
                     <div className="hidden md:flex items-center gap-4">
                         <Link to={isLoggedIn ? "/dashboard" : "/login"} className="glow-button bg-primary text-white px-8 py-3 rounded-full text-sm font-black shadow-[0_0_30px_rgba(14,165,233,0.5)] inline-block border-2 border-cyan-400 hover:scale-110">
-                            {isLoggedIn ? "Painel" : "Acesso"}
+                            {isLoggedIn ? "Área do Cliente" : "Entrar"}
                         </Link>
                     </div>
                     <div className="-mr-2 flex md:hidden items-center gap-3">
                         <Link to={isLoggedIn ? "/dashboard" : "/login"} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-full text-base font-black shadow-[0_0_20px_rgba(14,165,233,0.6)] border-2 border-cyan-400">
-                            {isLoggedIn ? "Painel" : "Acesso"}
+                            {isLoggedIn ? "Área do Cliente" : "Entrar"}
                         </Link>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -92,11 +92,11 @@ export const Navbar = () => {
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="md:hidden glass-nav shadow-[0_10px_30px_rgba(34,211,238,0.2)] border-b-2 border-cyan-400/30"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="md:hidden glass-nav shadow-[0_10px_30px_rgba(34,211,238,0.2)] border-b-2 border-cyan-400/30 overflow-hidden"
                     >
                         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                             {['Início', 'Dispositivos', 'Planos', 'FAQ'].map((item) => (
@@ -114,7 +114,7 @@ export const Navbar = () => {
                                 className="w-full text-center glow-button bg-primary text-white px-3 py-4 rounded-xl text-base font-black block mt-4 shadow-[0_0_20px_rgba(14,165,233,0.4)] border-2 border-cyan-400"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
-                                {isLoggedIn ? "Painel" : "Acesso"}
+                                {isLoggedIn ? "Área do Cliente" : "Entrar"}
                             </Link>
                         </div>
                     </motion.div>

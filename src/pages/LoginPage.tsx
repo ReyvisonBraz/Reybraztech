@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -184,7 +185,7 @@ export const LoginPage = () => {
                 setTimeout(() => {
                     setIsPurpleBlinking(false);
                     scheduleBlink();
-                }, 150);
+                }, 110);
             }, getRandomBlinkInterval());
             return blinkTimeout;
         };
@@ -200,7 +201,7 @@ export const LoginPage = () => {
                 setTimeout(() => {
                     setIsBlackBlinking(false);
                     scheduleBlink();
-                }, 150);
+                }, 110);
             }, getRandomBlinkInterval());
             return blinkTimeout;
         };
@@ -627,9 +628,15 @@ export const LoginPage = () => {
                     {/* Sign Up Link */}
                     <div className="text-center mt-8 pt-6 border-t border-white/10">
                         <p className="text-base font-medium text-slate-300 mb-4">Ainda não tem uma conta?</p>
-                        <Link to="/register" className="inline-flex items-center justify-center w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600/40 to-cyan-600/40 border-2 border-cyan-400 text-white font-black text-lg hover:border-cyan-300 shadow-[0_0_30px_rgba(34,211,238,0.4)] transition-all">
-                            🚀 CRIAR MINHA CONTA AGORA
-                        </Link>
+                        <motion.div
+                            animate={{ scale: [1, 1.02, 1] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                            className="w-full"
+                        >
+                            <Link to="/register" className="inline-flex items-center justify-center w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600/50 to-cyan-600/50 border-2 border-cyan-300 text-white font-black text-lg hover:border-cyan-200 shadow-[0_0_40px_rgba(34,211,238,0.6)] transition-all">
+                                🚀 CRIAR MINHA CONTA AGORA
+                            </Link>
+                        </motion.div>
                     </div>
                 </div>
             </div>

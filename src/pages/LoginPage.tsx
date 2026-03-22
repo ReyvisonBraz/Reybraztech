@@ -7,6 +7,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { API_URL } from "../config/api";
 import { useMousePosition } from "../hooks/useMousePosition";
+import { PasswordRecoveryModal } from "../components/PasswordRecoveryModal";
 
 interface PupilProps {
     size?: number;
@@ -145,6 +146,7 @@ export const LoginPage = () => {
     const [password, setPassword] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const [loading, setLoading] = useState(false);
+    const [isRecoverModalOpen, setIsRecoverModalOpen] = useState(false);
 
     useEffect(() => {
         if (localStorage.getItem('reyb_token')) {
@@ -595,6 +597,7 @@ export const LoginPage = () => {
                             </div>
                             <a
                                 href="#"
+                                onClick={(e) => { e.preventDefault(); setIsRecoverModalOpen(true); }}
                                 className="flex items-center gap-2 text-base text-cyan-400 hover:text-cyan-300 underline underline-offset-4 font-black transition-colors"
                             >
                                 <AlertCircle className="w-4 h-4 ml-1" />
@@ -630,6 +633,10 @@ export const LoginPage = () => {
                     </div>
                 </div>
             </div>
+            <PasswordRecoveryModal 
+                isOpen={isRecoverModalOpen} 
+                onClose={() => setIsRecoverModalOpen(false)} 
+            />
         </div >
     );
 };

@@ -22,7 +22,7 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    
+
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
@@ -136,7 +136,7 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
             }
 
             setSuccessMsg('Senha alterada com sucesso! Você já pode entrar.');
-            
+
             setTimeout(() => {
                 handleClose();
             }, 2500);
@@ -196,26 +196,27 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                                                 <AlertCircle className="size-4 shrink-0" /> IMPORTANTE: Leia com atenção
                                             </p>
                                             <p className="text-slate-300 text-xs mb-3 leading-relaxed">
-                                                Para burlar o bloqueio de 24h do WhatsApp, você deve **enviar uma mensagem primeiro** do seu celular para o nosso Bot.
-                                                <br/><br/>
+                                                Para obeter o código, você primeiro precisa enviar uma mensagem em nosso whatsapp, do seu celular.
+                                                <br /><br />
                                                 1. Clique no botão verde abaixo para abrir o chat.
-                                                <br/>
+                                                <br />
                                                 2. Envie o texto já preenchido.
-                                                <br/>
+                                                <br />
                                                 3. <strong className="text-emerald-400">O celular que enviar a mensagem deve ser o mesmo número que você digitar abaixo!</strong>
                                             </p>
-                                            <a
-                                                href={whatsappLink}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={() => setWhatsappSent(true)}
-                                                className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-2 font-black transition-all shadow-lg hover:shadow-emerald-500/20 border border-emerald-400"
-                                            >
-                                                <svg viewBox="0 0 24 24" className="size-5 fill-white">
-                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                                </svg>
-                                                1. Enviar Mensagem no WhatsApp <ExternalLink className="size-3" />
-                                            </a>
+                                             <Button asChild className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-2 font-black transition-all shadow-lg hover:shadow-emerald-500/20 border border-emerald-400">
+                                                <a
+                                                    href={whatsappLink}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={() => setWhatsappSent(true)}
+                                                >
+                                                    <svg viewBox="0 0 24 24" className="size-5 fill-white">
+                                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                                    </svg>
+                                                    1. Enviar Código no WhatsApp <ExternalLink className="size-3" />
+                                                </a>
+                                            </Button>
                                         </div>
 
                                         <div className="space-y-2">
@@ -247,14 +248,13 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
                                                 <AlertCircle className="size-4 shrink-0" /> {errorMsg}
                                             </div>
                                         )}
-                                        <Button 
-                                            type="submit" 
-                                            disabled={!whatsappSent || loading} 
-                                            className={`w-full h-11 font-black rounded-xl transition-all ${
-                                                whatsappSent 
-                                                ? 'bg-cyan-500 hover:bg-cyan-600 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.3)]' 
-                                                : 'bg-white/5 text-slate-500 cursor-not-allowed'
-                                            }`}
+                                        <Button
+                                            type="submit"
+                                            disabled={!whatsappSent || loading}
+                                            className={`w-full h-11 font-black rounded-xl transition-all ${whatsappSent
+                                                    ? 'bg-cyan-500 hover:bg-cyan-600 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                                                    : 'bg-white/5 text-slate-500 cursor-not-allowed'
+                                                }`}
                                         >
                                             {loading ? "Processando..." : "Já enviei a mensagem"}
                                         </Button>
@@ -263,10 +263,12 @@ export const PasswordRecoveryModal = ({ isOpen, onClose }: PasswordRecoveryModal
 
                                 {step === 2 && (
                                     <form onSubmit={handleVerifyOtp} className="space-y-4">
-                                        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-3 text-[11px] text-amber-300 flex items-start gap-2">
-                                            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl mb-4 text-xs text-amber-300 flex items-start gap-3">
+                                            <AlertCircle className="size-5 shrink-0 mt-0.5 text-amber-400" />
                                             <div>
-                                                 Certifique-se que enviou a mensagem do número <strong className="text-white">+{countryCode} {whatsapp}</strong>. O código só funcionará se os dados conferirem!
+                                                 🚨 <strong className="text-white">LEMBRETE IMPORTANTE:</strong>
+                                                 <br/>
+                                                 O código que você vai receber só funcionará se você enviou a mensagem do número <strong className="text-cyan-400 font-bold">+{countryCode} {whatsapp}</strong>.
                                             </div>
                                         </div>
                                         <div className="space-y-2">

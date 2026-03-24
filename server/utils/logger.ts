@@ -122,7 +122,11 @@ export const startTelegramBot = async () => {
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
 
   if (!token || !adminChatId) {
-    console.log('⚠️ TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID não definidos. Bot desativado.');
+    console.log('--- 🚨 DEBUG EXTREMO RENDER (O que o servidor está lendo da aba de ambiente?) ---');
+    console.log(`- Token Recebido: [${typeof token}] (Tamanho: ${token?.length || 0})`);
+    console.log(`- Chat ID Recebido: [${typeof adminChatId}] (Tamanho: ${adminChatId?.length || 0})`);
+    console.log('--- Se diz "undefined", o servidor Render JURA que a caixa de texto lá no painel dele não existe ou o nome da variável tá digitado com uma letra errada. ---');
+    console.log('⚠️ Bot do Telegram desativado nesta inicialização.');
     return;
   }
 

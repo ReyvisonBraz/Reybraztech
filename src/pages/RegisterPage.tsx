@@ -43,12 +43,23 @@ export const RegisterPage = () => {
   const sendOtp = async (): Promise<boolean> => {
     setOtpSending(true);
     setErrorMsg('');
+
+    let isAwaking = false;
+    const awakeTimer = setTimeout(() => {
+        isAwaking = true;
+        setErrorMsg('⚙️ O servidor está despertando da hibernação. Isso pode levar até 50 segundos na primeira vez do dia.');
+    }, 4000);
+
     try {
       const response = await fetch(`${API_URL}/api/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ whatsapp: formData.countryCode + formData.whatsapp, type: 'register' }),
       });
+
+      clearTimeout(awakeTimer);
+      if (isAwaking && response.ok) setErrorMsg('');
+
       const data = await response.json();
       if (!response.ok) {
         setErrorMsg(data.error || 'Erro ao enviar o código.');
@@ -58,9 +69,11 @@ export const RegisterPage = () => {
       startResendCooldown();
       return true;
     } catch {
+      clearTimeout(awakeTimer);
       setErrorMsg('Não foi possível conectar ao servidor.');
       return false;
     } finally {
+      clearTimeout(awakeTimer);
       setOtpSending(false);
     }
   };
@@ -159,6 +172,14 @@ export const RegisterPage = () => {
       }
 
       setLoading(true);
+      setErrorMsg('');
+
+      let isAwaking = false;
+      const awakeTimer = setTimeout(() => {
+          isAwaking = true;
+          setErrorMsg('⚙️ O servidor está despertando da hibernação. Isso pode levar até 50 segundos na primeira vez do dia.');
+      }, 4000);
+
       try {
         const response = await fetch(`${API_URL}/api/auth/register`, {
           method: 'POST',
@@ -171,6 +192,9 @@ export const RegisterPage = () => {
             password: formData.password,
           }),
         });
+
+        clearTimeout(awakeTimer);
+        if (isAwaking && response.ok) setErrorMsg('');
 
         const data = await response.json();
 
@@ -193,8 +217,10 @@ export const RegisterPage = () => {
         });
 
       } catch {
+        clearTimeout(awakeTimer);
         setErrorMsg('Não foi possível conectar ao servidor. Tente novamente.');
       } finally {
+        clearTimeout(awakeTimer);
         setLoading(false);
       }
     }

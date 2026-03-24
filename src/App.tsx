@@ -38,7 +38,16 @@ const PageLoader = () => (
   </div>
 );
 
+import { API_URL } from './config/api';
+
 export default function App() {
+  // Wake Up Server Strategy (Render Free Tier)
+  useEffect(() => {
+    fetch(`${API_URL}/api/health`, { method: 'GET' })
+      .then(() => console.log('🟢 Servidor Acordado ou Conectado'))
+      .catch((err) => console.log('🔴 Servidor indisponível no momento', err));
+  }, []);
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-transparent text-slate-900 dark:text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-500">

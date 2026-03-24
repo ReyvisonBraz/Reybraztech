@@ -262,6 +262,13 @@ export const LoginPage = () => {
         setLoading(true);
         setErrorMsg('');
 
+        let isAwaking = false;
+        // Alerta amigável de hibernação do Render (Cold Start)
+        const awakeTimer = setTimeout(() => {
+            isAwaking = true;
+            setErrorMsg('⚙️ O servidor está despertando da hibernação. Isso pode levar até 50 segundos na primeira vez do dia.');
+        }, 4000);
+
         try {
             const finalIdentifier = loginMethod === 'whatsapp' ? `${countryCode}${identifier}` : identifier;
 
@@ -270,6 +277,9 @@ export const LoginPage = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ identifier: finalIdentifier, password }),
             });
+
+            clearTimeout(awakeTimer);
+            if (isAwaking && response.ok) setErrorMsg('');
 
             const data = await response.json();
 
@@ -283,9 +293,11 @@ export const LoginPage = () => {
 
             navigate('/dashboard');
         } catch {
+            clearTimeout(awakeTimer);
             setErrorMsg('Não foi possível conectar ao servidor. Tente novamente.');
         } finally {
             setLoading(false);
+            clearTimeout(awakeTimer);
         }
     };
 

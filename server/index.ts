@@ -2,7 +2,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import * as Sentry from "@sentry/node";
-import logger from './utils/logger.js';
+import logger, { startTelegramBot } from './utils/logger.js';
+
+// Iniciar Bot do Telegram em Background (Long Polling)
+startTelegramBot();
 
 // Inicializar Sentry (v10+)
 if (process.env.SENTRY_DSN) {

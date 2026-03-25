@@ -11,6 +11,23 @@ const logFormat = printf(({ level, message, timestamp, stack }) => {
   return `${timestamp} [${level}]: ${stack || message}`;
 });
 
+const transports: winston.transport[] = [
+  // 1. Logs no Console (Coloridos)
+  new winston.transports.Console({
+    format: combine(colorize(), logFormat),
+  })
+];
+
+// 🔴 A Vercel possui um sistema de arquivos "Read-Only". Só grava arquivos se NÃO for na Vercel.
+if (!process.env.VERCEL) {
+  transports.push(
+    // 2. Salvar erros em arquivo
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    // 3. Salvar todos os logs em arquivo
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  );
+}
+
 // Logger Principal
 const logger = winston.createLogger({
   level: 'info',
@@ -19,21 +36,7 @@ const logger = winston.createLogger({
     timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     logFormat
   ),
-  transports: [
-    // 1. Logs no Console (Coloridos)
-    new winston.transports.Console({
-      format: combine(colorize(), logFormat),
-    }),
-    // 2. Salvar erros em arquivo
-    new winston.transports.File({ 
-      filename: 'logs/error.log', 
-      level: 'error' 
-    }),
-    // 3. Salvar todos os logs em arquivo
-    new winston.transports.File({ 
-      filename: 'logs/combined.log' 
-    }),
-  ],
+  transports,
 });
 
 /**

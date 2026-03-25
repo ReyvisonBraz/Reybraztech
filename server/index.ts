@@ -5,7 +5,10 @@ import * as Sentry from "@sentry/node";
 import logger, { startTelegramBot } from './utils/logger.js';
 
 // Iniciar Bot do Telegram em Background (Long Polling)
-startTelegramBot();
+// Na Vercel, o long polling faria a Serverless Function quebrar. Em breve mudaremos para Webhook.
+if (!process.env.VERCEL) {
+    startTelegramBot();
+}
 
 // Inicializar Sentry (v10+)
 if (process.env.SENTRY_DSN) {
@@ -112,9 +115,15 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // ─── Iniciar servidor ────────────────────────────────────────
-app.listen(PORT, () => {
-    logger.info('🚀 ================================');
-    logger.info(`🚀  Servidor Reybraztech Online!`);
-    logger.info(`🚀  Porta: http://localhost:${PORT}`);
-    logger.info('🚀 ================================');
-});
+// Só inicializa o servidor na porta localmente se não estiver na Vercel
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        logger.info('🚀 ================================');
+        logger.info(`🚀  Servidor Reybraztech Online!`);
+        logger.info(`🚀  Porta: http://localhost:${PORT}`);
+        logger.info('🚀 ================================');
+    });
+}
+
+// Exportar para que a Vercel Serverless Functions possa usar o Express
+export default app;

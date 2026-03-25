@@ -68,7 +68,7 @@ export const DashboardPage = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401 || response.status === 403 || response.status === 404) {
           localStorage.removeItem('reyb_token');
           localStorage.removeItem('reyb_user');
           navigate('/login');

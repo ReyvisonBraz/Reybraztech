@@ -111,7 +111,7 @@ router.post('/verify-login', async (req: Request, res: Response) => {
     const jwtToken = jwt.sign(
       { id: client.id, email: client.email || client.whatsapp },
       process.env.JWT_SECRET!,
-      { expiresIn: '30d' }
+      { expiresIn: '8h' }
     );
 
     logger.info(`✅ Login via OTP: ${client.name} (${client.whatsapp})`);

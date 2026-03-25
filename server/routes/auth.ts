@@ -82,7 +82,7 @@ router.post('/register', async (req: Request, res: Response) => {
         const token = jwt.sign(
             { id: newClient.id, email: email || whatsapp },
             JWT_SECRET,
-            { expiresIn: '30d' }
+            { expiresIn: '8h' }
         );
 
         res.status(201).json({
@@ -158,7 +158,7 @@ router.post('/login', async (req: Request, res: Response) => {
         const token = jwt.sign(
             { id: client.id, email: client.email || client.whatsapp },
             JWT_SECRET,
-            { expiresIn: '30d' }
+            { expiresIn: '8h' }
         );
         const jwtEnd = performance.now();
 

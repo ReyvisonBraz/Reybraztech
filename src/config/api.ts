@@ -1,7 +1,6 @@
 /**
  * Configuração central da API.
- * Em produção, defina VITE_API_URL no arquivo .env:
- *   VITE_API_URL=https://sua-api.onrender.com
- * Em desenvolvimento, usa localhost:3001 como padrão.
+ * Em produção na Vercel (onde back e front estão no mesmo domínio), a base já é `""`.
+ * Em desenvolvimento na sua máquina local, usa `http://localhost:3001`
  */
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+export const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3001');

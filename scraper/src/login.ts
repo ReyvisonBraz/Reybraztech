@@ -271,7 +271,7 @@ export async function loginToPanel(config: {
 
   let loginSuccessful = false;
   let loginAttempts = 0;
-  const maxLoginAttempts = 3;
+  const maxLoginAttempts = 5; // Tenta até 5 vezes antes do fallback manual
 
   while (!loginSuccessful && loginAttempts < maxLoginAttempts) {
     loginAttempts++;
@@ -335,13 +335,17 @@ export async function loginToPanel(config: {
       if (!currentUrl.includes('login') || currentUrl.includes('/info/accountSecurity')) {
         loginSuccessful = true;
       } else {
-        console.log('    ⚠️ Login falhou. Provavelmente Captcha incorreto ou dados inválidos.');
-        // Opcional: print do erro para debug
+        console.log(`    ⚠️ [${loginAttempts}/${maxLoginAttempts}] Login falhou — captcha incorreto ou sessão expirada.`);
+        console.log(`    🔄 Renovando captcha para próxima tentativa...`);
+        // Salva screenshot para debug
         await page.screenshot({ path: path.join(__dirname, '..', 'output', `login_fail_attempt_${loginAttempts}.png`) });
-        // Recarrega captcha para próxima tentativa
-        const captchaImg = await page.$('img[src*="captcha"], .code-img');
-        if (captchaImg) await captchaImg.click();
-        await delay(1500);
+        // Clica na imagem do captcha para gerar um novo código
+        const captchaImgSelectors = ['img[src*="captcha"]', '.code-img', 'form img'];
+        for (const sel of captchaImgSelectors) {
+          const captchaImg = await page.$(sel);
+          if (captchaImg) { await captchaImg.click(); break; }
+        }
+        await delay(2000); // Aguarda nova imagem carregar
       }
     } else {
         console.log('    ❌ Não encontrei os campos de input de login.');

@@ -34,54 +34,67 @@ export async function scrapeClients(page: Page, itemsPerPage: number = 100): Pro
   await page.goto(accountListUrl, { waitUntil: 'networkidle2', timeout: 30000 });
   await delay(3000);
 
-  // Configura itens por página para 100 (máximo) usando clique em elementos
-  console.log('  📸 Salvando print da tela ANTES de definir 100 itens...');
-  await page.screenshot({ path: path.join(__dirname, '..', 'output', '01-antes-paginacao.png'), fullPage: true });
-  
   await setItemsPerPage(page, itemsPerPage);
-  
-   await page.screenshot({ path: path.join(__dirname, '..', 'output', '02-apos-paginacao-100.png'), fullPage: true });
 
   // Aguarda a tabela aparecer com dados
-  await page.waitForSelector('.ant-table-row', {
-    timeout: 20000,
-  }).catch(() => {
-    console.log('  ⚠️  Linhas da tabela não apareceram em 20s. Verifique se há clientes cadastrados.');
+  await page.waitForSelector('.ant-table-row', { timeout: 20000 }).catch(() => {
+    console.log('  ⚠️  Linhas da tabela não apareceram em 20s.');
   });
   await delay(2000);
 
+  // Extração direta e automática (sem interação humana)
+  // Mecanismo confirmado: senha está em <span style="display: none;"> sem font-size no DOM
+  console.log('\n  🤖 Iniciando extração automática (modo background)...');
+
+  // =====================================================================
+  // EXTRAÇÃO: Lê senhas ocultas direto do DOM sem nenhum clique
+  // =====================================================================
   const allClients: ClientData[] = [];
   let currentPage = 1;
   let hasNextPage = true;
 
+  const pageLimit = parseInt(process.env.PAGE_LIMIT || '0'); // 0 = sem limite
+
   while (hasNextPage) {
-    console.log(`\n  📄 Processando página ${currentPage}...`);
+    console.log(`\n  📄 Extraindo página ${currentPage}...`);
 
-    // Tira print didático da página
-    await page.screenshot({ path: path.join(__dirname, '..', 'output', `tabela-pagina-${currentPage}.png`), fullPage: true });
-
-    // Extrai dados da tabela (incluindo senhas ocultas nos spans)
     const pageClients = await extractTableData(page);
-    console.log(`    ✅ ${pageClients.length} clientes capturados na página ${currentPage}`);
+    console.log(`    ✅ ${pageClients.length} clientes extraídos na página ${currentPage}`);
 
     allClients.push(...pageClients);
 
-    // Verifica se tem próxima página
+    // Para se atingiu o limite de páginas (útil para testes)
+    if (pageLimit > 0 && currentPage >= pageLimit) {
+      console.log(`  🛑 Limite de ${pageLimit} página(s) atingido.`);
+      break;
+    }
+
     hasNextPage = await goToNextPage(page);
     if (hasNextPage) {
       currentPage++;
-      // Espera um pouco para o conteúdo da nova página renderizar
       await delay(2500);
       await page.waitForSelector('.ant-table-row', { timeout: 10000 }).catch(() => {});
     }
   }
 
   console.log(`\n  🎉 Extração concluída! Total: ${allClients.length} clientes.`);
-  
-  // Salva resultado final em JSON para conferência
+
   const fs = await import('fs');
-  fs.writeFileSync(path.join(__dirname, '..', 'output', 'clients_extracted.json'), JSON.stringify(allClients, null, 2));
-  console.log('  💾 Dados salvos em output/clients_extracted.json');
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}h${String(now.getMinutes()).padStart(2,'0')}`;
+
+  // Salva em output/ (working dir)
+  const outputPath = path.join(__dirname, '..', 'output', 'clients_extracted.json');
+  fs.writeFileSync(outputPath, JSON.stringify(allClients, null, 2));
+
+  // Salva em docs/ com timestamp (histórico permanente)
+  const docsDir = path.join(__dirname, '..', '..', 'docs');
+  if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+  const docsPath = path.join(docsDir, `clients_${timestamp}.json`);
+  fs.writeFileSync(docsPath, JSON.stringify(allClients, null, 2));
+
+  console.log(`  💾 output/clients_extracted.json`);
+  console.log(`  💾 docs/clients_${timestamp}.json`);
 
   return allClients;
 }
@@ -140,68 +153,84 @@ async function setItemsPerPage(page: Page, items: number): Promise<void> {
 
 /**
  * Extrai os dados da tabela de contas da página atual.
- * As senhas ficam em <span style="display: none;">SENHA</span> — não precisa clicar.
- * Usa page.$$ (iteração Node) para evitar bugs de serialização do tsx.
+ *
+ * MECANISMO DAS SENHAS (confirmado via MutationObserver):
+ *  - Span com senha: style="display: none;" (sem font-size) — contém a senha real
+ *  - Basta ler o textContent do span com display:none e sem font-size
+ *
+ * IMPORTANTE: usa page.evaluate com código SEM function declarations nomeadas
+ * para evitar o bug "__name is not defined" do compilador tsx/esbuild.
  */
 async function extractTableData(page: Page): Promise<ClientData[]> {
-  const rows = await page.$$('tr.ant-table-row');
-  console.log(`    → Encontradas ${rows.length} linhas tr.ant-table-row`);
+  const clients = await page.evaluate(function () {
+    var results: any[] = [];
+    var rows = document.querySelectorAll('tr.ant-table-row');
 
-  const clients: ClientData[] = [];
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].querySelectorAll('td');
+      if (cells.length < 5) continue;
 
-  for (const row of rows) {
-    try {
-      // Extrai todos os dados de uma linha de uma vez dentro do browser
-      const data = await row.evaluate((el) => {
-        const cells = el.querySelectorAll('td');
-        if (cells.length < 5) return null;
+      // Leitura direta das células (sem function declaration para evitar __name)
+      var col1 = cells[1] ? (cells[1].textContent || '').trim() : '';
+      var col2 = cells[2] ? (cells[2].textContent || '').trim() : '';
+      var col4 = cells[4] ? (cells[4].textContent || '').trim() : '';
+      var col5 = cells[5] ? (cells[5].textContent || '').trim() : '';
+      var col6 = cells[6] ? (cells[6].textContent || '').trim() : '';
+      var col7 = cells[7] ? (cells[7].textContent || '').trim() : '';
+      var col8 = cells[8] ? (cells[8].textContent || '').trim() : '';
+      var col9 = cells[9] ? (cells[9].textContent || '').trim() : '';
+      var col10 = cells[10] ? (cells[10].textContent || '').trim() : '';
+      var col11 = cells[11] ? (cells[11].textContent || '').trim() : '';
 
-        const t = (i: number) => {
-          const c = cells[i];
-          return c ? (c.textContent || '').trim() : '';
-        };
+      if (!col2) continue; // Sem account, ignora
 
-        // Senha: pega do span oculto dentro da 4ª célula
-        let pwd = '***';
-        const pwdCell = cells[3];
-        if (pwdCell) {
-          const spans = pwdCell.querySelectorAll('span');
-          for (let j = 0; j < spans.length; j++) {
-            const txt = (spans[j].textContent || '').trim();
-            if (txt.length > 0 && txt !== '***') {
-              pwd = txt;
+      // Senha: span com display:none E sem font-size = span da senha (não do ícone)
+      var pwd = '***';
+      var pwdCell = cells[3];
+      if (pwdCell) {
+        var spans = pwdCell.querySelectorAll('span');
+        for (var j = 0; j < spans.length; j++) {
+          var s = spans[j] as HTMLElement;
+          var st = s.getAttribute('style') || '';
+          var val = (s.textContent || '').trim();
+          if (st.indexOf('display: none') >= 0 && st.indexOf('font-size') < 0 && val.length > 0) {
+            pwd = val;
+            break;
+          }
+        }
+        // Fallback: qualquer span com valor e sem asterisco
+        if (pwd === '***') {
+          for (var k = 0; k < spans.length; k++) {
+            var t2 = (spans[k].textContent || '').trim();
+            if (t2.length > 0 && t2 !== '***') {
+              pwd = t2;
               break;
             }
           }
         }
-
-        const account = t(2);
-        if (!account) return null;
-
-        return {
-          index: parseInt(t(1), 10) || 0,
-          account,
-          password: pwd,
-          days_remaining: parseInt(t(4), 10) || 0,
-          package_name: t(5),
-          buyer_name: t(6),
-          first_login: t(7) || '',
-          expiration_date: t(8) || '',
-          creation_time: t(9) || '',
-          in_use: t(10),
-          expired: t(11),
-        };
-      });
-
-      if (data) {
-        clients.push(data as ClientData);
       }
-    } catch {
-      // Ignora linhas que dão erro (ex: measure-row)
-    }
-  }
 
-  return clients;
+      results.push({
+        index: parseInt(col1, 10) || 0,
+        account: col2,
+        password: pwd,
+        days_remaining: parseInt(col4, 10) || 0,
+        package_name: col5,
+        buyer_name: col6,
+        first_login: col7,
+        expiration_date: col8,
+        creation_time: col9,
+        in_use: col10,
+        expired: col11,
+      });
+    }
+
+    return results;
+  });
+
+  const result = (clients || []) as ClientData[];
+  console.log(`    → Extraídos ${result.length} clientes da tabela`);
+  return result;
 }
 
 /**

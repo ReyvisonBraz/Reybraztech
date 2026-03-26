@@ -1,17 +1,28 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { solveCaptcha } from './captcha';
 import type { Page, Browser } from 'puppeteer';
 
+// Configura o plugin Stealth para evitar detecção por bots (ex: Cloudflare)
+puppeteer.use(StealthPlugin());
+
 const COOKIES_DIR = path.join(__dirname, '..', 'cookies');
 const COOKIES_FILE = path.join(COOKIES_DIR, 'session.json');
 
-/** Espera N milissegundos */
+/** Espera um tempo fixo mínimo mais um valor aleatório para simular lentidão humana */
+function humanDelay(minMs: number = 300, maxMs: number = 1200): Promise<void> {
+  const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+/** Espera exatos N milissegundos */
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
 
 /**
  * Salva os cookies da sessão atual para reusar depois (evita 2FA repetido).
@@ -215,18 +226,30 @@ export async function loginToPanel(config: {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled',
+      '--disable-blink-features=AutomationControlled', // Remove a flag que diz que é automação
     ],
+    // Tenta usar um executável do Chrome real (se instalado no sistema), o que diminui muito o bot-score
+    // executablePath: '/usr/bin/google-chrome-stable', // Descomente e ajuste se o stealth falhar muito
   });
 
   const page = await browser.newPage();
 
-  // User agent realista
+  // User agent realista e atualizado
   await page.setUserAgent(
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
   );
 
-  // Esconde sinais de automação
+  // Evita carregamento de recursos inúteis para focar na velocidade do humanizado
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+      if (['image', 'stylesheet', 'font'].includes(req.resourceType()) && !req.url().includes('captcha')) {
+          req.continue(); // Por enquanto deixamos continuar tudo, mas podemos bloquear lixo se der timeout
+      } else {
+          req.continue();
+      }
+  });
+
+  // Esconde sinais de automação adicionais (O stealth plugin já faz muito disso, mas redundância ajuda)
   await page.evaluateOnNewDocument(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
   });
@@ -246,117 +269,83 @@ export async function loginToPanel(config: {
     return { browser, page };
   }
 
-  console.log('  📝 Preenchendo formulário de login...');
+  let loginSuccessful = false;
+  let loginAttempts = 0;
+  const maxLoginAttempts = 3;
 
-  // Preenche os campos usando a lista de inputs do formulário
-  const inputs = await page.$$('input.el-input__inner, input[type="text"], input[type="password"]');
+  while (!loginSuccessful && loginAttempts < maxLoginAttempts) {
+    loginAttempts++;
+    console.log(`\n  📝 [Tentativa ${loginAttempts}/${maxLoginAttempts}] Preenchendo formulário de login...`);
 
-  if (inputs.length >= 3) {
-    // Input 0: Account
-    await inputs[0].click({ clickCount: 3 });
-    await inputs[0].type(config.account, { delay: 50 });
-    console.log('  ✅ Account preenchido');
+    // Limpa campos antes de preencher
+    const inputs = await page.$$('input.el-input__inner, input[type="text"], input[type="password"]');
+    if (inputs.length >= 3) {
+      for (const input of inputs) {
+          await input.click({ clickCount: 3 });
+          await page.keyboard.press('Backspace');
+      }
 
-    // Input 1: Password
-    await inputs[1].click({ clickCount: 3 });
-    await inputs[1].type(config.password, { delay: 50 });
-    console.log('  ✅ Password preenchido');
+      // Preenche os campos de forma "humana"
+      await humanDelay(500, 1500);
+      await inputs[0].click();
+      await inputs[0].type(config.account, { delay: Math.floor(Math.random() * 50) + 50 });
+      console.log('    ✅ Account preenchido');
 
-    // Resolve o captcha
-    const captchaCode = await solveCaptcha(page);
+      await humanDelay(300, 800);
+      await inputs[1].click();
+      await inputs[1].type(config.password, { delay: Math.floor(Math.random() * 50) + 40 });
+      console.log('    ✅ Password preenchido');
 
-    // Input 2: Captcha
-    await inputs[2].click({ clickCount: 3 });
-    await inputs[2].type(captchaCode, { delay: 50 });
-    console.log('  ✅ Captcha preenchido');
-  } else {
-    // Fallback: tenta por placeholder
-    const accountInput = await page.$('input[placeholder*="Account"], input[placeholder*="account"]');
-    const passwordInput = await page.$('input[type="password"], input[placeholder*="Password"]');
+      // Tenta resolver o captcha
+      const captchaCode = await solveCaptcha(page);
+      await humanDelay(300, 800);
+      await inputs[2].click();
+      await inputs[2].type(captchaCode, { delay: Math.floor(Math.random() * 100) + 50 });
+      console.log('    ✅ Captcha preenchido');
 
-    if (accountInput) {
-      await accountInput.click({ clickCount: 3 });
-      await accountInput.type(config.account, { delay: 50 });
-      console.log('  ✅ Account preenchido');
-    }
+      // Marca Remember Me se for a primeira vez
+      if (loginAttempts === 1) {
+        console.log('    📌 Marcando "Remember me"...');
+        const checkboxes = await page.$$('input[type="checkbox"]');
+        if (checkboxes.length > 0) {
+          await page.evaluate((el: any) => el.click(), checkboxes[0]);
+        }
+      }
 
-    if (passwordInput) {
-      await passwordInput.click({ clickCount: 3 });
-      await passwordInput.type(config.password, { delay: 50 });
-      console.log('  ✅ Password preenchido');
-    }
+      // Clica no Login
+      console.log('    🔑 Clicando em Login...');
+      const btns = await page.$$('button');
+      for (const btn of btns) {
+        const text = await btn.evaluate((el: Element) => el.textContent || '');
+        if (text.includes('Login') || text.includes('Entrar')) {
+          await btn.click();
+          break;
+        }
+      }
 
-    const captchaCode = await solveCaptcha(page);
-    const captchaInput = await page.$('input[placeholder*="code"], input[placeholder*="Code"]');
-    if (captchaInput) {
-      await captchaInput.click({ clickCount: 3 });
-      await captchaInput.type(captchaCode, { delay: 50 });
-      console.log('  ✅ Captcha preenchido');
-    }
-  }
+      console.log('    ⏳ Aguardando resposta do servidor...');
+      await delay(3000);
 
-  // Clica em Login
-  console.log('  🔑 Clicando em Login...');
-  const buttons = await page.$$('button');
-  for (const btn of buttons) {
-    const text = await btn.evaluate((el: Element) => el.textContent || '');
-    if (text.includes('Login') || text.includes('login') || text.includes('Entrar')) {
-      await btn.click();
-      break;
-    }
-  }
-
-  // Aguarda resultado do login
-  console.log('  ⏳ Aguardando resposta do login...');
-  await delay(3000);
-
-  // Verifica se tem 2FA
-  const had2FA = await handle2FA(page);
-  if (had2FA) {
-    await delay(3000);
-  }
-
-  // Verifica se login foi bem sucedido (pode redirecionar para dashboard ou account list)
-  let afterLoginUrl = page.url();
-  let isLoggedIn = !afterLoginUrl.includes('login') || afterLoginUrl.includes('/info/accountSecurity');
-
-  if (!isLoggedIn) {
-    const errorMsg = await page.$('.el-message--error, .el-alert--error');
-    if (errorMsg) {
-      const errorText = await errorMsg.evaluate((el: Element) => el.textContent || '');
-      console.log(`\n  ❌ Erro no login: ${errorText}`);
-      console.log('  💡 Verifique se o captcha foi digitado corretamente.');
-      console.log('  🔄 Tentando novamente...\n');
-
-      // Recarrega e tenta de novo com captcha manual
-      await page.reload({ waitUntil: 'networkidle2' });
+      // Trata 2FA se aparecer
+      await handle2FA(page);
       await delay(2000);
 
-      const retryInputs = await page.$$('input.el-input__inner, input[type="text"], input[type="password"]');
-      if (retryInputs.length >= 3) {
-        await retryInputs[0].click({ clickCount: 3 });
-        await retryInputs[0].type(config.account, { delay: 50 });
-        await retryInputs[1].click({ clickCount: 3 });
-        await retryInputs[1].type(config.password, { delay: 50 });
-
-        const manualCaptcha = await solveCaptcha(page);
-        await retryInputs[2].click({ clickCount: 3 });
-        await retryInputs[2].type(manualCaptcha, { delay: 50 });
-
-        // Login novamente
-        const retryButtons = await page.$$('button');
-        for (const btn of retryButtons) {
-          const text = await btn.evaluate((el: Element) => el.textContent || '');
-          if (text.includes('Login')) {
-            await btn.click();
-            break;
-          }
-        }
-
-        await delay(3000);
-        const retryHad2FA = await handle2FA(page);
-        if (retryHad2FA) await delay(3000);
+      // Verifica sucesso
+      const currentUrl = page.url();
+      if (!currentUrl.includes('login') || currentUrl.includes('/info/accountSecurity')) {
+        loginSuccessful = true;
+      } else {
+        console.log('    ⚠️ Login falhou. Provavelmente Captcha incorreto ou dados inválidos.');
+        // Opcional: print do erro para debug
+        await page.screenshot({ path: path.join(__dirname, '..', 'output', `login_fail_attempt_${loginAttempts}.png`) });
+        // Recarrega captcha para próxima tentativa
+        const captchaImg = await page.$('img[src*="captcha"], .code-img');
+        if (captchaImg) await captchaImg.click();
+        await delay(1500);
       }
+    } else {
+        console.log('    ❌ Não encontrei os campos de input de login.');
+        break;
     }
   }
 
@@ -364,9 +353,9 @@ export async function loginToPanel(config: {
   await saveCookies(page);
 
   const finalUrl = page.url();
-  isLoggedIn = !finalUrl.includes('login') || finalUrl.includes('/info/accountSecurity');
+  const successful = loginSuccessful || (!finalUrl.includes('login') || finalUrl.includes('/info/accountSecurity'));
   
-  if (isLoggedIn) {
+  if (successful) {
     console.log('\n  ✅ Login realizado com sucesso!');
     console.log(`  📍 Página atual: ${finalUrl}\n`);
   } else {

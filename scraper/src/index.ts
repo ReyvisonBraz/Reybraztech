@@ -8,9 +8,9 @@ import { exportAll } from './export';
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 /**
- * Ponto de entrada principal do scraper.
+ * Função principal do scraper (exportada para ser usada no bot ou terminal)
  */
-async function main() {
+export async function runScraper() {
   console.log('╔══════════════════════════════════════════════╗');
   console.log('║   🕷️  Scraper ResellerSystem - StarHome      ║');
   console.log('║   📦 Reybraztech — Extração de Clientes     ║');
@@ -26,9 +26,7 @@ async function main() {
   };
 
   if (!config.account || !config.password) {
-    console.error('\n❌ Erro: PANEL_ACCOUNT e PANEL_PASSWORD são obrigatórios!');
-    console.error('   Crie o arquivo .env com base no .env.example\n');
-    process.exit(1);
+    throw new Error('PANEL_ACCOUNT e PANEL_PASSWORD são obrigatórios no .env');
   }
 
   console.log(`\n📋 Configuração:`);
@@ -54,7 +52,7 @@ async function main() {
 
     if (clients.length === 0) {
       console.log('\n⚠️  Nenhum cliente encontrado. Verifique se o login foi bem sucedido.');
-      return;
+      return [];
     }
 
     // 3. Exportação
@@ -81,8 +79,11 @@ async function main() {
     console.log(`   🟡 Vencendo em 3 dias: ${expiring}`);
     console.log(`   🔴 Expirados: ${expired}\n`);
 
+    return clients;
+
   } catch (error) {
     console.error('\n❌ Erro durante a execução:', error);
+    throw error;
   } finally {
     if (browser) {
       console.log('🔒 Fechando navegador...');
@@ -91,5 +92,7 @@ async function main() {
   }
 }
 
-// Executa
-main().catch(console.error);
+// Se o arquivo for rodado diretamente (não importado)
+if (require.main === module) {
+  runScraper().catch(() => process.exit(1));
+}

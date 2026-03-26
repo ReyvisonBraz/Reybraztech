@@ -2,8 +2,8 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as readline from 'readline';
 import { solveCaptcha } from './captcha';
+import { sendTelegramMessage, waitForTelegramReply } from './telegram';
 import type { Page, Browser } from 'puppeteer';
 
 // Configura o plugin Stealth para evitar detecção por bots (ex: Cloudflare)
@@ -53,22 +53,7 @@ async function loadCookies(page: Page): Promise<boolean> {
   return false;
 }
 
-/**
- * Pede um código de verificação 2FA ao usuário no terminal.
- */
-async function ask2FACode(): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
 
-  return new Promise((resolve) => {
-    rl.question('\n  🔐 Digite o código 2FA recebido por e-mail/telefone: ', (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
 
 /**
  * Verifica se a tela de 2FA apareceu (seja modal ou redirecionamento) e lida com ela.
@@ -124,39 +109,52 @@ async function handle2FA(page: Page): Promise<boolean> {
   }
 
   console.log('\n  🔒 Verificação de 2FA detectada! (Dispositivo / Navegador desconhecido)');
-  console.log('  📧 Verifique seu e-mail ou telefone para o código de verificação.');
 
-  // Procura e clica no botão "Send"
+  // PASSO 1: Clica no botão "Send" para o sistema disparar o SMS/e-mail
   let sendClicked = false;
-  const sendButtons = await page.$$('button');
-  for (const btn of sendButtons) {
+  const allButtons = await page.$$('button, span.text-primary, a.text-primary');
+  for (const btn of allButtons) {
     const text = await btn.evaluate((el: Element) => el.textContent || '');
     if (text.includes('Send') || text.includes('Enviar') || text.includes('Get code')) {
-      await btn.click();
-      console.log('  📤 Código de verificação enviado!');
-      sendClicked = true;
-      await delay(1000);
-      break;
-    }
-  }
-
-  // Se for a página /info/accountSecurity, os botões e campos podem estar diferentes
-  if (!sendClicked && isSecurityPage) {
-    // Tenta encontrar o botão "Send" em links ou spans que agem como botões
-    const sendElements = await page.$$('.send-code, span.text-primary, a.text-primary');
-    for (const el of sendElements) {
-      const text = await el.evaluate((e: Element) => e.textContent || '');
-      if (text.includes('Send') || text.includes('Enviar')) {
-        await (el as any).click();
-        console.log('  📤 Código de verificação enviado!');
-        await delay(1000);
+      const isVisible = await btn.evaluate((el: any) => {
+        const s = window.getComputedStyle(el);
+        return s.display !== 'none' && s.visibility !== 'hidden' && el.getBoundingClientRect().height > 0;
+      });
+      if (isVisible) {
+        await (btn as any).click();
+        console.log('  📤 Botão "Send" clicado — SMS/e-mail sendo enviado pelo painel...');
+        sendClicked = true;
+        await new Promise(r => setTimeout(r, 1500));
         break;
       }
     }
   }
 
-  // Pede o código ao usuário
-  const code = await ask2FACode();
+  if (!sendClicked) {
+    console.log('  ⚠️  Botão "Send" não encontrado — o painel pode já ter enviado o código.');
+  }
+
+  // PASSO 2: Envia alerta para o Telegram pedindo o código SMS
+  const telegramSent = await sendTelegramMessage(
+    '🔐 <b>Código 2FA necessário!</b>\n\n' +
+    'O painel StarHome detectou um novo dispositivo.\n' +
+    '📱 O SMS/e-mail já foi disparado pelo painel.\n\n' +
+    '<b>Responda com o código recebido.</b>'
+  );
+
+  let code: string;
+
+  if (telegramSent) {
+    // Aguarda resposta no Telegram (5 minutos)
+    const telegramCode = await waitForTelegramReply(300000, 'código 2FA');
+    code = telegramCode || '';
+  } else {
+    // Fallback: terminal
+    console.log('  💬 Telegram não disponível. Insira o código no terminal.');
+    const readline = await import('readline');
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    code = await new Promise<string>(resolve => rl.question('\n  🖐  Código 2FA: ', ans => { rl.close(); resolve(ans.trim()); }));
+  }
 
   // Encontra o campo de input do código e preenche
   const codeInputSelectors = [

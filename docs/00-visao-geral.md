@@ -246,49 +246,19 @@ import { Link } from 'react-router-dom';
 
 ## 🔮 Roadmap de Melhorias
 
-### 🔴 Prioridade Alta — Essencial para o negócio
+> O roadmap completo e atualizado está em **[06-roadmap.md](./06-roadmap.md)**.
+> Abaixo, apenas um resumo rápido do estado atual.
 
-| # | Melhoria | Por quê é importante |
-|---|----------|----------------------|
-| 1 | **Painel Administrativo** | Sem admin panel, você não consegue ver/editar clientes pelo site, gerenciar renovações ou acompanhar tudo sem acessar o banco direto |
-| 2 | **Job de contagem regressiva de dias** | O campo `days_remaining` existe, mas não é decrementado automaticamente. Um job diário (`node-cron`) deve subtrair 1 dia e inativar clientes vencidos |
-| 3 | **Alertas de vencimento por WhatsApp** | Enviar mensagem automática quando restam 3 dias na assinatura. Pode usar a API da Evolution API ou Baileys |
-| 4 | **Exibir `days_remaining` no Dashboard** | O cliente precisa saber quantos dias faltam para vencer sem precisar te perguntar |
+| Categoria | Feito | Pendente |
+|-----------|-------|----------|
+| **Segurança base** (Helmet, Rate Limit, Zod, JWT) | ✅ | — |
+| **Admin** (estrutura + listagem) | ✅ | Ações ativar/desativar, paginação |
+| **Recuperação de senha** | ✅ | — |
+| **Monitoramento** (Winston, Sentry, Telegram) | ✅ | — |
+| **Deploy** (Cloudflare + Render) | ✅ | — |
+| **Automação** (node-cron, days_remaining) | — | ❌ Não iniciado |
+| **Pagamentos** (Mercado Pago webhook) | 🟡 Links | ❌ Webhook pendente |
+| **Refresh Token** | — | ❌ Pendente |
+| **SEO, Testes, 404** | — | ❌ Pendente |
 
-### 🟡 Prioridade Média — UX e robustez
-
-| # | Melhoria | Por quê é importante |
-|---|----------|----------------------|
-| 5 | **Validação de formulários com Zod** | Erros muito mais precisos e amigáveis nos formulários de cadastro e login |
-| 6 | **Refresh Token** | O token JWT expira em 2h e o usuário é deslogado de surpresa. Refresh token resolve isso silenciosamente |
-| 7 | **Página de recuperação de senha** | O link "Esqueceu a senha?" já existe visualmente mas não faz nada. Essencial para auto-atendimento |
-| 8 | **Criptografia da `app_password`** | Hoje o campo é salvo em texto puro. Deveria ser criptografado com AES (criptografia reversível, pois você precisa descriptografar) |
-| 9 | **Checkout integrado com Mercado Pago** | Gerar o link de pagamento direto no site ao clicar em "Assinar Agora", e tratar o webhook de confirmação para ativar o cliente automaticamente |
-
-### 🟢 Prioridade Baixa — Profissionalismo e escala
-
-| # | Melhoria | Por quê é importante |
-|---|----------|----------------------|
-| 10 | **Deploy (Hosting)** | ✅ FEITO! Frontend no Cloudflare Pages e Backend no Render. |
-| 11 | **SEO e meta tags** | Adicionar Open Graph (imagem de prévia ao compartilhar o link no WhatsApp), título e descrição otimizados |
-| 12 | **Testes automatizados** | Garantir que ao adicionar novas funcionalidades nada quebra. Usar Vitest (frontend) e Jest (backend) |
-| 13 | **Variáveis de ambiente obrigatórias** | O servidor não deve subir sem `JWT_SECRET` definido. Adicionar validação no `server/index.ts` |
-| 14 | **Página de erro 404** | Usuários que acessam URLs inválidas devem ver uma página elegante com redirecionamento |
-
----
-
-## 📌 Histórico de Mudanças Recentes
-
-| Data | Mudança |
-|------|---------|
-| Mar/2026 | **Painel Admin:** Página `/admlogin` criada com middleware duplo (JWT + Admin). |
-| Mar/2026 | **Segurança:** Helmet, Rate Limit, Zod e jwt-decode implementados. |
-| Mar/2026 | **Deploy:** Frontend no Cloudflare Pages e Backend no Render com sucesso. |
-| Mar/2026 | **Migração Supabase:** Banco migrado para PostgreSQL na nuvem (Supabase). |
-| Mar/2026 | **OTP WhatsApp:** Autenticação via envio de OTP com o SendPulse API. |
-| Mar/2026 | E-mail opcional no cadastro e login com WhatsApp ou E-mail. |
-| Mar/2026 | Adicionada onda WebGL no fundo com cores da paleta do projeto. |
-| Mar/2026 | `LoginPage` e seções de Destaques/Planos reformuladas; shadcn/ui integrado. |
-| Mar/2026 | **Recuperação de Senha:** Modal Responsivo React com fluxo de OTP e Bypass de limite de 24h WhatsApp. |
-| Mar/2026 | **Anti-Bypass de UX:** Implementado `<div absolute>` overlay que captura cliques prematuros como Validation Shield. |
-| Mar/2026 | **Refatoração OTP (Backend):** Parâmetro opcional `consume` adicionado no utilitário de validação para impedir a queima precoce de tokens de OTP. |
+> **Onde parou:** Day 12 do [diário de bordo](./07-diario-de-bordo.md) — botões de ação no admin.

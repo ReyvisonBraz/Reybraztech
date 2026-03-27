@@ -147,4 +147,74 @@ Em produção, se nosso serviço de hospedagem (Render) desse pane e por alguma 
 
 ***
 
-**Próximo Passo (Semana 3 - Dia 12):** Funcionalidade Interativa. Agora precisaremos implementar a lógica pra interagir com essa tabela, colocando botões que conseguem ativar/inativar o acesso dos clientes ou suspender a assinatura do plano.
+---
+
+## 🔗 Integrações e UX Avançada (pós Semana 3)
+
+### Migração para Supabase e OTP WhatsApp
+**Data:** Março/2026
+
+**O que foi feito:**
+1. Banco migrado de SQLite local para **PostgreSQL na nuvem (Supabase)**, região São Paulo.
+2. Integrada a **API SendPulse** para envio de OTP via WhatsApp com cache de token OAuth2.
+3. Lógica de variantes de telefone (com e sem 9° dígito) implementada em `server/services/whatsapp.ts`.
+
+**Por que isso importa?**
+* O SQLite é um banco de arquivo — não aceita conexões simultâneas e não escala. O Supabase dá PostgreSQL gerenciado com backups, RLS e acesso via API.
+* OTP via WhatsApp é mais acessível que SMS para o público brasileiro e elimina a necessidade de e-mail verificado.
+
+***
+
+### Recuperação de Senha com Deep Linking WhatsApp
+**Data:** Março/2026
+
+**O que foi feito:**
+1. Criado `src/components/PasswordRecoveryModal.tsx` — modal de 3 etapas para redefinir senha.
+2. **Bypass da regra de 24h do SendPulse:** O usuário é forçado a abrir o WhatsApp primeiro (via deep link `wa.me/...`) para iniciar a janela de conversa, permitindo o envio do OTP.
+3. **Validation Shield:** Overlay `<div absolute>` invisível que captura cliques prematuros e impede o usuário de pular etapas do fluxo.
+4. **Refatoração do OTP:** Parâmetro opcional `consume` adicionado no `server/services/otp.ts` — permite verificar o token sem queimá-lo (Passo 2 valida, Passo 3 consome).
+
+**Por que isso importa?**
+* A regra de 24h da Meta impede envio de mensagens proativas se o cliente nunca falou com o bot. O deep link resolve isso de forma elegante sem depender de templates aprovados.
+* O parâmetro `consume` evita que o token seja queimado prematuramente em fluxos multi-etapa.
+
+***
+
+### Monitoramento e Alertas (Winston + Sentry + Telegram)
+**Data:** Março/2026
+
+**O que foi feito:**
+1. Criado `server/utils/logger.ts` com Winston para logs estruturados.
+2. Integrado **Sentry** para rastreamento de erros em produção (frontend e backend).
+3. Implementado **Telegram Bot** que envia alertas em tempo real quando erros ocorrem no servidor.
+4. Comandos do bot: `/logs` (últimos 20 logs), `/status` (uptime e memória do servidor).
+5. Stack traces sanitizados com RegEx antes de enviar ao Telegram.
+
+**Por que isso importa?**
+* Em produção, `console.log` não é visível. Sem monitoramento, bugs passam despercebidos por dias.
+* Telegram dá alertas instantâneos no celular — muito mais rápido que verificar dashboards.
+
+***
+
+### Deploy: Cloudflare Pages + Render
+**Data:** Março/2026
+
+**O que foi feito:**
+1. Frontend deployado no **Cloudflare Pages** (build automático via GitHub).
+2. Backend deployado no **Render** (Node.js, free tier).
+3. Health check `/api/health` chamado no `App.tsx` ao carregar para evitar cold start do Render.
+4. Variáveis de ambiente configuradas em ambos os serviços.
+
+***
+
+### Melhorias de Frontend (CSS e Animações)
+**Data:** Março/2026
+
+**O que foi feito:**
+1. **Navbar mobile:** Corrigido flickering trocando toggle de `display` por transição de `height` com `overflow-hidden`.
+2. **Botões CTA:** Adicionada animação de "respiração" com `Framer Motion` (scale pulsante).
+3. **LoginPage:** Olho animado que segue o cursor com `useMousePosition` hook customizado.
+
+***
+
+**Próximo Passo (Semana 3 - Dia 12):** Funcionalidade Interativa. Implementar a lógica para interagir com a tabela do admin, colocando botões que conseguem ativar/inativar o acesso dos clientes ou suspender a assinatura do plano. Ver [06-roadmap.md](./06-roadmap.md) para o plano completo.

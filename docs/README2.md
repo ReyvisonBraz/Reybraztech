@@ -36,7 +36,7 @@ npm run dev
 
 ## 📂 Documentação
 
-Toda a documentação técnica e didática está na pasta [`docs/`](./docs/README.md), numerada de 00 a 07.
+Toda a documentação técnica e didática está na pasta [`docs/`](./docs/README.md), numerada de 00 a 11.
 
 Leia o [índice dos guias](./docs/README.md) para começar.
 
@@ -50,5 +50,10 @@ Leia o [índice dos guias](./docs/README.md) para começar.
 - ✅ OTP WhatsApp via SendPulse
 - ✅ Deploy: Cloudflare Pages + Render
 - ✅ Painel Admin (rota oculta `/admlogin`)
+- ✅ Recuperação de senha (modal 3 etapas + deep linking WhatsApp)
+- ✅ Monitoramento: Winston + Sentry + Telegram Bot
 - 🟡 Ações admin (ativar/inativar clientes) — próximo passo
-- 🔵 Mercado Pago (pagamento automático) — futuro
+- 🔵 Automação: countdown `days_remaining` + alertas de vencimento
+- 🔵 Mercado Pago (webhook de pagamento) — futuro
+
+> Roadmap completo em [`docs/06-roadmap.md`](./docs/06-roadmap.md)

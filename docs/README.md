@@ -1,38 +1,47 @@
-# 📂 Docs — Guias do Projeto Reybraztech
+# Docs — Guias do Projeto Reybraztech
 
-Bem-vindo(a) à documentação central! Ela foi estruturada para ser um **curso intensivo prático** de Análise e Desenvolvimento de Sistemas (ADS), focando em problemas reais, arquiteturas e soluções implementadas no código.
-
----
-
-## 📖 Índice Didático
-
-| # | Arquivo (Nível / Assunto) | Conteúdo |
-|---|---------------------------|----------|
-| **00** | [00-visao-geral.md](./00-visao-geral.md) | O ponto de partida: Visão geral da arquitetura MVC, rotas, tabelas de Banco e Mapas Mentais. |
-| **01** | [01-entendendo-o-codigo.md](./01-entendendo-o-codigo.md) | Entendendo como as pastas React e as pastas Node.js Express se comunicam via Proxy. |
-| **02** | [02-seguranca.md](./02-seguranca.md) | Aula de Cibersegurança: Rate Limiting Contra DDoS, Helmet para Blindagem de Servidor, e HoneyPots. |
-| **03** | [03-banco-supabase.md](./03-banco-supabase.md) | Arquitetura de Nuvem: Do SQLite local ao robusto PostgreSQL em PaaS Serverless. |
-| **04** | [04-auth-whatsapp-otp.md](./04-auth-whatsapp-otp.md) | Integração de Terceiros: WhatsApp API (SendPulse), o fluxo de envio de senhas via Cronometria (OTP). |
-| **05** | [05-hospedagem-deploy.md](./05-hospedagem-deploy.md) | Integração Contínua (CI/CD) - Subindo seus módulos pra internet (Cloudflare Front / Render Back). |
-| **07** | [07-diario-de-bordo.md](./07-diario-de-bordo.md) | O Log diário das vitórias — Onde cada bug corrigido inicial foi anotado. |
-| **10** | [10-recuperacao-senha-e-ux.md](./10-recuperacao-senha-e-ux.md) | **UX Engineering:** Bypass das leis inflexíveis da Mêta + Fluxo Opcional de Consumo no Backend. |
-| **11** | [11-compilado-melhorias-gerais.md](./11-compilado-melhorias-gerais.md) | **[AULA DE HOJE]** O compilado absoluto de Física CSS, Polling Limits da API Web, Manipulação de Regex e Segurança DOM em formulários. |
-| **ZZ** | [Pasta ``zz-arquivo``](./zz-arquivo) | **Arquivo Morto:** Documentações velhas que deixaram de ser "A próxima Meta" e foram engavetadas para limpar a sua tela e focarem o essencial. |
+Documentação central do projeto. Estruturada como um curso intensivo de ADS, focando em problemas reais e soluções implementadas no código.
 
 ---
 
-## 🔮 Roadmap Acadêmico e Prático de Estudo
+## Índice
 
-> **Dica para Estudante (ADS):** Não leia como um livro. Leia um guia, abra a pasta `src` ou `server` no seu VS Code, e veja *exatamente como o guia 02 descreveu a regra de segurança no arquivo server/index.ts*. Mexa com o código, altere uma linha guiando-se pela teoria, e observe o site piscar.
+| # | Arquivo | Conteúdo |
+|---|---------|----------|
+| **00** | [00-visao-geral.md](./00-visao-geral.md) | Arquitetura, stack, tabelas do banco, rotas da API e estrutura de pastas. |
+| **01** | [01-entendendo-o-codigo.md](./01-entendendo-o-codigo.md) | Como Frontend e Backend se comunicam via Fetch/Proxy. Analogia do restaurante. |
+| **02** | [02-seguranca.md](./02-seguranca.md) | Segurança em 6 níveis: JWT, Helmet, Rate Limit, Zod, Anti-Bot, CSP. |
+| **03** | [03-banco-supabase.md](./03-banco-supabase.md) | Migração do SQLite para PostgreSQL na nuvem (Supabase). |
+| **04** | [04-auth-whatsapp-otp.md](./04-auth-whatsapp-otp.md) | Integração SendPulse para envio de OTP via WhatsApp. |
+| **05** | [05-hospedagem-deploy.md](./05-hospedagem-deploy.md) | Deploy: Cloudflare Pages (front) + Render (back). |
+| **06** | [06-roadmap.md](./06-roadmap.md) | **Roadmap atualizado** com status real de cada item, bugs conhecidos e próximos passos. |
+| **07** | [07-diario-de-bordo.md](./07-diario-de-bordo.md) | Log diário de cada implementação com explicações didáticas. |
+| **08** | [08-monitoramento-logs.md](./08-monitoramento-logs.md) | Como interpretar alertas do Telegram Bot, Winston e Sentry. |
+| **09** | [09-analise-performance-login.md](./09-analise-performance-login.md) | Diagnóstico de performance do login: cold start, latência cross-region, bcrypt. |
+| **10** | [10-recuperacao-senha-e-ux.md](./10-recuperacao-senha-e-ux.md) | UX Engineering: bypass da regra de 24h da Meta + fluxo de consumo parcial de OTP. |
+| **11** | [11-compilado-melhorias-gerais.md](./11-compilado-melhorias-gerais.md) | Compilado: CSS physics, regex sanitization, DOM shield, polling limits. |
+| **ZZ** | [zz-arquivo/](./zz-arquivo) | Arquivo morto: docs substituídas por versões mais atuais. |
+
+---
+
+## Roadmap Acadêmico
+
+> **Dica:** Não leia como livro. Abra um guia, depois abra o arquivo mencionado no VS Code e veja exatamente como foi implementado.
 
 ```
 ✅ 00. Analisar Tabelas e Pastas
       ↓
-✅ 01. Estudar Client-Server via Fetch/Proxy 
+✅ 01. Estudar Client-Server via Fetch/Proxy
       ↓
-🟡 02. Melhorar a Segurança Gradualmente
+✅ 02. Segurança (Helmet, Rate Limit, Zod, JWT)
       ↓
-✅ 03 e 04. Entender APIs em Nuvem (Supabase + SendPulse)
+✅ 03-04. APIs em Nuvem (Supabase + SendPulse)
       ↓
-✅ 10 e 11. Refinar UX, Bloquear Comportamento Pobre do Usuário e Higienizar Strings
+✅ 05. Deploy (Cloudflare + Render)
+      ↓
+✅ 08-09. Monitoramento e Performance
+      ↓
+✅ 10-11. UX Avançada (Password Recovery, DOM Shield, OTP)
+      ↓
+🟡 06. Roadmap — ver próximos passos pendentes
 ```

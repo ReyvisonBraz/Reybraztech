@@ -3,7 +3,21 @@
     "allow": [
       "Bash(node -e \":*)",
       "Bash(node -e \"require\\(''''dotenv''''\\).config\\(\\); const {createClient}=require\\(''''@supabase/supabase-js''''\\); console.log\\(''''supabase ok''''\\);\")",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(grep -r 'CREATE TABLE' /c/Users/reyvison/Desktop/ANTIGRAVITY/Reybraztech/server --include=*.ts)",
+      "Bash(grep -n \"sql\\\\`\" /c/Users/reyvison/Desktop/ANTIGRAVITY/Reybraztech/server/routes/auth.ts)",
+      "Bash(grep -ri \"render\\\\|onrender\\\\|VITE_API\" .env .env.*)",
+      "WebFetch(domain:reybraztech.vercel.app)",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\" -X POST https://reybraztech.vercel.app/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"phone\"\":\"\"00000000000\"\",\"\"password\"\":\"\"testefalso123\"\"}')",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\" -X POST https://reybraztech.vercel.app/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"identifier\"\":\"\"00000000000\"\",\"\"password\"\":\"\"testefalso123\"\"}')",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\" https://reybraztech.vercel.app/api/test-error)",
+      "WebFetch(domain:reybraztech.pages.dev)",
+      "Bash(git push:*)",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\" https://reybraztech.vercel.app/api/debug-db)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(taskkill //PID 19388 //F)",
+      "Bash(curl -s https://reybraztech.vercel.app/api/debug-sendpulse)"
     ]
   }
 }

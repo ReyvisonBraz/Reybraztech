@@ -59,7 +59,7 @@ app.use(helmet());
 // 🛡️ Prevenção contra força bruta ou tráfego excessivo (Rate Limit)
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // Limita a 100 requisições por IP a cada 15 minutos
+    max: 50, // Limita a 100 requisições por IP a cada 15 minutos
     message: { error: 'Muitas requisições deste IP, tente novamente mais tarde.' },
     standardHeaders: true, // Retorna os headers `RateLimit-*`
     legacyHeaders: false, // Desabilita o cabeçalho `X-RateLimit-*`

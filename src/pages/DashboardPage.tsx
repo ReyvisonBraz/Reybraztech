@@ -359,22 +359,48 @@ export const DashboardPage = () => {
                     {user.app_account || 'Pendente'}
                   </p>
                 </div>
-                <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                <div
+                  onClick={() => user.app_password && !showPassword && setShowPassword(true)}
+                  className={`p-4 md:p-5 rounded-2xl border transition-all duration-200 ${
+                    !user.app_password
+                      ? 'bg-slate-100/50 dark:bg-white/5 border-slate-200 dark:border-white/10'
+                      : showPassword
+                        ? 'bg-slate-100/50 dark:bg-white/5 border-slate-200 dark:border-white/10'
+                        : 'bg-slate-100/50 dark:bg-white/5 border-cyan-500/30 cursor-pointer hover:border-cyan-400 hover:bg-cyan-500/5'
+                  }`}
+                >
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest">Senha</p>
-                    {user.app_password && (
-                      <button
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-slate-400 hover:text-cyan-400 transition-colors"
-                        title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                    {user.app_password && showPassword && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); copyToClipboard(user.app_password!, 'app_password'); }}
+                          className="text-slate-400 hover:text-cyan-400 transition-colors"
+                          title="Copiar senha"
+                        >
+                          {copiedField === 'app_password' ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowPassword(false); }}
+                          className="text-slate-400 hover:text-cyan-400 transition-colors"
+                          title="Ocultar senha"
+                        >
+                          <EyeOff className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">
-                    {!user.app_password ? 'Pendente' : showPassword ? user.app_password : '••••••'}
-                  </p>
+                  {!user.app_password ? (
+                    <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">Pendente</p>
+                  ) : showPassword ? (
+                    <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">{user.app_password}</p>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-lg md:text-xl font-bold text-slate-500 dark:text-slate-400">••••••</p>
+                      <Eye className="w-4 h-4 text-cyan-400 animate-pulse" />
+                      <span className="text-[10px] text-cyan-400 font-medium">Clique para ver</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -90,6 +90,28 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Servidor Reybraztech rodando!' });
 });
 
+// 🔧 Diagnóstico TEMPORÁRIO — remover depois de resolver o problema
+app.get('/api/debug-db', async (_req, res) => {
+    try {
+        const sql = (await import('./database.js')).default;
+        const result = await sql`SELECT NOW() as current_time`;
+        res.json({ status: 'ok', db_time: result[0].current_time, env_check: {
+            DATABASE_URL: process.env.DATABASE_URL ? '✅ definida' : '❌ NÃO definida',
+            JWT_SECRET: process.env.JWT_SECRET ? '✅ definida' : '❌ NÃO definida',
+        }});
+    } catch (err: any) {
+        res.status(500).json({
+            status: 'error',
+            message: err.message,
+            code: err.code,
+            env_check: {
+                DATABASE_URL: process.env.DATABASE_URL ? '✅ definida' : '❌ NÃO definida',
+                JWT_SECRET: process.env.JWT_SECRET ? '✅ definida' : '❌ NÃO definida',
+            }
+        });
+    }
+});
+
 // Rota de teste de erro
 app.get('/api/test-error', (req, res) => {
     logger.error('Isto é um erro de teste disparado manualmente!');

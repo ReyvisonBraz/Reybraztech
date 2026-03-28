@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { loginToPanel } from './login';
 
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 async function debugHTML() {
   const config = {

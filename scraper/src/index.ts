@@ -5,7 +5,7 @@ import { scrapeClients } from './scrape';
 import { exportAll } from './export';
 
 // Carrega variáveis de ambiente
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 /**
  * Função principal do scraper (exportada para ser usada no bot ou terminal)

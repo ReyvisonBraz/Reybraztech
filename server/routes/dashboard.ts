@@ -37,6 +37,9 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             device: client.device,
             plan: client.plan,
             status: client.status,
+            daysRemaining: client.days_remaining,
+            appAccount: client.app_account,
+            appPassword: client.app_password,
             createdAt: client.created_at,
             paymentHistory: payments,
         });

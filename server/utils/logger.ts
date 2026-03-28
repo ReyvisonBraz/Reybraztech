@@ -120,21 +120,32 @@ logger.on('data', (log) => {
 // Agora usa Webhook: o Telegram ENVIA a mensagem para nós quando alguém manda um comando.
 // Funciona perfeitamente em Serverless (Vercel).
 
-import os from 'os';
 import type { Request, Response } from 'express';
+
+// Helper para enviar mensagem no Telegram
+const sendTelegram = async (text: string) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML'
+  });
+};
 
 /**
  * Handler do Webhook — chamado pelo Telegram quando alguém envia uma mensagem ao bot.
  * Registrado como rota POST /api/telegram-webhook no index.ts
  */
 export const handleTelegramWebhook = async (req: Request, res: Response) => {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
 
   // Responde 200 imediatamente (Telegram exige resposta rápida)
   res.status(200).json({ ok: true });
 
-  if (!token || !adminChatId) return;
+  if (!adminChatId) return;
 
   try {
     const update = req.body;
@@ -146,38 +157,143 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
 
     const text = message.text.trim().toLowerCase();
 
-    // COMANDO: /logs
-    if (text === '/logs') {
-      const logsText = logCache.length > 0 ? logCache.join('\n') : 'Nenhum log recente na memória.';
-      await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-        chat_id: adminChatId,
-        text: `📋 <b>Últimos 20 Registros (Logs da Memória):</b>\n\n<pre>${logsText}</pre>`,
-        parse_mode: 'HTML'
-      });
+    // Importa o banco só quando precisa (lazy import para serverless)
+    const getDb = async () => (await import('../database.js')).default;
+
+    // ─── /ajuda ─────────────────────────────────────
+    if (text === '/ajuda' || text === '/help' || text === '/start') {
+      await sendTelegram(
+        `🤖 <b>Comandos Reybraztech</b>\n\n` +
+        `📊 /status — Saúde geral (servidor + banco)\n` +
+        `👥 /clientes — Total e últimos cadastros\n` +
+        `💰 /pagamentos — Resumo de pagamentos\n` +
+        `🔑 /otp — Tokens OTP recentes\n` +
+        `📋 /logs — Últimos registros do sistema\n` +
+        `❓ /ajuda — Esta mensagem`
+      );
     }
 
-    // COMANDO: /status
+    // ─── /status ────────────────────────────────────
     else if (text === '/status') {
-      const uptimeSecs = Math.floor(process.uptime());
-      const hours = Math.floor(uptimeSecs / 3600);
-      const minutes = Math.floor((uptimeSecs % 3600) / 60);
-      const memUsage = process.memoryUsage();
-      const usedMem = (memUsage.rss / 1024 / 1024).toFixed(0);
+      const sql = await getDb();
 
-      const statusText = `📊 <b>Status do Servidor (Reybraztech)</b>\n\n` +
-                         `🌐 <b>Ambiente:</b> ${process.env.VERCEL ? 'Vercel (Serverless)' : 'Local'}\n` +
-                         `🟢 <b>Uptime do processo:</b> ${hours}h ${minutes}m\n` +
-                         `💾 <b>Memória usada:</b> ${usedMem}MB\n` +
-                         `📈 <b>Status:</b> Operante e Saudável`;
+      // Testa conexão com banco
+      let dbStatus = '❌ Offline';
+      let dbTime = '';
+      try {
+        const [row] = await sql`SELECT NOW() as t`;
+        dbStatus = '✅ Online';
+        dbTime = new Date(row.t).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      } catch { /* mantém offline */ }
 
-      await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-        chat_id: adminChatId,
-        text: statusText,
-        parse_mode: 'HTML'
-      });
+      // Conta clientes ativos
+      let totalClientes = 0;
+      try {
+        const [row] = await sql`SELECT COUNT(*)::int as total FROM clients`;
+        totalClientes = row.total;
+      } catch { /* ignora */ }
+
+      await sendTelegram(
+        `📊 <b>Status Reybraztech</b>\n\n` +
+        `🌐 <b>Ambiente:</b> ${process.env.VERCEL ? 'Vercel (Serverless)' : 'Local'}\n` +
+        `🗄️ <b>Banco de dados:</b> ${dbStatus}\n` +
+        `🕐 <b>Hora do banco:</b> ${dbTime || 'N/A'}\n` +
+        `👥 <b>Total de clientes:</b> ${totalClientes}\n` +
+        `📈 <b>Servidor:</b> Respondendo normalmente`
+      );
     }
+
+    // ─── /clientes ──────────────────────────────────
+    else if (text === '/clientes') {
+      const sql = await getDb();
+
+      const [countRow] = await sql`SELECT COUNT(*)::int as total FROM clients`;
+      const [activeRow] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`;
+      const recentes = await sql`
+        SELECT name, whatsapp, plan, status, created_at
+        FROM clients ORDER BY created_at DESC LIMIT 5
+      `;
+
+      let recentesText = '';
+      for (const c of recentes) {
+        const data = new Date(c.created_at).toLocaleDateString('pt-BR');
+        recentesText += `\n• <b>${c.name}</b> | ${c.whatsapp} | ${c.plan} | ${c.status} | ${data}`;
+      }
+
+      await sendTelegram(
+        `👥 <b>Clientes Reybraztech</b>\n\n` +
+        `📊 <b>Total:</b> ${countRow.total}\n` +
+        `✅ <b>Ativos:</b> ${activeRow.total}\n` +
+        `⏸️ <b>Inativos:</b> ${countRow.total - activeRow.total}\n\n` +
+        `🆕 <b>Últimos 5 cadastros:</b>${recentesText || '\nNenhum cliente ainda.'}`
+      );
+    }
+
+    // ─── /pagamentos ────────────────────────────────
+    else if (text === '/pagamentos') {
+      const sql = await getDb();
+
+      const [totalRow] = await sql`SELECT COUNT(*)::int as total FROM payments`;
+      const [approvedRow] = await sql`SELECT COUNT(*)::int as total FROM payments WHERE status = 'approved'`;
+      const recentes = await sql`
+        SELECT p.plan, p.value, p.status, p.paid_at, c.name
+        FROM payments p
+        LEFT JOIN clients c ON c.id = p.client_id
+        ORDER BY p.paid_at DESC LIMIT 5
+      `;
+
+      let recentesText = '';
+      for (const p of recentes) {
+        const data = p.paid_at ? new Date(p.paid_at).toLocaleDateString('pt-BR') : 'N/A';
+        recentesText += `\n• <b>${p.name || 'N/A'}</b> | ${p.plan} | R$${p.value || '?'} | ${p.status} | ${data}`;
+      }
+
+      await sendTelegram(
+        `💰 <b>Pagamentos Reybraztech</b>\n\n` +
+        `📊 <b>Total:</b> ${totalRow.total}\n` +
+        `✅ <b>Aprovados:</b> ${approvedRow.total}\n\n` +
+        `🆕 <b>Últimos 5 pagamentos:</b>${recentesText || '\nNenhum pagamento ainda.'}`
+      );
+    }
+
+    // ─── /otp ───────────────────────────────────────
+    else if (text === '/otp') {
+      const sql = await getDb();
+
+      const recentes = await sql`
+        SELECT whatsapp, type, used, created_at, expires_at
+        FROM otp_tokens ORDER BY created_at DESC LIMIT 5
+      `;
+
+      let recentesText = '';
+      for (const o of recentes) {
+        const data = new Date(o.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        const status = o.used ? '✅ Usado' : '⏳ Pendente';
+        recentesText += `\n• ${o.whatsapp} | ${o.type} | ${status} | ${data}`;
+      }
+
+      await sendTelegram(
+        `🔑 <b>Tokens OTP Recentes</b>\n\n` +
+        `<b>Últimos 5:</b>${recentesText || '\nNenhum token ainda.'}`
+      );
+    }
+
+    // ─── /logs ──────────────────────────────────────
+    else if (text === '/logs') {
+      const logsText = logCache.length > 0 ? logCache.join('\n') : 'Nenhum log recente na memória.';
+      await sendTelegram(`📋 <b>Últimos 20 Logs (memória):</b>\n\n<pre>${logsText}</pre>`);
+    }
+
+    // ─── Comando desconhecido ───────────────────────
+    else if (text.startsWith('/')) {
+      await sendTelegram(`❓ Comando não reconhecido. Use /ajuda para ver os comandos disponíveis.`);
+    }
+
   } catch (err: any) {
     console.error('⚠️ [Telegram Webhook] Erro ao processar:', err.message);
+    try {
+      await sendTelegram(`🚨 <b>Erro ao processar comando:</b>\n<code>${err.message}</code>`);
+    } catch { /* ignora erro ao reportar erro */ }
   }
 };
 

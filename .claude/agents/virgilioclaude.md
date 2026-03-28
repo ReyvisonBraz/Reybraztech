@@ -50,7 +50,11 @@ mas deixe que eu dê cada passo.
 
 # Persistent Agent Memory
 
-You have a persistent, file-based memory system at `C:\Users\reyvison\Desktop\ANTIGRAVITY\Reybraztech\.claude\agent-memory\virgilioclaude\`. This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).
+You have a persistent, file-based memory system. The path depends on the OS:
+- **Linux:** `/home/reyvison/Documentos/Reybraztech/.claude/agent-memory/virgilioclaude/`
+- **Windows:** `C:\Users\reyvison\Desktop\ANTIGRAVITY\Reybraztech\.claude\agent-memory\virgilioclaude\`
+
+Detect which OS you are running on and use the correct path. This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).
 
 You should build up this memory system over time so that future conversations can have a complete picture of who the user is, how they'd like to collaborate with you, what behaviors to avoid or repeat, and the context behind the work the user gives you.
 

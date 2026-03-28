@@ -114,93 +114,95 @@ logger.on('data', (log) => {
 });
 
 // ==========================================
-// 🤖 TELEGRAM BOT POLLING (On Demand Logs)
+// 🤖 TELEGRAM BOT WEBHOOK (Serverless-friendly)
 // ==========================================
+// Antes usava Long Polling (perguntava ao Telegram a cada 5s).
+// Agora usa Webhook: o Telegram ENVIA a mensagem para nós quando alguém manda um comando.
+// Funciona perfeitamente em Serverless (Vercel).
+
 import os from 'os';
+import type { Request, Response } from 'express';
 
-let lastUpdateId = 0;
-
-export const startTelegramBot = async () => {
+/**
+ * Handler do Webhook — chamado pelo Telegram quando alguém envia uma mensagem ao bot.
+ * Registrado como rota POST /api/telegram-webhook no index.ts
+ */
+export const handleTelegramWebhook = async (req: Request, res: Response) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
 
-  if (!token || !adminChatId) {
-    console.log('--- 🚨 DEBUG EXTREMO RENDER (O que o servidor está lendo da aba de ambiente?) ---');
-    console.log(`- Token Recebido: [${typeof token}] (Tamanho: ${token?.length || 0})`);
-    console.log(`- Chat ID Recebido: [${typeof adminChatId}] (Tamanho: ${adminChatId?.length || 0})`);
-    console.log('--- Se diz "undefined", o servidor Render JURA que a caixa de texto lá no painel dele não existe ou o nome da variável tá digitado com uma letra errada. ---');
-    console.log('⚠️ Bot do Telegram desativado nesta inicialização.');
+  // Responde 200 imediatamente (Telegram exige resposta rápida)
+  res.status(200).json({ ok: true });
+
+  if (!token || !adminChatId) return;
+
+  try {
+    const update = req.body;
+    const message = update?.message;
+    if (!message?.text) return;
+
+    // Segurança: só responde ao dono do sistema
+    if (message.chat.id.toString() !== adminChatId) return;
+
+    const text = message.text.trim().toLowerCase();
+
+    // COMANDO: /logs
+    if (text === '/logs') {
+      const logsText = logCache.length > 0 ? logCache.join('\n') : 'Nenhum log recente na memória.';
+      await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+        chat_id: adminChatId,
+        text: `📋 <b>Últimos 20 Registros (Logs da Memória):</b>\n\n<pre>${logsText}</pre>`,
+        parse_mode: 'HTML'
+      });
+    }
+
+    // COMANDO: /status
+    else if (text === '/status') {
+      const uptimeSecs = Math.floor(process.uptime());
+      const hours = Math.floor(uptimeSecs / 3600);
+      const minutes = Math.floor((uptimeSecs % 3600) / 60);
+      const memUsage = process.memoryUsage();
+      const usedMem = (memUsage.rss / 1024 / 1024).toFixed(0);
+
+      const statusText = `📊 <b>Status do Servidor (Reybraztech)</b>\n\n` +
+                         `🌐 <b>Ambiente:</b> ${process.env.VERCEL ? 'Vercel (Serverless)' : 'Local'}\n` +
+                         `🟢 <b>Uptime do processo:</b> ${hours}h ${minutes}m\n` +
+                         `💾 <b>Memória usada:</b> ${usedMem}MB\n` +
+                         `📈 <b>Status:</b> Operante e Saudável`;
+
+      await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+        chat_id: adminChatId,
+        text: statusText,
+        parse_mode: 'HTML'
+      });
+    }
+  } catch (err: any) {
+    console.error('⚠️ [Telegram Webhook] Erro ao processar:', err.message);
+  }
+};
+
+/**
+ * Registra o webhook no Telegram — chamar uma vez após deploy.
+ * GET /api/telegram-setup vai configurar o Telegram para enviar mensagens para o seu servidor.
+ */
+export const setupTelegramWebhook = async (req: Request, res: Response) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const webhookUrl = `https://reybraztech.vercel.app/api/telegram-webhook`;
+
+  if (!token) {
+    res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN não definido' });
     return;
   }
 
   try {
-    // 🔴 Crítico: Se havia um webhook configurado, o Polling (getUpdates) quebra com erro 409.
-    // Primeiro, forçamos o Telegram a deletar qualquer Webhook associado a este bot.
-    await axios.get(`https://api.telegram.org/bot${token}/deleteWebhook`);
-    console.log('✅ Webhook do Telegram limpo (preparado para Polling).');
-  } catch (e: any) {
-    console.error('⚠️ Falha ao limpar webhook do Telegram:', e.message);
+    // Registra o webhook no Telegram
+    const response = await axios.post(`https://api.telegram.org/bot${token}/setWebhook`, {
+      url: webhookUrl,
+    });
+    res.json({ ok: true, message: 'Webhook registrado!', telegram: response.data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
-
-  console.log('🤖 Telegram Bot Listener iniciado (Long Polling)...');
-
-  setInterval(async () => {
-    try {
-      // Faz o request pedindo apenas mensagens mais novas que o último offset
-      const response = await axios.get(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&timeout=5`);
-      
-      const updates = response.data.result;
-      
-      if (updates && updates.length > 0) {
-        for (const update of updates) {
-          lastUpdateId = update.update_id;
-
-          const message = update.message;
-          if (!message || !message.text) continue;
-
-          // Confere se a mensagem veio do DONO do sistema (segurança)
-          if (message.chat.id.toString() !== adminChatId) {
-            continue; // Ignora intrusos
-          }
-
-          const text = message.text.trim().toLowerCase();
-
-          // COMANDO: /logs
-          if (text === '/logs') {
-            const logsText = logCache.length > 0 ? logCache.join('\n') : 'Nenhum log recente na memória.';
-            await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-              chat_id: adminChatId,
-              text: `📋 <b>Últimos 20 Registros (Logs da Memória):</b>\n\n<pre>${logsText}</pre>`,
-              parse_mode: 'HTML'
-            });
-          }
-
-          // COMANDO: /status
-          else if (text === '/status') {
-            const uptimeSecs = Math.floor(os.uptime());
-            const hours = Math.floor(uptimeSecs / 3600);
-            const minutes = Math.floor((uptimeSecs % 3600) / 60);
-            const freeMem = (os.freemem() / 1024 / 1024).toFixed(0);
-            const totalMem = (os.totalmem() / 1024 / 1024).toFixed(0);
-
-            const statusText = `📊 <b>Status do Servidor (Reybraztech)</b>\n\n` +
-                               `🟢 <b>Uptime (Tempo Vido):</b> ${hours}h ${minutes}m\n` +
-                               `💾 <b>Memória Livre:</b> ${freeMem}MB / ${totalMem}MB\n` +
-                               `⚙️ <b>CPU:</b> ${os.cpus()[0].model}\n` +
-                               `📈 <b>Status:</b> Operante e Saudável`;
-
-            await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-              chat_id: adminChatId,
-              text: statusText,
-              parse_mode: 'HTML'
-            });
-          }
-        }
-      }
-    } catch (err: any) {
-      console.error('⚠️ [Telegram Bot] Falha no polling:', err.message);
-    }
-  }, 5000); // Roda a cada 5 segundos
 };
 
 export default logger;

@@ -2,13 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import * as Sentry from "@sentry/node";
-import logger, { startTelegramBot } from './utils/logger.js';
-
-// Iniciar Bot do Telegram em Background (Long Polling)
-// Na Vercel, o long polling faria a Serverless Function quebrar. Em breve mudaremos para Webhook.
-if (!process.env.VERCEL) {
-    startTelegramBot();
-}
+import logger, { handleTelegramWebhook, setupTelegramWebhook } from './utils/logger.js';
 
 // Inicializar Sentry (v10+)
 if (process.env.SENTRY_DSN) {
@@ -84,6 +78,10 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
+
+// Telegram Bot (Webhook — funciona em Serverless)
+app.post('/api/telegram-webhook', handleTelegramWebhook);
+app.get('/api/telegram-setup', setupTelegramWebhook);
 
 // Health check
 app.get('/api/health', (_req, res) => {

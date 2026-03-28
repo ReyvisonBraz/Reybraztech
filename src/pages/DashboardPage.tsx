@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X } from 'lucide-react';
+import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 interface UserData {
@@ -29,6 +29,7 @@ export const DashboardPage = () => {
   const [error, setError] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
   const [copiedField, setCopiedField] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Dados de boas-vindas (temporários via sessionStorage)
   const [welcomeData, setWelcomeData] = useState<{
@@ -359,9 +360,20 @@ export const DashboardPage = () => {
                   </p>
                 </div>
                 <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Senha</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest">Senha</p>
+                    {user.app_password && (
+                      <button
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-cyan-400 transition-colors"
+                        title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </div>
                   <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">
-                    {user.app_password || 'Pendente'}
+                    {!user.app_password ? 'Pendente' : showPassword ? user.app_password : '••••••'}
                   </p>
                 </div>
               </div>

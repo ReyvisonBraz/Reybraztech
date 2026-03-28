@@ -88,6 +88,35 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Servidor Reybraztech rodando!' });
 });
 
+// 🔧 Debug TEMPORÁRIO — verificar SendPulse na Vercel
+app.get('/api/debug-sendpulse', async (_req, res) => {
+    const clientId = process.env.SENDPULSE_CLIENT_ID;
+    const clientSecret = process.env.SENDPULSE_CLIENT_SECRET;
+    const botId = process.env.SENDPULSE_BOT_ID;
+
+    const envCheck = {
+        SENDPULSE_CLIENT_ID: clientId ? `✅ definida (${clientId.slice(0, 8)}...)` : '❌ NÃO definida',
+        SENDPULSE_CLIENT_SECRET: clientSecret ? `✅ definida (${clientSecret.slice(0, 8)}...)` : '❌ NÃO definida',
+        SENDPULSE_BOT_ID: botId ? `✅ definida (${botId})` : '❌ NÃO definida',
+    };
+
+    try {
+        const response = await fetch('https://api.sendpulse.com/oauth/access_token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                grant_type: 'client_credentials',
+                client_id: clientId,
+                client_secret: clientSecret,
+            }),
+        });
+        const data = await response.json();
+        res.json({ env: envCheck, sendpulse_status: response.status, sendpulse_response: data });
+    } catch (err: any) {
+        res.status(500).json({ env: envCheck, error: err.message });
+    }
+});
+
 // Rota de teste de erro
 app.get('/api/test-error', (req, res) => {
     logger.error('Isto é um erro de teste disparado manualmente!');

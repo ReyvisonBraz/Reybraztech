@@ -14,10 +14,12 @@ if (!connectionString) {
 }
 
 // Cria a conexão principal com o banco
+// prepare: false é OBRIGATÓRIO para Transaction Pooler do Supabase (usado na Vercel)
 const sql = postgres(connectionString, {
-  ssl: 'require', // Supabase exige SSL
-  max: 10,        // máximo de 10 conexões simultâneas
+  ssl: 'require',    // Supabase exige SSL
+  max: 10,           // máximo de 10 conexões simultâneas
   idle_timeout: 20,
+  prepare: false,    // Transaction pooler não suporta prepared statements
 });
 
 logger.info('✅ Conectado ao Supabase (PostgreSQL)!');

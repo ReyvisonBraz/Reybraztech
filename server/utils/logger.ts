@@ -142,15 +142,12 @@ const sendTelegram = async (text: string) => {
 export const handleTelegramWebhook = async (req: Request, res: Response) => {
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
 
-  // Responde 200 imediatamente (Telegram exige resposta rápida)
-  res.status(200).json({ ok: true });
-
-  if (!adminChatId) return;
+  if (!adminChatId) { res.status(200).json({ ok: true }); return; }
 
   try {
     const update = req.body;
     const message = update?.message;
-    if (!message?.text) return;
+    if (!message?.text) { res.status(200).json({ ok: true }); return; }
 
     // Segurança: só responde ao dono do sistema
     if (message.chat.id.toString() !== adminChatId) return;
@@ -295,6 +292,9 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       await sendTelegram(`🚨 <b>Erro ao processar comando:</b>\n<code>${err.message}</code>`);
     } catch { /* ignora erro ao reportar erro */ }
   }
+
+  // Responde 200 DEPOIS de processar (em serverless, a function morre após res.json)
+  res.status(200).json({ ok: true });
 };
 
 /**

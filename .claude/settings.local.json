@@ -17,7 +17,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(taskkill //PID 19388 //F)",
-      "Bash(curl -s https://reybraztech.vercel.app/api/debug-sendpulse)"
+      "Bash(curl -s https://reybraztech.vercel.app/api/debug-sendpulse)",
+      "Bash(xargs ls:*)",
+      "Bash(wc -l /c/Users/reyvison/Desktop/ANTIGRAVITY/Reybraztech/scraper/src/*.ts)"
     ]
   }
 }

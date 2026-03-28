@@ -218,13 +218,13 @@ export async function loginToPanel(config: {
 
   const browser = await puppeteer.launch({
     headless: config.headless,
-    defaultViewport: null, // Deixa o puppeteer usar o tamanho da janela
+    defaultViewport: { width: 1920, height: 1080 }, // Viewport fixo para coordenadas consistentes
     args: [
-      '--start-maximized', // Abre maximizado
+      '--window-size=1920,1080',
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled', // Remove a flag que diz que é automação
+      '--disable-blink-features=AutomationControlled',
     ],
     // Tenta usar um executável do Chrome real (se instalado no sistema), o que diminui muito o bot-score
     // executablePath: '/usr/bin/google-chrome-stable', // Descomente e ajuste se o stealth falhar muito
@@ -239,7 +239,7 @@ export async function loginToPanel(config: {
 
   // Evita carregamento de recursos inúteis para focar na velocidade do humanizado
   await page.setRequestInterception(true);
-  page.on('request', (req) => {
+  page.on('request', (req: any) => {
       if (['image', 'stylesheet', 'font'].includes(req.resourceType()) && !req.url().includes('captcha')) {
           req.continue(); // Por enquanto deixamos continuar tudo, mas podemos bloquear lixo se der timeout
       } else {

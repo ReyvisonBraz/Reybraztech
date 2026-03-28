@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(node -e \"require\\(''''dotenv''''\\).config\\(\\); const {createClient}=require\\(''''@supabase/supabase-js''''\\); console.log\\(''''supabase ok''''\\);\")",
+      "Bash(npx tsx:*)"
+    ]
+  }
+}

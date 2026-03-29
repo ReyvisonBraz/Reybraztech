@@ -70,7 +70,7 @@ export const AdminPage = () => {
     if (error) {
         return (
             <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
-                <div className="bg-slate-900 border border-red-500/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl shadow-red-500/10">
+                <div className="glass border border-red-500/30 rounded-3xl p-8 max-w-md w-full text-center">
                     <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-6 opacity-80" />
                     <h2 className="text-2xl font-bold text-slate-100 mb-4 tracking-tight">Acesso Bloqueado</h2>
                     <p className="text-slate-400 mb-8 leading-relaxed">
@@ -78,7 +78,7 @@ export const AdminPage = () => {
                     </p>
                     <button 
                         onClick={() => navigate('/dashboard')}
-                        className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 px-4 rounded-xl transition-all duration-300 ring-1 ring-slate-700/50"
+                        className="btn-shimmer w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-3 px-4 rounded-2xl transition-all duration-300 border-none"
                     >
                         Voltar ao Dashboard
                     </button>
@@ -94,7 +94,7 @@ export const AdminPage = () => {
                 <div>
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
                         <Users className="w-8 h-8 text-cyan-400" />
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
+                        <h1 className="text-3xl md:text-4xl font-extrabold text-gradient tracking-tight">
                             Gestão de Clientes
                         </h1>
                     </div>
@@ -103,7 +103,7 @@ export const AdminPage = () => {
                     </p>
                 </div>
                 
-                <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4 shrink-0 shadow-xl shadow-cyan-900/10">
+                <div className="glass rounded-2xl p-5 shrink-0">
                     <p className="text-sm font-medium text-slate-400 mb-1 flex items-center justify-center md:justify-start gap-2">
                         <UserCheck className="w-4 h-4 text-cyan-400" /> Total de Clientes
                     </p>
@@ -114,10 +114,10 @@ export const AdminPage = () => {
             </div>
 
             {/* Tabela de Clientes */}
-            <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 overflow-hidden shadow-2xl shadow-slate-900/50">
+            <div className="glass rounded-3xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
-                        <thead className="bg-slate-900/80 text-slate-300 border-b border-slate-800">
+                        <thead className="bg-white/5 text-slate-300 border-b border-white/5">
                             <tr>
                                 <th className="px-6 py-5 font-semibold">Cliente</th>
                                 <th className="px-6 py-5 font-semibold">Contato</th>
@@ -127,7 +127,7 @@ export const AdminPage = () => {
                                 <th className="px-6 py-5 font-semibold">Data Cadastro</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/50">
+                        <tbody className="divide-y divide-white/5">
                             {clients.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
@@ -137,7 +137,7 @@ export const AdminPage = () => {
                                 </tr>
                             ) : (
                                 clients.map((client) => (
-                                    <tr key={client.id} className="hover:bg-slate-800/30 transition-colors">
+                                    <tr key={client.id} className="hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center border border-cyan-500/20 font-bold text-cyan-400">

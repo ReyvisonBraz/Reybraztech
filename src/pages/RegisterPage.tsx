@@ -235,7 +235,7 @@ export const RegisterPage = () => {
           <button 
             type="button" 
             onClick={() => setStep(step - 1)} 
-            className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors group px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-bold"
+            className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors group px-4 py-2 rounded-full glass-light hover:bg-white/10 text-sm font-bold"
           >
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
             Voltar etapa
@@ -250,7 +250,7 @@ export const RegisterPage = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glow-card p-6 md:p-10 rounded-3xl md:rounded-[3rem] relative overflow-hidden border border-white/10"
+          className="glass p-6 md:p-10 rounded-3xl relative overflow-hidden"
         >
 
 
@@ -282,9 +282,9 @@ export const RegisterPage = () => {
                 <div key={s.num} className="flex flex-col items-center gap-2 relative z-10">
                   <div className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full font-black text-xs sm:text-sm transition-all duration-500 ${
                     step === s.num
-                      ? 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-[0_0_20px_rgba(34,211,238,0.5)] scale-110 border-2 border-white/20'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 scale-110 border-2 border-white/20'
                       : step > s.num
-                        ? 'bg-slate-800 text-cyan-400 border-2 border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                        ? 'glass text-cyan-400 border-2 border-cyan-500/50'
                         : 'bg-slate-900 text-slate-600 border-2 border-slate-700'
                   }`}>
                     {step > s.num ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : s.num}
@@ -313,7 +313,7 @@ export const RegisterPage = () => {
                     required
                     type="text"
                     placeholder="Nome"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   />
@@ -324,7 +324,7 @@ export const RegisterPage = () => {
                     required
                     type="text"
                     placeholder="Sobrenome"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   />
@@ -364,7 +364,7 @@ export const RegisterPage = () => {
                       required
                       type="tel"
                       placeholder="Ex: 91988887777"
-                      className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                      className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                       value={formData.whatsapp}
                       onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                     />
@@ -373,7 +373,7 @@ export const RegisterPage = () => {
 
                 <button
                   type="submit"
-                  className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400"
+                  className="btn-shimmer w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400"
                 >
                   Próximo Passo
                   <CheckCircle2 className="w-5 h-5" />
@@ -445,7 +445,7 @@ export const RegisterPage = () => {
                   type="button"
                   onClick={handleWhatsappSentClick}
                   disabled={!whatsappSent || otpSending}
-                  className={`glow-button w-full py-4 font-black rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${whatsappSent && !otpSending
+                  className={`btn-shimmer w-full py-4 font-black rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${whatsappSent && !otpSending
                       ? 'bg-primary text-white shadow-[0_0_30px_rgba(14,165,233,0.5)] border-cyan-400'
                       : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed'
                     }`}
@@ -507,7 +507,7 @@ export const RegisterPage = () => {
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="000000"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white text-center text-2xl font-mono tracking-[0.5em] focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white text-center text-2xl font-mono tracking-[0.5em] focus:border-cyan-500 outline-none transition-all"
                     value={otpCode}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -547,7 +547,7 @@ export const RegisterPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400 disabled:opacity-60"
+                  className="btn-shimmer w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400 disabled:opacity-60"
                 >
                   {loading ? (
                     <motion.div
@@ -596,7 +596,7 @@ export const RegisterPage = () => {
                     type="email"
                     required={!otpVerified}
                     placeholder={!otpVerified ? "E-mail (Obrigatório para este tipo de cadastro)" : "E-mail (Opcional)"}
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
@@ -607,7 +607,7 @@ export const RegisterPage = () => {
                     required
                     type="password"
                     placeholder="Crie uma senha (mín. 6 caracteres)"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
@@ -618,7 +618,7 @@ export const RegisterPage = () => {
                     required
                     type="password"
                     placeholder="Confirme a senha"
-                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 focus:shadow-[0_0_15px_rgba(34,211,238,0.15)] outline-none transition-all"
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   />
@@ -644,7 +644,7 @@ export const RegisterPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400 disabled:opacity-60"
+                  className="btn-shimmer w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400 disabled:opacity-60"
                 >
                   {loading ? (
                     <motion.div

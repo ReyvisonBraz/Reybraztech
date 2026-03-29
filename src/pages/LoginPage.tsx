@@ -496,7 +496,7 @@ export const LoginPage = () => {
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
                 <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
 
-                <div className="w-full max-w-[420px] relative z-10 glow-card p-6 sm:p-10 rounded-3xl sm:rounded-[2rem] border-white/5 shadow-2xl">
+                <div className="w-full max-w-[420px] relative z-10 glass p-6 sm:p-10 rounded-3xl">
                     {/* Header */}
                     <div className="text-center mb-10">
                         <h1 className="text-3xl font-black tracking-tight mb-2 text-white">Bem-vindo de volta!</h1>
@@ -510,14 +510,14 @@ export const LoginPage = () => {
                             <button
                                 type="button"
                                 onClick={() => setLoginMethod('whatsapp')}
-                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginMethod === 'whatsapp' ? 'bg-cyan-500 text-slate-900 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginMethod === 'whatsapp' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                             >
                                 Por WhatsApp
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setLoginMethod('email')}
-                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginMethod === 'email' ? 'bg-cyan-500 text-slate-900 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                                className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${loginMethod === 'email' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                             >
                                 Por E-mail
                             </button>
@@ -619,7 +619,7 @@ export const LoginPage = () => {
                         </div>
 
                         {errorMsg && (
-                            <div className="flex items-center gap-2 p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">
+                            <div className="flex items-center gap-2 p-3 text-sm text-red-400 glass border border-red-500/20 rounded-2xl">
                                 <AlertCircle className="size-4 shrink-0" />
                                 {errorMsg}
                             </div>
@@ -627,7 +627,7 @@ export const LoginPage = () => {
 
                         <Button
                             type="submit"
-                            className="w-full h-12 text-base font-black glow-button bg-cyan-500 hover:bg-cyan-600 text-slate-900 border-none rounded-xl mt-4"
+                            className="w-full h-12 text-base font-black btn-shimmer bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-2xl mt-4 border-none shadow-lg shadow-cyan-500/25"
                             size="lg"
                             disabled={loading}
                         >
@@ -645,7 +645,7 @@ export const LoginPage = () => {
                             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                             className="w-full"
                         >
-                            <Link to="/register" className="inline-flex items-center justify-center w-full py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600/50 to-cyan-600/50 border-2 border-cyan-300 text-white font-black text-lg hover:border-cyan-200 shadow-[0_0_40px_rgba(34,211,238,0.6)] transition-all">
+                            <Link to="/register" className="btn-shimmer inline-flex items-center justify-center w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black text-lg shadow-lg shadow-purple-500/25 transition-all border-none">
                                 🚀 CRIAR MINHA CONTA AGORA
                             </Link>
                         </motion.div>

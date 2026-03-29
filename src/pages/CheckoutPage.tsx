@@ -115,7 +115,7 @@ export const CheckoutPage = () => {
             animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
-            <div className={`glow-card ${selectedPlan.border} p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2`}>
+            <div className={`glass ${selectedPlan.border} p-6 md:p-8 rounded-3xl border`}>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Resumo do Pedido</h2>
 
               <div className="flex justify-between items-center p-5 bg-white/5 rounded-2xl border border-white/5 mb-6">
@@ -143,7 +143,7 @@ export const CheckoutPage = () => {
             </div>
 
             {/* Informações Relevantes sobre Pagamento */}
-            <div className="glow-card neon-border-cyan p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2">
+            <div className="glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2">
               <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <ShieldCheck className="w-6 h-6 text-green-400" />
                 Pagamento Seguro
@@ -175,7 +175,7 @@ export const CheckoutPage = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glow-card neon-border-cyan p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 h-fit"
+            className="glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 h-fit"
           >
             {!isLoggedIn ? (
               <>
@@ -232,7 +232,7 @@ export const CheckoutPage = () => {
 
                 <button
                   type="submit"
-                  className="glow-button w-full py-5 bg-green-500 hover:bg-green-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(34,197,94,0.5)] border-2 border-green-400 transition-all text-lg"
+                  className="btn-shimmer w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/25 transition-all text-lg border-none"
                 >
                   <QrCode className="w-6 h-6" />
                   Ir para o Pagamento

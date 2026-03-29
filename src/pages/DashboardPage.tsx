@@ -164,7 +164,7 @@ export const DashboardPage = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="glow-card neon-border-cyan p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] border-2 max-w-lg w-full relative"
+              className="glass border-cyan-500/20 p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] border-2 max-w-lg w-full relative"
             >
               {/* Botão fechar */}
               <button
@@ -274,7 +274,7 @@ export const DashboardPage = () => {
               {/* Botão fechar */}
               <button
                 onClick={handleCloseWelcome}
-                className="glow-button w-full py-4 bg-primary text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400"
+                className="btn-shimmer w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black rounded-2xl border-none flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(14,165,233,0.5)] border-2 border-cyan-400"
               >
                 Entendi, ir para o painel
                 <CheckCircle2 className="w-5 h-5" />
@@ -301,7 +301,7 @@ export const DashboardPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glow-card neon-border-cyan p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] lg:col-span-2 border-2"
+            className="glass border-cyan-500/20 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] lg:col-span-2 border-2"
           >
             <div className="flex items-center justify-between mb-6 md:mb-8">
               <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">Sua Assinatura</h2>
@@ -411,7 +411,7 @@ export const DashboardPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="glow-card neon-border-orange p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 bg-orange-500/5"
+            className="glass border-orange-500/20 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 bg-orange-500/5"
           >
             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Renovar Agora</h2>
             <p className="text-slate-400 mb-8 text-sm">Não perca o acesso! Renove seu plano antecipadamente e ganhe bônus de fidelidade.</p>
@@ -429,7 +429,7 @@ export const DashboardPage = () => {
 
             <Link
               to={planLinks[user.plan] || '/checkout?plan=mensal'}
-              className="glow-button w-full py-4 bg-orange-500 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(249,115,22,0.5)] border-2 border-orange-400"
+              className="btn-shimmer w-full py-4 bg-gradient-to-r from-orange-500 to-red-600 text-white font-black rounded-2xl border-none flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(249,115,22,0.5)] border-2 border-orange-400"
             >
               <CreditCard className="w-5 h-5" />
               Renovar Assinatura
@@ -447,13 +447,13 @@ export const DashboardPage = () => {
           <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Histórico de Pagamentos</h2>
 
           {user.paymentHistory.length === 0 ? (
-            <div className="glow-card p-10 rounded-3xl text-center text-slate-400">
+            <div className="glass p-10 rounded-3xl text-center text-slate-400">
               Nenhum pagamento registrado ainda.
             </div>
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden md:block overflow-hidden rounded-3xl border border-white/5 bg-white/5">
+              <div className="hidden md:block overflow-hidden rounded-3xl glass">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-white/5 bg-white/5">
@@ -483,7 +483,7 @@ export const DashboardPage = () => {
               {/* Mobile Card Layout */}
               <div className="md:hidden space-y-4">
                 {user.paymentHistory.map((item, i) => (
-                  <div key={i} className="glow-card p-6 rounded-3xl flex justify-between items-center">
+                  <div key={i} className="glass p-6 rounded-3xl flex justify-between items-center">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{item.date}</p>
                       <h4 className="text-lg font-black text-slate-900 dark:text-white capitalize">{item.plan}</h4>

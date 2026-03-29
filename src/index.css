@@ -5,8 +5,9 @@
 @custom-variant light (&:is(.light *));
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
   --color-primary: #0ea5e9;
   --color-secondary: #d946ef;
   --color-accent: #22d3ee;
@@ -64,6 +65,24 @@
 
 .text-gradient {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600;
+}
+
+.text-gradient-warm {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-pink-500 to-purple-500;
+}
+
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glow-card {
@@ -132,4 +151,137 @@
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+/* ═══ Shimmer effect on buttons ═══ */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.btn-shimmer {
+  @apply relative overflow-hidden;
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 70%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ═══ Animated gradient border ═══ */
+@keyframes border-rotate {
+  0% { --angle: 0deg; }
+  100% { --angle: 360deg; }
+}
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.gradient-border {
+  position: relative;
+  border-radius: 1.5rem;
+  isolation: isolate;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--angle),
+    #22d3ee,
+    #a855f7,
+    #ec4899,
+    #f97316,
+    #22d3ee
+  );
+  animation: border-rotate 4s linear infinite;
+  z-index: -1;
+  opacity: 0.7;
+}
+
+.gradient-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(15, 23, 42, 0.95);
+  z-index: -1;
+}
+
+/* ═══ Pulse glow on badges ═══ */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(168, 85, 247, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); }
+}
+
+.badge-pulse {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+/* ═══ Floating price highlight ═══ */
+@keyframes price-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.price-float {
+  animation: price-float 3s ease-in-out infinite;
+}
+
+/* ═══ Hover lift with glow trail ═══ */
+.card-hover-glow {
+  @apply transition-all duration-500;
+}
+
+.card-hover-glow:hover {
+  transform: translateY(-8px);
+  filter: brightness(1.05);
+}
+
+/* ═══ Typing cursor blink ═══ */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '|';
+  animation: blink 1s step-end infinite;
+  @apply text-cyan-400 ml-0.5;
+}
+
+/* ═══ Staggered reveal line ═══ */
+@keyframes line-reveal {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.line-reveal {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.line-reveal::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #22d3ee, #a855f7);
+  animation: line-reveal 1.5s ease-out forwards;
 }

@@ -19,7 +19,12 @@
       "Bash(taskkill //PID 19388 //F)",
       "Bash(curl -s https://reybraztech.vercel.app/api/debug-sendpulse)",
       "Bash(xargs ls:*)",
-      "Bash(wc -l /c/Users/reyvison/Desktop/ANTIGRAVITY/Reybraztech/scraper/src/*.ts)"
+      "Bash(wc -l /c/Users/reyvison/Desktop/ANTIGRAVITY/Reybraztech/scraper/src/*.ts)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:21st.dev)",
+      "Bash(npx vite:*)",
+      "WebFetch(domain:cdn.pulse.is)"
     ]
   }
 }

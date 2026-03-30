@@ -53,6 +53,18 @@
   }
 }
 
+/* Hide SendPulse floating widget by default — shown when body has .sp-chat-active */
+sp-live-chat {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.sp-chat-active sp-live-chat {
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
 .glass-nav {
   @apply border-b transition-all duration-500;
   background-color: rgba(2, 6, 23, 0.95);

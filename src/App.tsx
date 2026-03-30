@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
-import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Lazy load das páginas — cada uma vira um chunk JS separado
@@ -39,6 +39,7 @@ const PageLoader = () => (
 );
 
 import { API_URL } from './config/api';
+import { restoreSendPulseChat } from './utils/openSendPulseChat';
 
 export default function App() {
   // Wake Up Server Strategy (Render Free Tier)
@@ -46,6 +47,11 @@ export default function App() {
     fetch(`${API_URL}/api/health`, { method: 'GET' })
       .then(() => console.log('🟢 Servidor Acordado ou Conectado'))
       .catch((err) => console.log('🔴 Servidor indisponível no momento', err));
+  }, []);
+
+  // Restore SendPulse chat if user had an active conversation
+  useEffect(() => {
+    restoreSendPulseChat();
   }, []);
 
   return (
@@ -66,8 +72,6 @@ export default function App() {
           </Suspense>
         </main>
         <Footer />
-
-        <FloatingWhatsApp />
       </div>
     </BrowserRouter>
   );

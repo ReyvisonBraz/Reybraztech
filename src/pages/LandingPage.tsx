@@ -1,7 +1,8 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown, Sparkles, Terminal, Crown, Star, Flame, ArrowRight } from 'lucide-react';
+import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown, Sparkles, Terminal, Crown, Star, Flame, ArrowRight, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { openSendPulseChat } from '../utils/openSendPulseChat';
 
 /* ═══ Smooth scroll-reveal variants (no flash/blink) ═══ */
 const fadeSlideUp = {
@@ -117,6 +118,32 @@ const Hero = () => {
             Saiba Mais
             <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform duration-300" />
           </a>
+        </motion.div>
+
+        {/* Contact Buttons - WhatsApp & Chat ao Vivo */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.0 }}
+          className="mt-6 flex flex-row justify-center gap-3 px-4 sm:px-0"
+        >
+          <a
+            href="https://wa.me/5591986450659"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 pl-3 pr-3.5 py-2 rounded-full text-xs font-semibold hover:bg-emerald-600/30 hover:border-emerald-500/50 transition-all duration-200 hover:scale-105"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </a>
+          <button
+            type="button"
+            onClick={openSendPulseChat}
+            className="flex items-center gap-1.5 bg-purple-600/20 border border-purple-500/30 text-purple-400 pl-3 pr-3.5 py-2 rounded-full text-xs font-semibold hover:bg-purple-600/30 hover:border-purple-500/50 transition-all duration-200 hover:scale-105"
+          >
+            <MessageCircle className="w-4 h-4 flex-shrink-0" />
+            Chat ao Vivo
+          </button>
         </motion.div>
 
         {/* Stats row animada */}
@@ -741,7 +768,7 @@ const Features = () => {
             </div>
           </div>
 
-          {/* Right: image */}
+          {/* Right: streaming visual */}
           <div className="relative hidden lg:block">
             <motion.div
               variants={fadeScale}
@@ -749,20 +776,38 @@ const Features = () => {
               whileInView="visible"
               transition={{ ...smoothTransition, duration: 0.9 }}
               viewport={{ once: true, margin: '-80px' }}
-              className="relative rounded-3xl glass p-3"
+              className="relative"
             >
-              <img
-                alt="Streaming interface on TV"
-                className="rounded-2xl w-full h-auto opacity-90"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfS2OAvF1Pi1Pak3tGAn8-1qnidOCBV7Jdh1w_-hiRGeFtNRiHSKj7328wIq7eZPSAaBf5O0uX4Jp_Ktu7fmVnbfpZHpFh8ScnUEsD6yyKn9CEtJ3_vNC_AomesEuwuFvi0lzEWzEV2sB_Bc5_gd9ETAU7_fL1hgUZyTmo_r2zqc1n-i6ctgoRqih6tF2KRMc59gq4otqumROcgcoPQqLMxKJeAMTvtFpLGPDYfEvbnrdyzCKaH0_fLYKCXaElSWlSe2kwKru2Z6Jj"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div
-                  whileHover={{ scale: 1.15 }}
-                  className="btn-shimmer bg-white/10 backdrop-blur-md p-5 rounded-full border border-white/20 cursor-pointer"
-                >
-                  <PlayCircle className="w-14 h-14 text-white" />
-                </motion.div>
+              {/* Floating cards grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { icon: <Film className="w-8 h-8" />, label: 'Filmes', sub: '+50.000 títulos', gradient: 'from-cyan-500 to-blue-600', delay: 0 },
+                  { icon: <Tv className="w-8 h-8" />, label: 'Canais ao Vivo', sub: '+500 canais UHD', gradient: 'from-purple-500 to-pink-600', delay: 0.15 },
+                  { icon: <MonitorPlay className="w-8 h-8" />, label: 'Séries', sub: '+280.000h VOD', gradient: 'from-orange-500 to-red-600', delay: 0.3 },
+                  { icon: <Globe className="w-8 h-8" />, label: 'Conteúdo Global', sub: 'Sem fronteiras', gradient: 'from-emerald-500 to-teal-600', delay: 0.45 },
+                ].map((card, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ ...smoothTransition, delay: card.delay }}
+                    viewport={{ once: true }}
+                    whileHover={{ y: -5, scale: 1.03 }}
+                    className="glass rounded-2xl p-6 flex flex-col items-center text-center gap-3 cursor-default"
+                  >
+                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-white shadow-lg`}>
+                      {card.icon}
+                    </div>
+                    <h4 className="text-white font-bold text-sm">{card.label}</h4>
+                    <p className="text-slate-400 text-xs font-mono">{card.sub}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Ambient glow behind cards */}
+              <div className="absolute inset-0 -z-10 blur-3xl opacity-20">
+                <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cyan-500 rounded-full" />
+                <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-purple-500 rounded-full" />
               </div>
             </motion.div>
           </div>

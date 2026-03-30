@@ -491,16 +491,16 @@ export const LoginPage = () => {
             </div>
 
             {/* Right Login Section */}
-            <div className="flex items-center justify-center px-4 py-10 lg:p-8 pt-[120px] lg:pt-24 bg-[#020617] relative overflow-hidden">
+            <div className="flex items-start sm:items-center justify-center px-3 sm:px-4 py-6 sm:py-10 lg:p-8 pt-[100px] sm:pt-[120px] lg:pt-24 bg-[#020617] relative overflow-y-auto overflow-x-hidden">
                 {/* Decorative ambient light for the right side */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
+                <div className="absolute top-0 right-0 w-[40vw] max-w-[500px] aspect-square bg-cyan-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
+                <div className="absolute bottom-0 left-0 w-[40vw] max-w-[500px] aspect-square bg-purple-600/5 rounded-full pointer-events-none" style={{ filter: 'blur(80px)' }} />
 
-                <div className="w-full max-w-[420px] relative z-10 glass p-6 sm:p-10 rounded-3xl">
+                <div className="w-full max-w-[420px] relative z-10 glass p-4 sm:p-6 md:p-10 rounded-3xl">
                     {/* Header */}
-                    <div className="text-center mb-10">
-                        <h1 className="text-3xl font-black tracking-tight mb-2 text-white">Bem-vindo de volta!</h1>
-                        <p className="text-slate-400 text-sm">Insira seus dados para acessar</p>
+                    <div className="text-center mb-6 sm:mb-10">
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-2 text-white">Bem-vindo de volta!</h1>
+                        <p className="text-slate-400 text-xs sm:text-sm">Insira seus dados para acessar</p>
                     </div>
 
                     {/* Login Form */}
@@ -598,22 +598,22 @@ export const LoginPage = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                             <div className="flex items-center space-x-2">
                                 <Checkbox id="remember" className="border-slate-600 bg-white/5 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500" />
                                 <Label
                                     htmlFor="remember"
-                                    className="text-sm font-normal cursor-pointer text-slate-400 hover:text-slate-300 transition-colors"
+                                    className="text-xs sm:text-sm font-normal cursor-pointer text-slate-400 hover:text-slate-300 transition-colors"
                                 >
-                                    Lembrar de mim
+                                    Lembrar
                                 </Label>
                             </div>
                             <a
                                 href="#"
                                 onClick={(e) => { e.preventDefault(); setIsRecoverModalOpen(true); }}
-                                className="flex items-center gap-2 text-base text-cyan-400 hover:text-cyan-300 underline underline-offset-4 font-black transition-colors"
+                                className="flex items-center gap-1.5 text-xs sm:text-sm text-cyan-400 hover:text-cyan-300 underline underline-offset-4 font-black transition-colors"
                             >
-                                <AlertCircle className="w-4 h-4 ml-1" />
+                                <AlertCircle className="w-3.5 h-3.5" />
                                 Esqueceu a senha?
                             </a>
                         </div>
@@ -638,14 +638,14 @@ export const LoginPage = () => {
                     {/* Social Login REMOVED AS REQUESTED */}
 
                     {/* Sign Up Link */}
-                    <div className="text-center mt-8 pt-6 border-t border-white/10">
-                        <p className="text-base font-medium text-slate-300 mb-4">Ainda não tem uma conta?</p>
+                    <div className="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
+                        <p className="text-sm sm:text-base font-medium text-slate-300 mb-3 sm:mb-4">Ainda não tem uma conta?</p>
                         <motion.div
                             animate={{ scale: [1, 1.02, 1] }}
                             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                             className="w-full"
                         >
-                            <Link to="/register" className="btn-shimmer inline-flex items-center justify-center w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black text-lg shadow-lg shadow-purple-500/25 transition-all border-none">
+                            <Link to="/register" className="btn-shimmer inline-flex items-center justify-center w-full py-3 sm:py-4 px-4 sm:px-6 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black text-sm sm:text-lg shadow-lg shadow-purple-500/25 transition-all border-none">
                                 🚀 CRIAR MINHA CONTA AGORA
                             </Link>
                         </motion.div>

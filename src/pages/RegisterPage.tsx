@@ -289,7 +289,7 @@ export const RegisterPage = () => {
                   }`}>
                     {step > s.num ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : s.num}
                   </div>
-                  <span className={`absolute -bottom-6 text-[9px] sm:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-colors duration-500 ${
+                  <span className={`absolute -bottom-6 text-[0.6rem] sm:text-[0.65rem] font-black uppercase tracking-widest whitespace-nowrap transition-colors duration-500 ${
                     step === s.num ? 'text-cyan-400' : step > s.num ? 'text-slate-400' : 'text-slate-600'
                   }`}>
                     {s.label}
@@ -345,7 +345,7 @@ export const RegisterPage = () => {
                   </select>
                 </div>
                 <div className="flex gap-2">
-                  <div className="relative w-[110px] shrink-0">
+                  <div className="relative w-[6.5rem] shrink-0">
                     <select
                       className="w-full p-4 bg-slate-900 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all appearance-none text-sm"
                       value={formData.countryCode}

@@ -56,7 +56,8 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-[-0.05em] mb-6 leading-[0.85]"
+          className="font-black tracking-[-0.05em] mb-6 leading-[0.85]"
+          style={{ fontSize: 'clamp(2.5rem, 10vw, 8rem)' }}
         >
           <motion.span
             initial={{ opacity: 0, x: -20 }}

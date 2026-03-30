@@ -192,7 +192,7 @@ export const DashboardPage = () => {
                 {/* Telefone */}
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Telefone (Login)</p>
+                    <p className="text-[0.65rem] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Telefone (Login)</p>
                     <p className="text-white font-bold font-mono">{welcomeData.whatsapp}</p>
                   </div>
                   <button
@@ -214,7 +214,7 @@ export const DashboardPage = () => {
                 {/* Senha */}
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Senha</p>
+                    <p className="text-[0.65rem] text-slate-500 uppercase font-bold tracking-widest mb-0.5">Senha</p>
                     <p className="text-white font-bold font-mono">{welcomeData.password}</p>
                   </div>
                   <button
@@ -237,8 +237,8 @@ export const DashboardPage = () => {
                 {welcomeData.email && (
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
                     <div>
-                      <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-0.5">E-mail (Login alternativo)</p>
-                      <p className="text-white font-bold font-mono text-sm truncate max-w-[220px]">{welcomeData.email}</p>
+                      <p className="text-[0.65rem] text-slate-500 uppercase font-bold tracking-widest mb-0.5">E-mail (Login alternativo)</p>
+                      <p className="text-white font-bold font-mono text-sm truncate max-w-[14rem]">{welcomeData.email}</p>
                     </div>
                     <button
                       onClick={() => copyToClipboard(welcomeData.email, 'email')}
@@ -312,14 +312,14 @@ export const DashboardPage = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
               <div className="p-5 md:p-6 rounded-2xl md:rounded-3xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/5">
-                <div className="flex items-center text-slate-500 dark:text-slate-400 mb-2 font-bold text-[10px] md:text-xs uppercase tracking-widest">
+                <div className="flex items-center text-slate-500 dark:text-slate-400 mb-2 font-bold text-[0.65rem] md:text-xs uppercase tracking-widest">
                   <Zap className="w-3 h-3 md:w-4 md:h-4 mr-2 text-cyan-400" />
                   Plano Atual
                 </div>
                 <div className="text-xl md:text-2xl font-black text-slate-900 dark:text-white capitalize">{user.plan}</div>
               </div>
               <div className="p-5 md:p-6 rounded-2xl md:rounded-3xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/5">
-                <div className="flex items-center text-slate-500 dark:text-slate-400 mb-2 font-bold text-[10px] md:text-xs uppercase tracking-widest">
+                <div className="flex items-center text-slate-500 dark:text-slate-400 mb-2 font-bold text-[0.65rem] md:text-xs uppercase tracking-widest">
                   <Clock className="w-3 h-3 md:w-4 md:h-4 mr-2 text-orange-400" />
                   WhatsApp
                 </div>
@@ -346,7 +346,7 @@ export const DashboardPage = () => {
               <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Dados de Acesso ao App</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
+                  <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-cyan-400" /> Dias Restantes
                   </p>
                   <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-cyan-400">
@@ -354,7 +354,7 @@ export const DashboardPage = () => {
                   </p>
                 </div>
                 <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Usuário / Conta</p>
+                  <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Usuário / Conta</p>
                   <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">
                     {user.app_account || 'Pendente'}
                   </p>
@@ -370,7 +370,7 @@ export const DashboardPage = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest">Senha</p>
+                    <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest">Senha</p>
                     {user.app_password && showPassword && (
                       <div className="flex items-center gap-2">
                         <button
@@ -398,7 +398,7 @@ export const DashboardPage = () => {
                     <div className="flex items-center gap-2">
                       <p className="text-lg md:text-xl font-bold text-slate-500 dark:text-slate-400">••••••</p>
                       <Eye className="w-4 h-4 text-cyan-400 animate-pulse" />
-                      <span className="text-[10px] text-cyan-400 font-medium">Clique para ver</span>
+                      <span className="text-[0.65rem] text-cyan-400 font-medium">Clique para ver</span>
                     </div>
                   )}
                 </div>

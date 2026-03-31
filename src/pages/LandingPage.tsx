@@ -104,19 +104,19 @@ const Hero = () => {
           transition={{ duration: 0.5, delay: 0.8 }}
           className="mt-10 sm:mt-14 flex flex-col sm:flex-row justify-center gap-4 px-4 sm:px-0"
         >
-          <a
-            href="#planos"
-            className="btn-shimmer group flex items-center justify-center gap-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-8 py-4 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg font-bold shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/50 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]"
+          <Link
+            to="/trial"
+            className="btn-shimmer group flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white px-8 py-4 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg font-bold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/50 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]"
           >
             <PlayCircle className="w-6 h-6 group-hover:rotate-[360deg] transition-transform duration-700" />
-            Assine Agora
+            Teste Gratis 4 Horas
             <ArrowRight className="w-5 h-5 opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
-          </a>
+          </Link>
           <a
-            href="#dispositivos"
+            href="#planos"
             className="group flex items-center justify-center gap-2 glass text-white px-8 py-4 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg font-semibold hover:bg-white/10 transition-all duration-300 hover:-translate-y-0.5"
           >
-            Saiba Mais
+            Ver Planos
             <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform duration-300" />
           </a>
         </motion.div>
@@ -824,7 +824,7 @@ const Features = () => {
 const FAQ = () => {
   const faqs = [
     { q: 'Como faço para instalar o aplicativo?', a: 'A instalação é simples! Após a assinatura, você receberá um email com o link direto para download do nosso APK para Android ou instruções para configurar no seu TV Box/Fire Stick.' },
-    { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um período de teste gratuito de 4 horas para que você possa verificar a qualidade do nosso serviço e a estabilidade dos canais.' },
+    { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um período de teste gratuito de 3 dias (72 horas) para que você possa verificar a qualidade do nosso serviço e a estabilidade dos canais.' },
     { q: 'A lista de canais é atualizada?', a: 'Sim, nossa equipe trabalha diariamente para manter a lista de canais, filmes e séries sempre atualizada com os lançamentos mais recentes.' },
     { q: 'Quais as formas de pagamento?', a: 'Aceitamos PIX, cartão de crédito (em até 12x) e pix copia e cola — tudo processado com segurança pelo Mercado Pago. A ativação após o pagamento é imediata.' },
   ];

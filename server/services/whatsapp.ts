@@ -150,3 +150,93 @@ export async function sendOTPMessage(
 
   return sendWhatsApp(number, messages[type]);
 }
+
+// ============================================================
+// Mensagens do fluxo de checkout/trial
+// ============================================================
+
+const PLAN_LABELS: Record<string, string> = {
+  mensal: 'Mensal (31 dias)',
+  trimestral: 'Trimestral (93 dias)',
+  semestral: 'Semestral (186 dias)',
+  anual: 'Anual (365 dias)',
+  trial: 'Teste Gratuito (3 dias)',
+};
+
+/**
+ * Envia confirmação de pagamento com dados da transação.
+ * Abre a janela de 24h do SendPulse.
+ */
+export async function sendPaymentConfirmation(
+  whatsapp: string,
+  name: string,
+  plan: string,
+  amount: number,
+  orderId: string
+): Promise<boolean> {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const date = new Date().toLocaleDateString('pt-BR');
+  const planLabel = PLAN_LABELS[plan] || plan;
+
+  const message = [
+    `✅ *Reybraztech — Pagamento Confirmado!*`,
+    ``,
+    `Olá ${name}! Seu pagamento foi aprovado.`,
+    ``,
+    `📋 *Plano:* ${planLabel}`,
+    `💰 *Valor:* R$ ${amount.toFixed(2)}`,
+    `📅 *Data:* ${date}`,
+    ``,
+    `Complete seu cadastro para acessar o app:`,
+    `${frontendUrl}/complete-registration?order=${orderId}`,
+  ].join('\n');
+
+  return sendWhatsApp(whatsapp, message);
+}
+
+/**
+ * Envia confirmação de ativação do trial + link de cadastro.
+ * Enviado APÓS o cadastro completo (trial exige conta criada).
+ */
+export async function sendTrialActivation(
+  whatsapp: string,
+  name: string
+): Promise<boolean> {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  const message = [
+    `🎁 *Reybraztech — Teste Gratuito Ativado!*`,
+    ``,
+    `Olá ${name}! Seu teste gratuito de 3 dias (72 horas) foi ativado com sucesso.`,
+    ``,
+    `Acesse seu painel para ver suas credenciais:`,
+    `${frontendUrl}/dashboard`,
+    ``,
+    `Aproveite! 🚀`,
+  ].join('\n');
+
+  return sendWhatsApp(whatsapp, message);
+}
+
+/**
+ * Envia mensagem de cadastro completo + link do dashboard.
+ */
+export async function sendRegistrationComplete(
+  whatsapp: string,
+  name: string
+): Promise<boolean> {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  const message = [
+    `🎉 *Reybraztech — Cadastro Completo!*`,
+    ``,
+    `Olá ${name}! Sua conta foi criada com sucesso.`,
+    ``,
+    `Acesse seu painel:`,
+    `${frontendUrl}/dashboard`,
+    ``,
+    `Qualquer dúvida, estamos à disposição! 💬`,
+  ].join('\n');
+
+  return sendWhatsApp(whatsapp, message);
+}

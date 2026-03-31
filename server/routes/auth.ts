@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import sql from '../database.js';
 import logger from '../utils/logger.js';
+import { sendTrialActivation, sendRegistrationComplete } from '../services/whatsapp.js';
 
 const router = Router();
 
@@ -182,6 +183,131 @@ router.post('/login', async (req: Request, res: Response) => {
         });
     } catch (error) {
         logger.error('Erro no login:', error);
+        res.status(500).json({ error: 'Erro interno. Tente novamente mais tarde.' });
+    }
+});
+
+// ============================================================
+// POST /api/auth/register-from-order — Cadastro pós-pagamento/trial
+// ============================================================
+const registerFromOrderSchema = z.object({
+    orderId: z.string().min(1, 'ID do pedido inválido'),
+    device: z.string().min(1, 'Informe o dispositivo'),
+    email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
+
+router.post('/register-from-order', async (req: Request, res: Response) => {
+    const result = registerFromOrderSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ error: result.error.issues[0].message });
+        return;
+    }
+
+    const { orderId, device, email, password } = result.data;
+
+    try {
+        // Buscar o pedido (status = 'paid' e ainda não registrado)
+        const [order] = await sql`
+          SELECT id, name, whatsapp, plan, amount
+          FROM pending_orders
+          WHERE id = ${orderId}
+            AND status = 'paid'
+            AND registered_at IS NULL
+        `;
+
+        if (!order) {
+            res.status(404).json({ error: 'Pedido não encontrado ou já registrado.' });
+            return;
+        }
+
+        // Verificar se WhatsApp já existe na tabela clients
+        const [existingClient] = await sql`
+          SELECT id FROM clients WHERE whatsapp = ${order.whatsapp}
+        `;
+        if (existingClient) {
+            // Vincular pedido ao cliente existente
+            await sql`
+              UPDATE pending_orders
+              SET status = 'registered', client_id = ${existingClient.id}, registered_at = NOW()
+              WHERE id = ${orderId}
+            `;
+            // Gerar token para login automático
+            const JWT_SECRET = process.env.JWT_SECRET!;
+            const token = jwt.sign(
+                { id: existingClient.id, email: order.whatsapp },
+                JWT_SECRET,
+                { expiresIn: '8h' }
+            );
+            res.json({ success: true, token, user: { name: order.name, whatsapp: order.whatsapp } });
+            return;
+        }
+
+        // Se forneceu email, verificar duplicata
+        if (email && email.trim() !== '') {
+            const [existingEmail] = await sql`
+              SELECT id FROM clients WHERE email = ${email}
+            `;
+            if (existingEmail) {
+                res.status(409).json({ error: 'Este e-mail já está cadastrado.' });
+                return;
+            }
+        }
+
+        // Criar cliente
+        const JWT_SECRET = process.env.JWT_SECRET!;
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        const [newClient] = await sql`
+          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status)
+          VALUES (${order.name}, ${order.whatsapp}, ${device}, ${email || null}, ${passwordHash}, ${order.plan}, 'Ativo')
+          RETURNING id, name, email, plan, status
+        `;
+
+        // Atualizar pedido como registrado
+        await sql`
+          UPDATE pending_orders
+          SET status = 'registered', client_id = ${newClient.id}, registered_at = NOW()
+          WHERE id = ${orderId}
+        `;
+
+        // Gerar JWT
+        const token = jwt.sign(
+            { id: newClient.id, email: email || order.whatsapp },
+            JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+
+        const logMsg = [
+            `✅ <b>Novo cliente via ${order.plan === 'trial' ? 'trial' : 'checkout'}!</b>`,
+            `👤 <b>Nome:</b> ${order.name}`,
+            `📱 <b>WhatsApp:</b> ${order.whatsapp}`,
+            `🖥️ <b>Dispositivo:</b> ${device}`,
+            `📋 <b>Plano:</b> ${order.plan}`,
+            `🆔 <b>ID:</b> ${newClient.id}`
+        ].join('\n');
+        logger.info(logMsg);
+
+        // Enviar WhatsApp (best-effort, não bloqueia resposta em caso de falha)
+        if (order.plan === 'trial') {
+            await sendTrialActivation(order.whatsapp, order.name);
+        } else {
+            await sendRegistrationComplete(order.whatsapp, order.name);
+        }
+
+        res.status(201).json({
+            success: true,
+            token,
+            user: {
+                name: newClient.name,
+                plan: newClient.plan,
+                status: newClient.status,
+                whatsapp: order.whatsapp,
+                email: email || null,
+            },
+        });
+    } catch (error) {
+        logger.error('Erro no register-from-order:', error);
         res.status(500).json({ error: 'Erro interno. Tente novamente mais tarde.' });
     }
 });

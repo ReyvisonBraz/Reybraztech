@@ -31,6 +31,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import otpRoutes from './routes/otp.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payments.js';
+import orderRoutes from './routes/orders.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -78,6 +79,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Telegram Bot (Webhook — funciona em Serverless)
 app.post('/api/telegram-webhook', handleTelegramWebhook);

@@ -1,43 +1,30 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
+import { API_URL } from '../config/api';
 
-// 🔗 Links do Mercado Pago — cole seus links aqui!
-// 🔗 Links do Mercado Pago (Fallbacks caso a API falhe)
+// Links do Mercado Pago (Fallbacks caso a API falhe)
 const MP_FALLBACK_LINKS: Record<string, string> = {
-  mensal: 'https://mpago.la/2S5S5S5', // Exemplo
+  mensal: 'https://mpago.la/2S5S5S5',
   trimestral: '#',
   semestral: '#',
   anual: '#',
 };
 
-// 💬 Número de Suporte WhatsApp (coloque o DDD + Número)
-const WHATSAPP_SUPPORT = '5511999999999';
+// Numero de Suporte WhatsApp
+const WHATSAPP_SUPPORT = '5591986450659';
 
 export const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
   const plan = searchParams.get('plan') || 'mensal';
 
   const [name, setName] = useState('');
+  const [countryCode] = useState('55');
   const [phone, setPhone] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => {
-    // Verifica se o usuário já está logado
-    const userStr = localStorage.getItem('reyb_user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user.name) setName(user.name);
-        if (user.whatsapp) setPhone(user.whatsapp);
-        setIsLoggedIn(true);
-      } catch {
-        // Ignora erro de parse
-      }
-    }
-  }, []);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const planDetails: Record<string, { price: string; duration: string; color: string; border: string }> = {
     mensal: { price: '35,00', duration: '31 dias', color: 'text-cyan-400', border: 'border-cyan-500/30' },
@@ -47,55 +34,55 @@ export const CheckoutPage = () => {
   };
 
   const selectedPlan = planDetails[plan] || planDetails.mensal;
-  const mpLink = MP_FALLBACK_LINKS[plan] || '#';
 
   const handleProceed = async (e: FormEvent) => {
     e.preventDefault();
-    
-    // Pegar token de autenticação
-    const token = localStorage.getItem('reyb_token');
-    
-    if (!isLoggedIn || !token) {
-      // Se não estiver logado, salvamos as info e redirecionamos para login/registro
-      // ou apenas avisamos que precisa estar logado para gerar o pagamento dinâmico.
-      const clientInfo = { name, phone, plan, timestamp: new Date().toISOString() };
-      localStorage.setItem('reyb_checkout_info', JSON.stringify(clientInfo));
-      // Fallback para link estático se não estiver logado (opcional)
-      window.open(MP_FALLBACK_LINKS[plan] || '#', '_blank');
-      setSubmitted(true);
+    setError('');
+    setSubmitting(true);
+
+    const whatsapp = `${countryCode}${phone.replace(/\D/g, '')}`;
+
+    if (whatsapp.length < 12) {
+      setError('Numero de WhatsApp invalido. Inclua o DDD.');
+      setSubmitting(false);
       return;
     }
 
     try {
-      setSubmitted(true);
-      
-      const response = await fetch('/api/payments/create-preference', {
+      const response = await fetch(`${API_URL}/api/orders/create`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          planId: plan,
-          amount: selectedPlan.price.replace(',', '.'),
-          title: `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)} - Reybraztech`
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, whatsapp, plan }),
       });
 
-      if (!response.ok) throw new Error('Falha ao gerar pagamento');
-
       const data = await response.json();
-      
-      // Redirecionar para o Mercado Pago
+
+      if (!response.ok) {
+        setError(data.error || 'Erro ao processar pedido.');
+        setSubmitting(false);
+        return;
+      }
+
+      // Salvar orderId para recuperacao
+      localStorage.setItem('reyb_pending_order', data.orderId);
+
+      // Redirecionar para Mercado Pago
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
-        throw new Error('URL de pagamento não encontrada');
+        throw new Error('URL de pagamento nao encontrada');
       }
-    } catch (error) {
-      console.error('Erro ao processar pagamento:', error);
-      alert('Erro ao gerar o link de pagamento. Tente novamente ou use o suporte via WhatsApp.');
-      setSubmitted(false);
+    } catch (err) {
+      console.error('Erro ao processar pagamento:', err);
+      // Fallback para link estatico
+      const fallbackLink = MP_FALLBACK_LINKS[plan];
+      if (fallbackLink && fallbackLink !== '#') {
+        window.open(fallbackLink, '_blank');
+        setSubmitted(true);
+      } else {
+        setError('Erro ao gerar link de pagamento. Tente novamente ou use o suporte via WhatsApp.');
+      }
+      setSubmitting(false);
     }
   };
 
@@ -104,12 +91,12 @@ export const CheckoutPage = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link to="/" className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group font-bold">
           <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-          Voltar para o início
+          Voltar para o inicio
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
-          {/* ─── COLUNA 1: Resumo do Pedido e Instruções ─── */}
+          {/* COLUNA 1: Resumo do Pedido */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -130,7 +117,7 @@ export const CheckoutPage = () => {
               </div>
 
               <div className="space-y-4">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">O que está incluso:</h4>
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">O que esta incluso:</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {['Acesso Imediato', 'Suporte 24/7', 'Qualidade 4K HDR', '+500 Canais UHD'].map((item, i) => (
                     <div key={i} className="flex items-center text-slate-300 text-sm bg-white/5 p-3 rounded-xl">
@@ -142,14 +129,14 @@ export const CheckoutPage = () => {
               </div>
             </div>
 
-            {/* Informações Relevantes sobre Pagamento */}
+            {/* Pagamento Seguro */}
             <div className="glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2">
               <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <ShieldCheck className="w-6 h-6 text-green-400" />
                 Pagamento Seguro
               </h3>
               <p className="text-slate-400 text-sm mb-6">
-                Todos os pagamentos são processados pelo <strong>Mercado Pago</strong>, garantindo 100% de segurança para você.
+                Todos os pagamentos sao processados pelo <strong>Mercado Pago</strong>, garantindo 100% de seguranca para voce.
               </p>
 
               <div className="space-y-4">
@@ -158,47 +145,33 @@ export const CheckoutPage = () => {
                     <QrCode className="w-5 h-5 text-cyan-400" />
                     <h4 className="font-bold text-white">PIX Copia e Cola</h4>
                   </div>
-                  <p className="text-sm text-slate-400">Aprovação imediata. O acesso é liberado no mesmo instante, sem demoras.</p>
+                  <p className="text-sm text-slate-400">Aprovacao imediata. O acesso e liberado no mesmo instante.</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                   <div className="flex items-center gap-3 mb-2">
                     <CreditCard className="w-5 h-5 text-purple-400" />
-                    <h4 className="font-bold text-white">Cartão de Crédito</h4>
+                    <h4 className="font-bold text-white">Cartao de Credito</h4>
                   </div>
-                  <p className="text-sm text-slate-400">Parcele em até 12x. Aprovação super rápida com a garantia Mercado Pago.</p>
+                  <p className="text-sm text-slate-400">Parcele em ate 12x. Aprovacao super rapida com a garantia Mercado Pago.</p>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* ─── COLUNA 2: Dados do Cliente e Checkout ─── */}
+          {/* COLUNA 2: Dados e Checkout */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 h-fit"
           >
-            {!isLoggedIn ? (
+            {!submitted ? (
               <>
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Seus Dados</h2>
                 <p className="text-slate-400 text-sm mb-6">
                   Informe seus dados para identificarmos seu pagamento e liberarmos seu acesso.
                 </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
-                  Tudo pronto, <span className={selectedPlan.color}>{name.split(' ')[0]}</span>!
-                </h2>
-                <p className="text-slate-400 text-sm mb-6">
-                  Você já está conectado. Clique no botão abaixo para prosseguir para o ambiente seguro de pagamento.
-                </p>
-              </>
-            )}
 
-            {!submitted ? (
-              <form onSubmit={handleProceed} className="space-y-4">
-                {/* Mostra inputs apenas se NÃO estiver logado */}
-                {!isLoggedIn && (
+                <form onSubmit={handleProceed} className="space-y-4">
                   <div className="space-y-4 mb-6">
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -211,55 +184,74 @@ export const CheckoutPage = () => {
                         className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
                       />
                     </div>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                      <input
-                        required
-                        type="tel"
-                        placeholder="WhatsApp (com DDD)"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
-                      />
+                    <div className="flex gap-2">
+                      <div className="flex items-center gap-1 px-4 bg-white/5 border border-white/10 rounded-2xl text-slate-400 text-sm font-mono min-w-[72px] justify-center">
+                        +{countryCode}
+                      </div>
+                      <div className="relative flex-1">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                        <input
+                          required
+                          type="tel"
+                          placeholder="WhatsApp (com DDD)"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                        />
+                      </div>
                     </div>
                   </div>
-                )}
 
-                <div className="pt-6 border-t border-white/5 flex justify-between items-center mb-6">
-                  <span className="text-white font-bold text-lg">Total</span>
-                  <span className={`text-4xl font-black ${selectedPlan.color}`}>R${selectedPlan.price}</span>
-                </div>
+                  <div className="pt-6 border-t border-white/5 flex justify-between items-center mb-6">
+                    <span className="text-white font-bold text-lg">Total</span>
+                    <span className={`text-4xl font-black ${selectedPlan.color}`}>R${selectedPlan.price}</span>
+                  </div>
 
-                <button
-                  type="submit"
-                  className="btn-shimmer w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/25 transition-all text-lg border-none"
-                >
-                  <QrCode className="w-6 h-6" />
-                  Ir para o Pagamento
-                  <ExternalLink className="w-5 h-5" />
-                </button>
+                  {error && (
+                    <p className="text-red-400 text-sm text-center font-bold">{error}</p>
+                  )}
 
-                <p className="text-center text-slate-500 text-xs px-4 mt-4">
-                  Você será redirecionado para o Checkout Seguro do Mercado Pago.
-                </p>
-
-                {/* ─── SUPORTE WHATSAPP ─── */}
-                <div className="mt-8 pt-8 border-t border-white/10 text-center">
-                  <h4 className="font-bold text-white mb-2">Dificuldades com o pagamento?</h4>
-                  <p className="text-sm text-slate-400 mb-4">Nossa equipe está pronta para ajudar você agora mesmo.</p>
-                  <a
-                    href={`https://wa.me/${WHATSAPP_SUPPORT}?text=Olá,%20estou%20na%20página%20de%20checkout%20do%20plano%20${plan}%20e%20preciso%20de%20ajuda.`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 text-green-400 hover:bg-green-500/10 transition-colors font-bold border border-green-500/30 w-full md:w-auto"
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn-shimmer w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/25 transition-all text-lg border-none disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <MessageCircle className="w-5 h-5" />
-                    Chamar no WhatsApp
-                  </a>
-                </div>
-              </form>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="w-6 h-6" />
+                        Ir para o Pagamento
+                        <ExternalLink className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-center text-slate-500 text-xs px-4 mt-4">
+                    Voce sera redirecionado para o Checkout Seguro do Mercado Pago.
+                  </p>
+
+                  {/* Suporte WhatsApp */}
+                  <div className="mt-8 pt-8 border-t border-white/10 text-center">
+                    <h4 className="font-bold text-white mb-2">Dificuldades com o pagamento?</h4>
+                    <p className="text-sm text-slate-400 mb-4">Nossa equipe esta pronta para ajudar voce agora mesmo.</p>
+                    <a
+                      href={`https://wa.me/${WHATSAPP_SUPPORT}?text=Ol%C3%A1%2C%20estou%20na%20p%C3%A1gina%20de%20checkout%20do%20plano%20${plan}%20e%20preciso%20de%20ajuda.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 text-green-400 hover:bg-green-500/10 transition-colors font-bold border border-green-500/30 w-full md:w-auto"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Chamar no WhatsApp
+                    </a>
+                  </div>
+                </form>
+              </>
             ) : (
-              /* Mensagem de confirmação após clicar */
+              /* Mensagem de confirmacao (fallback) */
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -273,26 +265,19 @@ export const CheckoutPage = () => {
                 <div>
                   <h3 className="text-2xl font-black text-white mb-2">Redirecionando!</h3>
                   <p className="text-slate-400 text-sm px-4">
-                    O ambiente seguro do Mercado Pago foi aberto em uma nova aba. Conclua o pagamento por lá.
+                    O ambiente seguro do Mercado Pago foi aberto em uma nova aba. Conclua o pagamento por la.
                   </p>
                 </div>
                 <div className="pt-6 space-y-4">
                   <a
-                    href={mpLink}
+                    href={MP_FALLBACK_LINKS[plan] || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center w-full gap-2 px-6 py-4 rounded-xl bg-white/5 text-cyan-400 hover:bg-cyan-500/10 transition-colors font-bold border border-cyan-500/30"
                   >
                     <ExternalLink className="w-5 h-5" />
-                    Página não abriu? Cique aqui
+                    Pagina nao abriu? Clique aqui
                   </a>
-
-                  <Link
-                    to="/dashboard"
-                    className="block w-full text-center text-slate-400 hover:text-white transition-colors text-sm font-bold"
-                  >
-                    Já paguei, ir para o Dashboard
-                  </Link>
                 </div>
               </motion.div>
             )}

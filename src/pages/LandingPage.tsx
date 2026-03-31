@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown, Sparkles, Terminal, Crown, Star, Flame, ArrowRight, MessageCircle } from 'lucide-react';
+import { PlayCircle, MonitorPlay, Smartphone, Tv, CheckCircle2, MonitorSmartphone, Film, Zap, Shield, Globe, ChevronDown, Sparkles, Terminal, Crown, Star, Flame, ArrowRight, MessageCircle, ChevronUp, TvMinimalPlay, TabletSmartphone, Box, Wifi, Usb, Cpu, HardDrive, Cast, SmartphoneNfc } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { openSendPulseChat } from '../utils/openSendPulseChat';
@@ -109,16 +109,22 @@ const Hero = () => {
             className="btn-shimmer group flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white px-8 py-4 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg font-bold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/50 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]"
           >
             <PlayCircle className="w-6 h-6 group-hover:rotate-[360deg] transition-transform duration-700" />
-            Teste Gratis 4 Horas
+            Teste Grátis 3 Dias
             <ArrowRight className="w-5 h-5 opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
           </Link>
-          <a
-            href="#planos"
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              const element = document.getElementById('planos');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
             className="group flex items-center justify-center gap-2 glass text-white px-8 py-4 sm:px-10 sm:py-5 rounded-2xl text-base sm:text-lg font-semibold hover:bg-white/10 transition-all duration-300 hover:-translate-y-0.5"
           >
             Ver Planos
             <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform duration-300" />
-          </a>
+          </button>
         </motion.div>
 
         {/* Contact Buttons - WhatsApp & Chat ao Vivo */}
@@ -177,46 +183,111 @@ const Hero = () => {
 };
 
 /* ═══════════════════════════════════════════
-   COMPATIBILIDADE / DISPOSITIVOS
+   COMPATIBILIDADE / DISPOSITIVOS - Expandable
    ═══════════════════════════════════════════ */
 const Compatibility = () => {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
   const devices = [
     {
-      icon: <MonitorPlay className="w-8 h-8" />,
+      icon: <TvMinimalPlay className="w-9 h-9" />,
       title: 'TV Box & Fire Stick',
       desc: 'Transforme sua TV convencional em uma Smart TV completa.',
       tag: 'Android 5.0+',
       accent: 'cyan',
-      emoji: '📺',
+      details: [
+        'Apenas dispositivos com sistema Android (TV Box, Fire TV Stick, Chromecast)',
+        'Não compatível com Roku',
+        'Processador mínimo Quad-Core',
+        'Resolução até 4K HDR',
+        'Conexão HDMI',
+        '2 Telas Simultâneas',
+        'Instalação em 5 minutos',
+      ],
+      specs: [
+        { icon: <Cpu className="w-4 h-4" />, label: 'CPU: Quad-Core+' },
+        { icon: <HardDrive className="w-4 h-4" />, label: 'Armazenamento: 8GB+' },
+        { icon: <Wifi className="w-4 h-4" />, label: 'WiFi: 2.4/5GHz' },
+      ],
     },
     {
-      icon: <Smartphone className="w-8 h-8" />,
+      icon: <TabletSmartphone className="w-9 h-9" />,
       title: 'Celular & Tablet',
       desc: 'Leve seu conteúdo favorito para onde você for.',
       tag: 'Android & iOS',
       accent: 'purple',
-      emoji: '📱',
+      details: [
+        'App disponível para Android 6.0+',
+        'iOS via navegador web (Safari)',
+        'Chromecast integrado',
+        'Download para assistir offline',
+        'Controle parental disponível',
+        '2 Telas Simultâneas',
+      ],
+      specs: [
+        { icon: <Wifi className="w-4 h-4" />, label: 'Internet: 10Mbps+' },
+        { icon: <Cast className="w-4 h-4" />, label: 'Chromecast' },
+        { icon: <HardDrive className="w-4 h-4" />, label: 'Armazenamento' },
+      ],
     },
     {
-      icon: <Tv className="w-8 h-8" />,
+      icon: <Tv className="w-9 h-9" />,
       title: 'Smart TV Android',
       desc: 'A melhor experiência na tela grande. Imagem UHD 4K.',
-      tag: 'Smart TV',
+      tag: 'Android TV',
       accent: 'orange',
-      emoji: '🖥️',
+      details: [
+        'Smart TVs com sistema Android TV',
+        'Sony, Philips, TCL, AOC e outras',
+        'Resolução 4K UHD HDR',
+        'Dolby Atmos áudio',
+        'Controle remoto original',
+        '2 Telas Simultâneas',
+      ],
+      specs: [
+        { icon: <Tv className="w-4 h-4" />, label: 'Tela: 4K HDR' },
+        { icon: <Wifi className="w-4 h-4" />, label: 'WiFi: 5GHz' },
+        { icon: <Usb className="w-4 h-4" />, label: 'USB disponível' },
+      ],
     },
   ];
 
-  const accentColors: Record<string, { border: string; bg: string; text: string; glow: string; gradient: string }> = {
-    cyan: { border: 'border-cyan-500/25', bg: 'bg-cyan-500/10', text: 'text-cyan-400', glow: 'hover:shadow-[0_0_40px_rgba(34,211,238,0.15)]', gradient: 'from-cyan-500 to-blue-600' },
-    purple: { border: 'border-purple-500/25', bg: 'bg-purple-500/10', text: 'text-purple-400', glow: 'hover:shadow-[0_0_40px_rgba(168,85,247,0.15)]', gradient: 'from-purple-500 to-pink-600' },
-    orange: { border: 'border-orange-500/25', bg: 'bg-orange-500/10', text: 'text-orange-400', glow: 'hover:shadow-[0_0_40px_rgba(249,115,22,0.15)]', gradient: 'from-orange-500 to-red-600' },
+  const accentColors: Record<string, { border: string; bg: string; text: string; glow: string; gradient: string; borderGlow: string; iconBg: string; iconText: string }> = {
+    cyan: { 
+      border: 'border-cyan-500/30', 
+      bg: 'bg-cyan-500/5', 
+      text: 'text-cyan-400', 
+      glow: 'hover:shadow-[0_0_40px_rgba(34,211,238,0.2)]', 
+      gradient: 'from-cyan-500/20 to-blue-600/20',
+      borderGlow: 'shadow-[0_0_20px_rgba(34,211,238,0.3)]',
+      iconBg: 'bg-cyan-500/20',
+      iconText: 'text-cyan-400',
+    },
+    purple: { 
+      border: 'border-purple-500/30', 
+      bg: 'bg-purple-500/5', 
+      text: 'text-purple-400', 
+      glow: 'hover:shadow-[0_0_40px_rgba(168,85,247,0.2)]', 
+      gradient: 'from-purple-500/20 to-pink-600/20',
+      borderGlow: 'shadow-[0_0_20px_rgba(168,85,247,0.3)]',
+      iconBg: 'bg-purple-500/20',
+      iconText: 'text-purple-400',
+    },
+    orange: { 
+      border: 'border-orange-500/30', 
+      bg: 'bg-orange-500/5', 
+      text: 'text-orange-400', 
+      glow: 'hover:shadow-[0_0_40px_rgba(249,115,22,0.2)]', 
+      gradient: 'from-orange-500/20 to-red-600/20',
+      borderGlow: 'shadow-[0_0_20px_rgba(249,115,22,0.3)]',
+      iconBg: 'bg-orange-500/20',
+      iconText: 'text-orange-400',
+    },
   };
 
   return (
     <section id="dispositivos" className="py-24 sm:py-32 bg-transparent relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 relative z-10">
-        {/* Header */}
         <div className="text-center mb-16 sm:mb-20">
           <motion.div
             variants={fadeSlideUp}
@@ -241,7 +312,6 @@ const Compatibility = () => {
           </motion.h2>
         </div>
 
-        {/* Cards com hover glow */}
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-3 gap-5 lg:gap-6"
           variants={staggerContainer}
@@ -251,28 +321,90 @@ const Compatibility = () => {
         >
           {devices.map((device, idx) => {
             const colors = accentColors[device.accent];
+            const isExpanded = expandedId === idx;
+            
             return (
               <motion.div
                 key={idx}
                 variants={fadeSlideUp}
                 transition={{ ...smoothTransition, delay: idx * 0.1 }}
-                className={`card-hover-glow glass rounded-3xl p-7 sm:p-8 flex flex-col gap-5 border ${colors.border} ${colors.glow} group cursor-default`}
+                onClick={() => setExpandedId(isExpanded ? null : idx)}
+                className={`cursor-pointer relative overflow-hidden rounded-3xl transition-all duration-500 glass border-2 ${colors.border} ${isExpanded ? colors.borderGlow : ''} ${colors.glow} group`}
               >
-                {/* Top: emoji grande + gradient line */}
-                <div className="flex items-center justify-between">
-                  <div className={`flex items-center justify-center w-14 h-14 rounded-2xl ${colors.bg} ${colors.text} group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
-                    {device.icon}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} -z-10 rounded-[22px]`}
+                    />
+                  )}
+                </AnimatePresence>
+                
+                <div className={`relative p-7 sm:p-8 flex flex-col gap-5`}>
+                  <div className="flex items-center justify-between">
+                    <div className={`flex items-center justify-center w-14 h-14 rounded-2xl ${colors.iconBg} ${colors.iconText} group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
+                      {device.icon}
+                    </div>
+                    <motion.div
+                      animate={{ rotate: isExpanded ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-slate-400"
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </motion.div>
                   </div>
-                  <span className="text-3xl">{device.emoji}</span>
-                </div>
-                {/* Title + Tag */}
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{device.title}</h3>
-                  <p className="text-slate-400 text-base leading-relaxed mb-4">{device.desc}</p>
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${colors.bg} ${colors.text}`}>
-                    <CheckCircle2 className="w-3 h-3" />
-                    {device.tag}
-                  </span>
+                  
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{device.title}</h3>
+                    <p className="text-slate-400 text-base leading-relaxed">{device.desc}</p>
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${colors.iconBg} ${colors.text} mt-4`}>
+                      {device.accent === 'cyan' && <SmartphoneNfc className="w-3 h-3" />}
+                      {device.accent === 'purple' && <Smartphone className="w-3 h-3" />}
+                      {device.accent === 'orange' && <Tv className="w-3 h-3" />}
+                      {device.tag}
+                    </span>
+                  </div>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-5 mt-2 border-t border-white/10">
+                          <div className="grid grid-cols-3 gap-2 mb-4">
+                            {device.specs.map((spec, sidx) => (
+                              <div key={sidx} className="flex flex-col items-center text-center p-2 rounded-xl bg-white/10">
+                                <span className={colors.text}>{spec.icon}</span>
+                                <span className="text-[10px] text-white mt-1">{spec.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <ul className="space-y-2">
+                            {device.details.map((detail, didx) => (
+                              <motion.li
+                                key={didx}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: didx * 0.05 }}
+                                className="flex items-start gap-2 text-sm text-white"
+                              >
+                                <CheckCircle2 className={`w-4 h-4 mt-0.5 ${colors.text}`} />
+                                {detail}
+                              </motion.li>
+                            ))}
+                          </ul>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             );
@@ -712,11 +844,11 @@ const Pricing = () => {
    ═══════════════════════════════════════════ */
 const Features = () => {
   const features = [
-    { icon: <MonitorSmartphone className="w-6 h-6" />, title: 'Telas Simultâneas', desc: 'Acesse em até 2 telas ao mesmo tempo — TV e celular juntos.', accent: 'emerald' },
-    { icon: <Film className="w-6 h-6" />, title: 'Qualidade UHD e 4K', desc: 'Conteúdo de TV, filmes e séries em ultra alta definição.', accent: 'purple' },
-    { icon: <Shield className="w-6 h-6" />, title: 'VOD Atualizado', desc: '+280.000 horas de conteúdo on demand para maratonar.', accent: 'blue' },
-    { icon: <Globe className="w-6 h-6" />, title: 'Multi-Idioma & Legendas', desc: 'Troque o idioma e adicione legendas em tempo real.', accent: 'orange' },
-    { icon: <PlayCircle className="w-6 h-6" />, title: 'Reprodução Inteligente', desc: 'Continuar Assistindo sincronizado em todos os aparelhos.', accent: 'cyan' },
+    { icon: <MonitorSmartphone className="w-6 h-6" />, title: '2 Telas Simultâneas', desc: 'Assista em até 2 dispositivos ao mesmo tempo.', accent: 'emerald' },
+    { icon: <Film className="w-6 h-6" />, title: '4K Ultra HD', desc: 'Qualidade de imagem máxima em qualquer tela.', accent: 'purple' },
+    { icon: <Shield className="w-6 h-6" />, title: '+280.000h de VOD', desc: 'Filmes, séries e programas atualizados daily.', accent: 'blue' },
+    { icon: <Globe className="w-6 h-6" />, title: '500+ Canais ao Vivo', desc: 'TV aberta, fechada, esportes e notícias em tempo real.', accent: 'orange' },
+    { icon: <PlayCircle className="w-6 h-6" />, title: 'Chromecast', desc: 'Assista na TV pelo celular ou tablet.', accent: 'cyan' },
   ];
 
   const accentColors: Record<string, { bg: string; text: string; gradient: string }> = {
@@ -824,7 +956,7 @@ const Features = () => {
 const FAQ = () => {
   const faqs = [
     { q: 'Como faço para instalar o aplicativo?', a: 'A instalação é simples! Após a assinatura, você receberá um email com o link direto para download do nosso APK para Android ou instruções para configurar no seu TV Box/Fire Stick.' },
-    { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um período de teste gratuito de 3 dias (72 horas) para que você possa verificar a qualidade do nosso serviço e a estabilidade dos canais.' },
+    { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um período de teste gratuito de até 7 dias para que você possa verificar a qualidade do nosso serviço e a estabilidade dos canais.' },
     { q: 'A lista de canais é atualizada?', a: 'Sim, nossa equipe trabalha diariamente para manter a lista de canais, filmes e séries sempre atualizada com os lançamentos mais recentes.' },
     { q: 'Quais as formas de pagamento?', a: 'Aceitamos PIX, cartão de crédito (em até 12x) e pix copia e cola — tudo processado com segurança pelo Mercado Pago. A ativação após o pagamento é imediata.' },
   ];
@@ -861,13 +993,13 @@ const FAQ = () => {
                   </span>
                   {faq.q}
                 </span>
-                <span className="ml-4 flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center transition-all duration-300 group-open:bg-cyan-500/20 group-open:rotate-180">
-                  <ChevronDown className="w-4 h-4 text-slate-400 group-open:text-cyan-400" />
+                <span className="ml-4 flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-all duration-300 group-open:bg-cyan-500/30 group-open:rotate-180">
+                  <ChevronDown className="w-4 h-4 text-slate-300 group-open:text-white" />
                 </span>
               </summary>
               <div className="px-6 sm:px-7 pb-6 sm:pb-7">
                 <div className="h-px w-full bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-transparent mb-5" />
-                <p className="leading-relaxed text-slate-400 text-base sm:text-lg pl-11">
+                <p className="leading-relaxed text-slate-200 text-base sm:text-lg pl-11">
                   {faq.a}
                 </p>
               </div>

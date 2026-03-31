@@ -17,7 +17,7 @@ export const Footer = () => {
                             src={LOGO_URL}
                             onError={(e) => { (e.target as HTMLImageElement).src = LOGO_FALLBACK; }}
                         />
-                        <p className="text-slate-500 leading-relaxed text-base mb-6">
+                        <p className="text-slate-400 leading-relaxed text-base mb-6">
                             A melhor plataforma de streaming para o seu entretenimento diário.
                         </p>
                         <div className="flex gap-3">
@@ -29,7 +29,7 @@ export const Footer = () => {
                                 <a
                                     key={i}
                                     href="#"
-                                    className={`w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-slate-500 transition-all duration-300 ${social.hover}`}
+                                    className={`w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-slate-400 transition-all duration-300 ${social.hover}`}
                                 >
                                     {social.icon}
                                 </a>
@@ -43,7 +43,7 @@ export const Footer = () => {
                         <ul className="space-y-3">
                             {['Início', 'Planos', 'Dispositivos'].map(item => (
                                 <li key={item}>
-                                    <a href={item === 'Início' ? '/' : `/#${item.toLowerCase()}`} className="text-slate-500 hover:text-white transition-colors text-base">
+                                    <a href={item === 'Início' ? '/' : `/#${item.toLowerCase()}`} className="text-slate-400 hover:text-white transition-colors text-base">
                                         {item}
                                     </a>
                                 </li>
@@ -57,7 +57,7 @@ export const Footer = () => {
                         <ul className="space-y-3">
                             {['FAQ', 'Termos de Uso', 'Privacidade'].map(item => (
                                 <li key={item}>
-                                    <a href="#" className="text-slate-500 hover:text-white transition-colors text-base">
+                                    <a href="#" className="text-slate-400 hover:text-white transition-colors text-base">
                                         {item}
                                     </a>
                                 </li>
@@ -80,7 +80,7 @@ export const Footer = () => {
                                 </div>
                                 <div>
                                     <p className="text-emerald-400 text-sm font-semibold">WhatsApp</p>
-                                    <p className="text-slate-500 text-xs">Resposta rápida</p>
+                                    <p className="text-slate-400 text-xs">Resposta rápida</p>
                                 </div>
                             </a>
                             <button
@@ -93,7 +93,7 @@ export const Footer = () => {
                                 </div>
                                 <div>
                                     <p className="text-purple-400 text-sm font-semibold">Chat ao Vivo</p>
-                                    <p className="text-slate-500 text-xs">Suporte em tempo real</p>
+                                    <p className="text-slate-400 text-xs">Suporte em tempo real</p>
                                 </div>
                             </button>
                         </div>
@@ -102,7 +102,7 @@ export const Footer = () => {
 
                 {/* Bottom bar */}
                 <div className="border-t border-white/5 pt-8 text-center">
-                    <p className="text-slate-600 text-sm tracking-wide">
+                    <p className="text-slate-500 text-sm tracking-wide">
                         &copy; {new Date().getFullYear()} Reybraz Tech. Todos os direitos reservados.
                     </p>
                 </div>

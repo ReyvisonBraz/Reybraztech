@@ -319,3 +319,14 @@ body.sp-chat-active sp-live-chat {
   background: linear-gradient(90deg, #22d3ee, #a855f7);
   animation: line-reveal 1.5s ease-out forwards;
 }
+
+@keyframes gradient-xy {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-xy {
+  background-size: 200% 200%;
+  animation: gradient-xy 3s ease infinite;
+}

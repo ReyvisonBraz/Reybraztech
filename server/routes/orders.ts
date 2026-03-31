@@ -24,6 +24,7 @@ const createOrderSchema = z.object({
 const trialSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   whatsapp: z.string().min(10, 'WhatsApp inválido'),
+  device: z.string().min(1, 'Informe o dispositivo').optional().or(z.literal('')),
 });
 
 // ============================================================
@@ -115,7 +116,7 @@ router.post('/trial', async (req: Request, res: Response) => {
     return;
   }
 
-  const { name, whatsapp } = result.data;
+  const { name, whatsapp, device } = result.data;
 
   try {
     // Verificar se já tem trial
@@ -140,17 +141,22 @@ router.post('/trial', async (req: Request, res: Response) => {
     // Gerar ID numérico grande (timestamp + random)
     const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
 
-    // Criar pedido de trial (status = 'paid' pois não precisa pagar)
+    // Criar pedido de trial (status = 'pending' - aguardando confirmação via WhatsApp)
     const [order] = await sql`
-      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status, paid_at)
-      VALUES (${orderId}, ${name}, ${whatsapp}, 'trial', 0, 'paid', NOW())
+      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status, device)
+      VALUES (${orderId}, ${name}, ${whatsapp}, 'trial', 0, 'pending', ${device || null})
       RETURNING id
     `;
 
-    logger.info(`🎁 Trial criado: ${order.id} | ${name} | ${whatsapp}`);
+    // Gerar mensagem para WhatsApp
+    const message = `Olá! Gostaria de ativar o teste gratuito.%0A%0A*Nome:* ${name}%0A*Dispositivo:* ${device || 'Não informado'}`;
+    const whatsappUrl = `https://wa.me/5591986450659?text=${encodeURIComponent(message)}`;
+
+    logger.info(`🎁 Trial solicitado: ${order.id} | ${name} | ${whatsapp}`);
 
     res.status(201).json({
       orderId: order.id,
+      whatsappUrl,
     });
   } catch (error) {
     logger.error('Erro ao criar trial:', error);
@@ -166,7 +172,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
   try {
     const [order] = await sql`
-      SELECT name, whatsapp, plan, status, amount, created_at
+      SELECT name, whatsapp, plan, status, amount, device, created_at
       FROM pending_orders
       WHERE id = ${id}
     `;

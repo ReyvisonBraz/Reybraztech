@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS pending_orders (
   plan VARCHAR(50) NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
   status VARCHAR(20) DEFAULT 'pending',
+  device VARCHAR(50),
   mp_preference_id VARCHAR(50),
   mp_payment_id VARCHAR(50),
   client_id BIGINT REFERENCES clients(id),

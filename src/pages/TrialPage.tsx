@@ -1,8 +1,17 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowLeft, User, Phone, Gift, Loader2, Clock, CheckCircle2, Tv } from 'lucide-react';
+import { ArrowLeft, User, Phone, Gift, Loader2, Clock, CheckCircle2, Tv, Monitor } from 'lucide-react';
 import { API_URL } from '../config/api';
+
+const DEVICE_OPTIONS = [
+  { value: '', label: 'Selecione o dispositivo' },
+  { value: 'tvbox', label: 'TV Box Android' },
+  { value: 'firestick', label: 'Fire Stick' },
+  { value: 'smarttv', label: 'Smart TV Android' },
+  { value: 'celular', label: 'Celular Android' },
+  { value: 'outro', label: 'Outro' },
+];
 
 export const TrialPage = () => {
   const navigate = useNavigate();
@@ -10,38 +19,50 @@ export const TrialPage = () => {
   const [name, setName] = useState('');
   const [countryCode] = useState('55');
   const [phone, setPhone] = useState('');
+  const [device, setDevice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setSubmitting(true);
 
     const whatsapp = `${countryCode}${phone.replace(/\D/g, '')}`;
 
     if (whatsapp.length < 12) {
       setError('Numero de WhatsApp invalido. Inclua o DDD.');
-      setSubmitting(false);
       return;
     }
+
+    if (!device) {
+      setError('Selecione o dispositivo.');
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
       const res = await fetch(`${API_URL}/api/orders/trial`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, whatsapp }),
+        body: JSON.stringify({ name, whatsapp, device }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Erro ao ativar teste gratuito.');
+        setError(data.error || 'Erro ao criar teste gratuito.');
         setSubmitting(false);
         return;
       }
 
-      // Redirecionar para completar cadastro
+      // Abrir WhatsApp para confirmar solicitação
+      if (data.whatsappUrl) {
+        window.open(data.whatsappUrl, '_blank');
+      }
+
+      // Mostrar instrução para continuar após enviar msg no WhatsApp
+      setSubmitting(false);
       navigate(`/complete-registration?order=${data.orderId}`);
     } catch {
       setError('Erro de conexao. Tente novamente.');
@@ -71,7 +92,7 @@ export const TrialPage = () => {
             </div>
             <h2 className="text-2xl font-black text-white mb-2">Teste Gratuito</h2>
             <p className="text-slate-400 text-sm">
-              Experimente nosso servico por 3 dias, sem compromisso.
+              Experimente nosso servico de 3 a 7 dias, sem compromisso.
             </p>
           </div>
 
@@ -79,7 +100,7 @@ export const TrialPage = () => {
           <div className="grid grid-cols-2 gap-3 mb-8">
             {[
               { icon: Tv, text: '+500 Canais UHD' },
-              { icon: Clock, text: '4 Horas Gratis' },
+              { icon: Clock, text: '3 a 7 Dias' },
               { icon: CheckCircle2, text: 'Sem Cartao' },
               { icon: Gift, text: '100% Gratuito' },
             ].map((item, i) => (
@@ -102,6 +123,22 @@ export const TrialPage = () => {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-emerald-500 outline-none transition-all"
               />
+            </div>
+
+            <div className="relative">
+              <Monitor className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <select
+                required
+                value={device}
+                onChange={(e) => setDevice(e.target.value)}
+                className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-emerald-500 outline-none transition-all appearance-none"
+              >
+                {DEVICE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-slate-900">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex gap-2">
@@ -133,7 +170,7 @@ export const TrialPage = () => {
               {submitting ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  Ativando...
+                  Enviando...
                 </>
               ) : (
                 <>
@@ -144,7 +181,7 @@ export const TrialPage = () => {
             </button>
 
             <p className="text-center text-slate-500 text-xs px-4">
-              Apos preencher, voce completara seu cadastro na proxima etapa.
+              Você será redirecionado para o WhatsApp. Envie a mensagem para confirmar e receber seu acesso.
             </p>
           </form>
         </motion.div>

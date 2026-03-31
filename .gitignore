@@ -42,3 +42,7 @@ Thumbs.db
 # Pastas de coverage de teste
 coverage/
 .nyc_output/
+
+# AI Agent Skills
+.opencode/skills/
+.claude/skills/

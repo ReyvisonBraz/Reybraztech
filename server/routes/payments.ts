@@ -41,15 +41,16 @@ router.post('/create-preference', verifyToken, async (req: AuthRequest, res) => 
 // Webhook do Mercado Pago — Processa notificações de pagamento
 // ============================================================
 router.post('/webhook', async (req, res) => {
-  const { query } = req;
-  const topic = query.topic || query.type;
+  const { query, body } = req;
+  // MP envia topic/type na query OU no body dependendo da versão da notificação
+  const topic = query.topic || query.type || body.type || body.action?.split('.')[0];
 
-  logger.info('📬 Webhook recebido:', { topic, body: req.body });
+  logger.info('📬 Webhook recebido:', { topic, query, body });
 
   try {
     // Mercado Pago envia notificações com topic 'payment' ou type 'payment'
     if (topic === 'payment') {
-      const paymentId = (query.id || req.body.data?.id) as string;
+      const paymentId = (query.id || body.data?.id) as string;
 
       if (!paymentId) {
         logger.warn('⚠️ Webhook sem payment ID');

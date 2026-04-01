@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { verifyAdmin } from '../middleware/admin.js';
-import logger from '../utils/logger.js';
+import logger, { sendTelegramNotification } from '../utils/logger.js';
 import sql from '../database.js';
 
 const router = Router();
@@ -70,6 +70,8 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
         });
 
         res.write('message: Iniciando sincronização com Starhome...\n\n');
+        
+        await sendTelegramNotification('🔄 *Sincronização Starhome iniciada!* \n\nAguardando execução do scraper...', 'info');
 
         const panelUrl = process.env.PANEL_URL || 'https://panel.web.starhome.vip';
         const panelAccount = process.env.PANEL_ACCOUNT || '';
@@ -82,6 +84,7 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
         }
 
         res.write('message: Fazendo login no painel Starhome...\n\n');
+        await sendTelegramNotification('🔐 *Fazendo login no painel Starhome...*', 'info');
 
         const { spawn } = require('child_process');
         const path = require('path');
@@ -112,6 +115,7 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
         child.on('close', async (code: number) => {
             if (code !== 0) {
                 res.write(`message: Erro ao executar scraper (código ${code})\n\n`);
+                await sendTelegramNotification(`🚨 *Erro na sincronização!*\n\nCódigo do erro: ${code}`, 'error');
                 res.end();
                 return;
             }
@@ -119,11 +123,12 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
             res.write('message: Verificando dados extraídos...\n\n');
 
             try {
-                const jsonPath = path.join(scraperDir, '..', '..', 'dist', 'clients.json');
+                const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'clients.json');
                 const fs = require('fs');
                 
                 if (fs.existsSync(jsonPath)) {
-                    const clientsData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                    const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                    const clientsData = fileContent.clients || [];
                     res.write(`message: Encontrados ${clientsData.length} clientes no arquivo.\n\n`);
 
                     let updated = 0;
@@ -148,24 +153,31 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
                     }
 
                     res.write(`message: Sincronização concluída! ${updated} atualizados, ${created} novos.\n\n`);
+                    await sendTelegramNotification(`✅ *Sincronização concluída!* \n\n📊 ${updated} clientes atualizados\n🆔 ${created} novos clientes`, 'info');
                 } else {
-                    res.write('message: Arquivo de dados não encontrado.\n\n');
+                    res.write(`message: Arquivo não encontrado em: ${jsonPath}\n\n`);
                 }
-            } catch (err) {
-                res.write(`message: Erro ao processar dados: ${err}\n\n`);
+            } catch (err: any) {
+                const errorMsg = `Erro ao processar dados: ${err}`;
+                res.write(`message: ${errorMsg}\n\n`);
+                await sendTelegramNotification(`🚨 *Erro ao processar dados!*\n\n${err}`, 'error');
             }
 
             res.end();
         });
 
-        child.on('error', (err: Error) => {
-            res.write(`message: Erro ao iniciar scraper: ${err.message}\n\n`);
+        child.on('error', async (err: Error) => {
+            const errorMsg = `Erro ao iniciar scraper: ${err.message}`;
+            res.write(`message: ${errorMsg}\n\n`);
+            await sendTelegramNotification(`🚨 *Erro ao iniciar scraper!*\n\n${err.message}`, 'error');
             res.end();
         });
 
     } catch (error) {
         logger.error('Erro ao sincronizar Starhome:', error);
-        res.write(`message: Erro interno: ${error}\n\n`);
+        const errorMsg = `Erro interno: ${error}`;
+        res.write(`message: ${errorMsg}\n\n`);
+        await sendTelegramNotification(`🚨 *Erro interno na sincronização!*\n\n${error}`, 'error');
         res.end();
     }
 });

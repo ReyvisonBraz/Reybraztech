@@ -814,6 +814,30 @@ const Pricing = () => {
         <MobilePricing />
         <DesktopPricing />
 
+        {/* Trial banner */}
+        <motion.div
+          variants={fadeSlideUp}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ ...smoothTransition, delay: 0.15 }}
+          className="mt-10 sm:mt-14"
+        >
+          <Link
+            to="/trial"
+            className="group flex items-center justify-center gap-3 mx-auto max-w-xl p-5 rounded-2xl glass border border-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 hover:scale-[1.02]"
+          >
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <PlayCircle className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div className="text-left">
+              <p className="text-white font-bold text-sm">Ainda nao tem certeza?</p>
+              <p className="text-emerald-400 text-xs font-bold">Teste gratis por 3 a 7 dias — sem compromisso</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+          </Link>
+        </motion.div>
+
         {/* Trust badges */}
         <motion.div
           variants={fadeSlideUp}
@@ -956,7 +980,7 @@ const Features = () => {
 const FAQ = () => {
   const faqs = [
     { q: 'Como faço para instalar o aplicativo?', a: 'A instalação é simples! Após a assinatura, você receberá um email com o link direto para download do nosso APK para Android ou instruções para configurar no seu TV Box/Fire Stick.' },
-    { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um período de teste gratuito de até 7 dias para que você possa verificar a qualidade do nosso serviço e a estabilidade dos canais.' },
+    { q: 'Posso testar antes de comprar?', a: 'Sim! Oferecemos um periodo de teste gratuito de 3 a 7 dias para que voce possa verificar a qualidade do nosso servico e a estabilidade dos canais.', hasTrialLink: true },
     { q: 'A lista de canais é atualizada?', a: 'Sim, nossa equipe trabalha diariamente para manter a lista de canais, filmes e séries sempre atualizada com os lançamentos mais recentes.' },
     { q: 'Quais as formas de pagamento?', a: 'Aceitamos PIX, cartão de crédito (em até 12x) e pix copia e cola — tudo processado com segurança pelo Mercado Pago. A ativação após o pagamento é imediata.' },
   ];
@@ -1001,6 +1025,11 @@ const FAQ = () => {
                 <div className="h-px w-full bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-transparent mb-5" />
                 <p className="leading-relaxed text-slate-200 text-base sm:text-lg pl-11">
                   {faq.a}
+                  {'hasTrialLink' in faq && faq.hasTrialLink && (
+                    <Link to="/trial" className="inline-flex items-center gap-1 ml-2 text-emerald-400 font-bold hover:text-emerald-300 transition-colors">
+                      Testar agora <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  )}
                 </p>
               </div>
             </motion.details>

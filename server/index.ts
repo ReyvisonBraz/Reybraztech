@@ -66,8 +66,12 @@ const limiter = rateLimit({
     legacyHeaders: false, // Desabilita o cabeçalho `X-RateLimit-*`
 });
 
-// Aplica o Rate Limit em todas as rotas (pode ser ajustado apenas para /api/auth se desejar)
-app.use('/api/', limiter);
+// Aplica o Rate Limit em todas as rotas (exceto webhooks que recebem chamadas do MP)
+app.use('/api/auth', limiter);
+app.use('/api/dashboard', limiter);
+app.use('/api/otp', limiter);
+app.use('/api/admin', limiter);
+app.use('/api/orders', limiter);
 
 // ─── Rastreamento de Erros (Sentry) ──────────────────────────
 // Sentry v10+ captura automaticamente a maior parte das coisas com init

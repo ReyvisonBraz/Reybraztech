@@ -25,6 +25,7 @@
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/three": "^0.183.1",
+    "@vercel/speed-insights": "^2.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",

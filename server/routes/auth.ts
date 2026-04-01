@@ -192,7 +192,7 @@ router.post('/login', async (req: Request, res: Response) => {
 // ============================================================
 const registerFromOrderSchema = z.object({
     orderId: z.string().min(1, 'ID do pedido inválido'),
-    device: z.string().min(1, 'Informe o dispositivo'),
+    device: z.string().optional().or(z.literal('')),
     email: z.string().email('E-mail inválido').optional().or(z.literal('')),
     password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
@@ -204,17 +204,20 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
         return;
     }
 
-    const { orderId, device, email, password } = result.data;
+    const { orderId, device: formDevice, email, password } = result.data;
 
     try {
         // Buscar o pedido (status = 'paid' e ainda não registrado)
         const [order] = await sql`
-          SELECT id, name, whatsapp, plan, amount
+          SELECT id, name, whatsapp, plan, amount, device
           FROM pending_orders
           WHERE id = ${orderId}
             AND status = 'paid'
             AND registered_at IS NULL
         `;
+
+        // Device: usa do formulario, ou do order (trial envia device na criação)
+        const device = formDevice || order?.device || '';
 
         if (!order) {
             res.status(404).json({ error: 'Pedido não encontrado ou já registrado.' });

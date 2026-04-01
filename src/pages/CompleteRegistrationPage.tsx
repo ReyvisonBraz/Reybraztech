@@ -1,15 +1,15 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowLeft, User, Phone, Monitor, Mail, Lock, Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, User, Phone, Monitor, Mail, Lock, Loader2, CheckCircle2, Clock, MessageCircle } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 const DEVICE_OPTIONS = [
-  { value: 'tvbox', label: 'TV Box / Fire Stick' },
-  { value: 'android', label: 'Celular / Tablet Android' },
-  { value: 'ios', label: 'iPhone / iPad' },
+  { value: 'tvbox', label: 'TV Box Android' },
+  { value: 'firestick', label: 'Fire Stick' },
   { value: 'smarttv', label: 'Smart TV Android' },
-  { value: 'outro', label: 'Outro dispositivo' },
+  { value: 'celular', label: 'Celular Android' },
+  { value: 'outro', label: 'Outro' },
 ];
 
 type OrderData = {
@@ -18,6 +18,7 @@ type OrderData = {
   plan: string;
   status: string;
   amount: number;
+  device?: string;
 };
 
 export const CompleteRegistrationPage = () => {
@@ -36,6 +37,13 @@ export const CompleteRegistrationPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Pre-fill device from order (trial sends device)
+  useEffect(() => {
+    if (order?.device) {
+      setDevice(order.device);
+    }
+  }, [order?.device]);
 
   // Buscar dados do pedido
   useEffect(() => {
@@ -186,26 +194,35 @@ export const CompleteRegistrationPage = () => {
     );
   }
 
-  // Aguardando pagamento
+  // Aguardando confirmacao (pagamento ou trial via WhatsApp)
   if (order.status === 'pending') {
+    const isTrial = order.plan === 'trial';
     return (
       <div className="pt-32 pb-20 min-h-screen">
         <div className="max-w-md mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass p-8 rounded-3xl border border-yellow-500/30"
+            className={`glass p-8 rounded-3xl border ${isTrial ? 'border-emerald-500/30' : 'border-yellow-500/30'}`}
           >
             <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-yellow-500/20 border-2 border-yellow-500/50 flex items-center justify-center">
-                <Clock className="w-8 h-8 text-yellow-400 animate-pulse" />
+              <div className={`w-16 h-16 rounded-full ${isTrial ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-yellow-500/20 border-yellow-500/50'} border-2 flex items-center justify-center`}>
+                {isTrial
+                  ? <MessageCircle className="w-8 h-8 text-emerald-400 animate-pulse" />
+                  : <Clock className="w-8 h-8 text-yellow-400 animate-pulse" />
+                }
               </div>
             </div>
-            <h2 className="text-xl font-black text-white mb-2">Aguardando Pagamento</h2>
+            <h2 className="text-xl font-black text-white mb-2">
+              {isTrial ? 'Aguardando Confirmacao' : 'Aguardando Pagamento'}
+            </h2>
             <p className="text-slate-400 text-sm mb-4">
-              Estamos verificando seu pagamento. Isso pode levar alguns segundos...
+              {isTrial
+                ? 'Envie a mensagem no WhatsApp para confirmar seu teste gratuito. Assim que confirmarmos, esta pagina sera atualizada automaticamente.'
+                : 'Estamos verificando seu pagamento. Isso pode levar alguns segundos...'
+              }
             </p>
-            <div className="flex items-center justify-center gap-2 text-yellow-400 text-sm">
+            <div className={`flex items-center justify-center gap-2 ${isTrial ? 'text-emerald-400' : 'text-yellow-400'} text-sm`}>
               <Loader2 className="w-4 h-4 animate-spin" />
               Verificando automaticamente
             </div>
@@ -282,20 +299,32 @@ export const CompleteRegistrationPage = () => {
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Dispositivo */}
-            <div className="relative">
-              <Monitor className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <select
-                required
-                value={device}
-                onChange={(e) => setDevice(e.target.value)}
-                className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all appearance-none cursor-pointer"
-              >
-                <option value="" disabled className="bg-slate-900">Selecione seu dispositivo</option>
-                {DEVICE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
-                ))}
-              </select>
-            </div>
+            {order.device ? (
+              <div className="relative">
+                <Monitor className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="text"
+                  value={DEVICE_OPTIONS.find(o => o.value === order.device)?.label || order.device}
+                  readOnly
+                  className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-slate-400 cursor-not-allowed"
+                />
+              </div>
+            ) : (
+              <div className="relative">
+                <Monitor className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <select
+                  required
+                  value={device}
+                  onChange={(e) => setDevice(e.target.value)}
+                  className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="" disabled className="bg-slate-900">Selecione seu dispositivo</option>
+                  {DEVICE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-slate-900">{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Email (opcional) */}
             <div className="relative">

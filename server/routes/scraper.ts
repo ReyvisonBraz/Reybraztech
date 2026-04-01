@@ -3,6 +3,7 @@ import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { verifyAdmin } from '../middleware/admin.js';
 import logger, { sendTelegramNotification } from '../utils/logger.js';
 import sql from '../database.js';
+import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -22,29 +23,103 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
             'Connection': 'keep-alive'
         });
 
-        res.write('message: ⚠️ O scraper precisa ser executado manualmente.\n\n');
-        res.write('message: No seu terminal, execute:\n\n');
-        res.write('message: npm run scraper\n\n');
-        res.write('message: Os dados serão salvos no banco automaticamente.\n\n');
+        res.write('message: 🔄 Iniciando sincronização com Starhome...\n\n');
         
-        await sendTelegramNotification(
-            '📋 *Sincronização Starhome*\n\n' +
-            'Execute o scraper manualmente no terminal:\n' +
-            '```\nnpm run scraper\n```\n\n' +
-            'Os dados serão salvos no banco automaticamente.',
-            'info'
-        );
+        await sendTelegramNotification('🔄 *Sincronização Starhome iniciada!*');
 
-        res.end();
+        const scraperDir = path.join(process.cwd(), 'scraper', 'src');
+        
+        res.write('message: 📂 Diretório do scraper: ' + scraperDir + '\n\n');
+
+        const child = spawn('npx', ['ts-node', 'index.ts'], {
+            cwd: scraperDir,
+            env: { ...process.env },
+            shell: true
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (data: Buffer) => {
+            const text = data.toString();
+            stdout += text;
+            res.write(`message: ${text}\n\n`);
+        });
+
+        child.stderr.on('data', (data: Buffer) => {
+            const text = data.toString();
+            stderr += text;
+            res.write(`message: ⚠️ ${text}\n\n`);
+        });
+
+        child.on('close', async (code: number) => {
+            if (code !== 0) {
+                res.write(`message: 🚨 Erro ao executar scraper (código ${code})\n\n`);
+                res.write(`message: Detalhes: ${stderr.slice(-500)}\n\n`);
+                await sendTelegramNotification(`🚨 *Erro na sincronização!*\n\nCódigo: ${code}`);
+                res.end();
+                return;
+            }
+
+            res.write('message: ✅ Scraping concluído! Verificando dados...\n\n');
+
+            try {
+                const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'clients.json');
+                
+                if (fs.existsSync(jsonPath)) {
+                    const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                    const clientsData = fileContent.clients || [];
+                    res.write(`message: 📊 Encontrados ${clientsData.length} clientes no arquivo.\n\n`);
+
+                    let updated = 0;
+                    let created = 0;
+
+                    for (const client of clientsData) {
+                        const [existing] = await sql`
+                            SELECT id FROM clients WHERE whatsapp = ${client.account}
+                        `;
+
+                        if (existing) {
+                            await sql`
+                                UPDATE clients 
+                                SET days_remaining = ${client.days_remaining},
+                                    status = ${client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo'}
+                                WHERE whatsapp = ${client.account}
+                            `;
+                            updated++;
+                        } else {
+                            created++;
+                        }
+                    }
+
+                    res.write(`message: ✅ Sincronização concluída! ${updated} atualizados, ${created} novos.\n\n`);
+                    await sendTelegramNotification(`✅ *Sincronização concluída!*\n\n📊 ${updated} clientes atualizados\n🆔 ${created} novos`);
+                } else {
+                    res.write(`message: ⚠️ Arquivo não encontrado: ${jsonPath}\n\n`);
+                }
+            } catch (err: any) {
+                res.write(`message: 🚨 Erro ao processar dados: ${err}\n\n`);
+                await sendTelegramNotification(`🚨 *Erro ao processar dados!*\n\n${err}`);
+            }
+
+            res.end();
+        });
+
+        child.on('error', async (err: Error) => {
+            res.write(`message: 🚨 Erro ao iniciar scraper: ${err.message}\n\n`);
+            await sendTelegramNotification(`🚨 *Erro ao iniciar scraper!*\n\n${err.message}`);
+            res.end();
+        });
+
     } catch (error) {
-        logger.error('Erro ao iniciar sincronização:', error);
+        logger.error('Erro ao sincronizar Starhome:', error);
         res.write(`message: Erro interno: ${error}\n\n`);
         res.end();
     }
 });
 
 // ============================================================
-// GET /api/admin/sync-status — Verificar status da última sincronização
+// GET /api/admin/sync-status — Verificar status
 // ============================================================
 router.get('/sync-status', async (req: AuthRequest, res: Response) => {
     try {

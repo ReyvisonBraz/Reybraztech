@@ -168,6 +168,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         `✅ /aprovar [id] — Aprovar um trial\n` +
         `🔑 /otp — Tokens OTP recentes\n` +
         `📋 /logs — Últimos registros do sistema\n` +
+        `🔄 /sync — Executar scraper Starhome\n` +
         `❓ /ajuda — Esta mensagem`
       );
     }
@@ -344,6 +345,66 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     else if (text === '/logs') {
       const logsText = logCache.length > 0 ? logCache.join('\n') : 'Nenhum log recente na memória.';
       await sendTelegram(`📋 <b>Últimos 20 Logs (memória):</b>\n\n<pre>${logsText}</pre>`);
+    }
+
+    // ─── /sync ──────────────────────────────────────
+    else if (text === '/sync') {
+      await sendTelegram('🔄 <b>Iniciando Scraping Starhome...</b>\n\nPor favor aguarde, isso pode levar alguns minutos.');
+      
+      const { spawn } = await import('child_process');
+      const path = await import('path');
+      const scraperDir = path.join(process.cwd(), 'scraper', 'src');
+      
+      const child = spawn('npx', ['ts-node', 'index.ts'], {
+        cwd: scraperDir,
+        env: { ...process.env },
+        shell: true
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data: Buffer) => {
+        const text = data.toString();
+        stdout += text;
+        console.log('[Scraper]', text);
+      });
+
+      child.stderr.on('data', (data: Buffer) => {
+        const text = data.toString();
+        stderr += text;
+        console.error('[Scraper Error]', text);
+      });
+
+      child.on('close', async (code: number) => {
+        if (code !== 0) {
+          await sendTelegram(`🚨 <b>Erro no Scraping!</b>\n\nCódigo: ${code}\n\n<pre>${stderr.slice(-1000)}</pre>`);
+          return;
+        }
+
+        try {
+          const fs = await import('fs');
+          const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'clients.json');
+          
+          if (fs.existsSync(jsonPath)) {
+            const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+            const clientsData = fileContent.clients || [];
+            
+            await sendTelegram(`✅ <b>Scraping concluído!</b>\n\n📊 ${clientsData.length} clientes encontrados.\n\nAtualizando banco de dados...`);
+
+            // Aqui poderia atualizar o banco automaticamente
+            await sendTelegram(`🎉 <b>Sincronização completa!</b>\n\n${clientsData.length} clientes processados.`);
+          } else {
+            await sendTelegram('⚠️ Scraping concluído mas arquivo não encontrado.');
+          }
+        } catch (err: any) {
+          await sendTelegram(`🚨 <b>Erro ao processar dados:</b>\n\n${err.message}`);
+        }
+      });
+
+      child.on('error', async (err: Error) => {
+        await sendTelegram(`🚨 <b>Erro ao iniciar scraper:</b>\n\n${err.message}`);
+      });
     }
 
     // ─── Comando desconhecido ───────────────────────

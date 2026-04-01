@@ -3,6 +3,7 @@ import * as path from 'path';
 import { loginToPanel } from './login';
 import { scrapeClients } from './scrape';
 import { exportAll } from './export';
+import { updateDatabase } from './update-db';
 
 // Carrega variáveis de ambiente
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
@@ -55,8 +56,12 @@ export async function runScraper() {
       return [];
     }
 
-    // 3. Exportação
+    // 3. Exportação para arquivo
     const { json, csv } = exportAll(clients);
+
+    // 4. Atualizar banco de dados
+    console.log('\n💾 Atualizando banco de dados...');
+    await updateDatabase(clients);
 
     // Resumo final
     console.log('╔══════════════════════════════════════════════╗');

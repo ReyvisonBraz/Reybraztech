@@ -149,7 +149,7 @@ router.post('/trial', async (req: Request, res: Response) => {
     `;
 
     // Gerar mensagem para WhatsApp
-    const message = `Olá! Gostaria de ativar o teste gratuito.%0A%0A*Nome:* ${name}%0A*Dispositivo:* ${device || 'Não informado'}`;
+    const message = `Olá! Gostaria de ativar o teste gratuito.\n\n*Nome:* ${name}\n*Dispositivo:* ${device || 'Não informado'}`;
     const whatsappUrl = `https://wa.me/5591986450659?text=${encodeURIComponent(message)}`;
 
     logger.info(`🎁 Trial solicitado: ${order.id} | ${name} | ${whatsapp}`);

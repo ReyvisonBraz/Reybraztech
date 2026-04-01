@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -8,15 +8,33 @@ const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT
 
 const NAV_ITEMS = ['Início', 'Dispositivos', 'Planos', 'FAQ'];
 
+interface UserData {
+    is_admin?: boolean;
+}
+
 export const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
     const navRef = useRef<HTMLElement>(null);
     const location = useLocation();
 
     useEffect(() => {
-        setIsLoggedIn(!!localStorage.getItem('reyb_token'));
+        const token = localStorage.getItem('reyb_token');
+        const userStr = localStorage.getItem('reyb_user');
+        setIsLoggedIn(!!token);
+        
+        if (userStr) {
+            try {
+                const user: UserData = JSON.parse(userStr);
+                setIsAdmin(user.is_admin === true);
+            } catch {
+                setIsAdmin(false);
+            }
+        } else {
+            setIsAdmin(false);
+        }
     }, [location]);
 
     useEffect(() => {
@@ -76,7 +94,16 @@ export const Navbar = () => {
                     </div>
 
                     {/* Desktop CTA */}
-                    <div className="hidden md:flex items-center">
+                    <div className="hidden md:flex items-center gap-3">
+                        {isAdmin && (
+                            <Link
+                                to="/admlogin"
+                                className="flex items-center gap-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 px-4 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border border-yellow-500/30"
+                            >
+                                <Shield className="w-4 h-4" />
+                                Admin
+                            </Link>
+                        )}
                         <Link
                             to={isLoggedIn ? "/dashboard" : "/login"}
                             className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/[0.12] text-white px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border border-white/10 hover:border-cyan-400/40"
@@ -145,6 +172,16 @@ export const Navbar = () => {
                                 transition={{ delay: NAV_ITEMS.length * 0.08 }}
                                 className="mt-8"
                             >
+                                {isAdmin && (
+                                    <Link
+                                        to="/admlogin"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center justify-center gap-2 bg-yellow-500/10 text-yellow-400 px-10 py-4 rounded-full text-lg font-bold border border-yellow-500/30 mb-4"
+                                    >
+                                        <Shield className="w-5 h-5" />
+                                        Admin
+                                    </Link>
+                                )}
                                 <Link
                                     to={isLoggedIn ? "/dashboard" : "/login"}
                                     className="flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-10 py-4 rounded-full text-lg font-bold shadow-lg shadow-cyan-500/30"

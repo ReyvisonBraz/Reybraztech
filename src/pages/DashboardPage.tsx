@@ -352,6 +352,16 @@ export const DashboardPage = () => {
                   <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-cyan-400">
                     {user.days_remaining} <span className="text-sm font-bold text-slate-500">Dias</span>
                   </p>
+                  <div className="mt-3 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 ${
+                        user.days_remaining > 10 ? 'bg-emerald-500' :
+                        user.days_remaining > 3 ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min((user.days_remaining / 30) * 100, 100)}%` }}
+                    />
+                  </div>
                 </div>
                 <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                   <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Usuário / Conta</p>

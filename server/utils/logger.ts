@@ -164,6 +164,8 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         `📊 /status — Saúde geral (servidor + banco)\n` +
         `👥 /clientes — Total e últimos cadastros\n` +
         `💰 /pagamentos — Resumo de pagamentos\n` +
+        `🎁 /trials — Trials pendentes de aprovação\n` +
+        `✅ /aprovar [id] — Aprovar um trial\n` +
         `🔑 /otp — Tokens OTP recentes\n` +
         `📋 /logs — Últimos registros do sistema\n` +
         `❓ /ajuda — Esta mensagem`
@@ -273,6 +275,69 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         `🔑 <b>Tokens OTP Recentes</b>\n\n` +
         `<b>Últimos 5:</b>${recentesText || '\nNenhum token ainda.'}`
       );
+    }
+
+    // ─── /trials ─────────────────────────────────────
+    else if (text === '/trials') {
+      const sql = await getDb();
+
+      const trials = await sql`
+        SELECT id, name, whatsapp, device, created_at
+        FROM pending_orders
+        WHERE plan = 'trial' AND status = 'pending'
+        ORDER BY created_at DESC
+        LIMIT 10
+      `;
+
+      if (trials.length === 0) {
+        await sendTelegram(`🎁 <b>Trials Pendentes</b>\n\nNenhum trial aguardando aprovação.`);
+      } else {
+        let list = '';
+        for (const t of trials) {
+          const data = new Date(t.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          list += `\n• <b>${t.name}</b>\n  📱 ${t.whatsapp} | 🖥️ ${t.device || 'N/A'}\n  🆔 <code>${t.id}</code> | ${data}\n`;
+        }
+        await sendTelegram(
+          `🎁 <b>Trials Pendentes (${trials.length})</b>\n${list}\n` +
+          `Para aprovar, envie:\n<code>/aprovar ID</code>`
+        );
+      }
+    }
+
+    // ─── /aprovar [id] ──────────────────────────────
+    else if (text.startsWith('/aprovar')) {
+      const sql = await getDb();
+      const parts = message.text.trim().split(/\s+/);
+      const trialId = parts[1];
+
+      if (!trialId) {
+        await sendTelegram(`⚠️ Use: <code>/aprovar ID</code>\n\nVeja os IDs com /trials`);
+      } else {
+        const [order] = await sql`
+          SELECT id, name, whatsapp, status
+          FROM pending_orders
+          WHERE id = ${trialId} AND plan = 'trial'
+        `;
+
+        if (!order) {
+          await sendTelegram(`❌ Trial <code>${trialId}</code> não encontrado.`);
+        } else if (order.status !== 'pending') {
+          await sendTelegram(`ℹ️ Trial de <b>${order.name}</b> já está com status: <b>${order.status}</b>`);
+        } else {
+          await sql`
+            UPDATE pending_orders
+            SET status = 'paid', paid_at = NOW()
+            WHERE id = ${trialId}
+          `;
+          await sendTelegram(
+            `✅ <b>Trial Aprovado!</b>\n\n` +
+            `👤 <b>Nome:</b> ${order.name}\n` +
+            `📱 <b>WhatsApp:</b> ${order.whatsapp}\n` +
+            `🆔 <b>ID:</b> <code>${trialId}</code>\n\n` +
+            `O cliente já pode completar o cadastro.`
+          );
+        }
+      }
     }
 
     // ─── /logs ──────────────────────────────────────

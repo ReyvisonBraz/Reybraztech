@@ -24,7 +24,8 @@
       "Bash(npx tsc:*)",
       "WebFetch(domain:21st.dev)",
       "Bash(npx vite:*)",
-      "WebFetch(domain:cdn.pulse.is)"
+      "WebFetch(domain:cdn.pulse.is)",
+      "Bash(npm run:*)"
     ]
   }
 }

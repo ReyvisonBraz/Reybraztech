@@ -179,6 +179,7 @@ router.post('/login', async (req: Request, res: Response) => {
                 plan: client.plan,
                 status: client.status,
                 whatsapp: client.whatsapp,
+                is_admin: client.is_admin,
             },
         });
     } catch (error) {

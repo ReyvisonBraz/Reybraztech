@@ -30,6 +30,7 @@ import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
 import otpRoutes from './routes/otp.js';
 import adminRoutes from './routes/admin.js';
+import scraperRoutes from './routes/scraper.js';
 import paymentRoutes from './routes/payments.js';
 import orderRoutes from './routes/orders.js';
 
@@ -82,6 +83,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', scraperRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/orders', orderRoutes);
 

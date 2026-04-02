@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw } from 'lucide-react';
+import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
 
@@ -14,6 +14,7 @@ interface Client {
     device: string;
     created_at: string;
     days_remaining: number;
+    starhome_account: string | null;
 }
 
 export const AdminPage = () => {
@@ -35,6 +36,10 @@ export const AdminPage = () => {
     const [passwordError, setPasswordError] = useState('');
     const [verifyingPassword, setVerifyingPassword] = useState(false);
     const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [linkClient, setLinkClient] = useState<Client | null>(null);
+    const [starhomeCode, setStarhomeCode] = useState('');
+    const [linking, setLinking] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -228,6 +233,43 @@ export const AdminPage = () => {
         }
     };
 
+    const handleLinkStarhome = (client: Client) => {
+        if (!isPasswordVerified) {
+            setShowPasswordModal(true);
+            return;
+        }
+        setLinkClient(client);
+        setStarhomeCode(client.starhome_account || '');
+        setShowLinkModal(true);
+    };
+
+    const confirmLinkStarhome = async () => {
+        if (!linkClient || !starhomeCode.trim()) return;
+        const token = localStorage.getItem('reyb_token');
+        setLinking(true);
+        try {
+            const response = await fetch(`${API_URL}/api/admin/clients/${linkClient.id}/starhome`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ starhome_account: starhomeCode.trim() })
+            });
+            
+            if (response.ok) {
+                setClients(prev => prev.map(c => c.id === linkClient.id ? { ...c, starhome_account: starhomeCode.trim() } : c));
+                setShowLinkModal(false);
+                setLinkClient(null);
+                setStarhomeCode('');
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLinking(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
@@ -394,6 +436,40 @@ export const AdminPage = () => {
                 </div>
             )}
 
+            {/* Modal de Vincular Starhome */}
+            {showLinkModal && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="glass border border-cyan-500/30 rounded-3xl p-6 max-w-sm w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                                <Link className="w-5 h-5 text-cyan-400" />
+                                Vincular Starhome
+                            </h3>
+                            <button onClick={() => setShowLinkModal(false)} className="text-slate-400 hover:text-slate-200">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <p className="text-slate-300 mb-4">
+                            Vincular código Starhome ao cliente: <strong>{linkClient?.name}</strong>
+                        </p>
+                        <input
+                            type="text"
+                            value={starhomeCode}
+                            onChange={(e) => setStarhomeCode(e.target.value)}
+                            placeholder="Código Starhome (ex: gqbdjd)"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-100 mb-4 focus:outline-none focus:border-cyan-500"
+                        />
+                        <button
+                            onClick={confirmLinkStarhome}
+                            disabled={linking || !starhomeCode.trim()}
+                            className="btn-shimmer w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-3 px-4 rounded-2xl transition-all duration-300 border-none disabled:opacity-50"
+                        >
+                            {linking ? 'Vinculando...' : 'Vincular'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Tabela de Clientes */}
             <div className="glass rounded-3xl overflow-hidden">
                 <div className="overflow-x-auto">
@@ -404,6 +480,7 @@ export const AdminPage = () => {
                                 <th className="px-6 py-5 font-semibold">Contato</th>
                                 <th className="px-6 py-5 font-semibold">Dispositivo</th>
                                 <th className="px-6 py-5 font-semibold">Plano</th>
+                                <th className="px-6 py-5 font-semibold">Starhome</th>
                                 <th className="px-6 py-5 font-semibold">Dias Rest.</th>
                                 <th className="px-6 py-5 font-semibold">Status</th>
                                 <th className="px-6 py-5 font-semibold">Data Cadastro</th>
@@ -463,6 +540,29 @@ export const AdminPage = () => {
                                             <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
                                                 {client.plan}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleLinkStarhome(client)}
+                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all duration-200 ${
+                                                    client.starhome_account
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                                                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-slate-300'
+                                                }`}
+                                                title={client.starhome_account ? 'Código vinculado' : 'Vincular código Starhome'}
+                                            >
+                                                {client.starhome_account ? (
+                                                    <>
+                                                        <Link className="w-3 h-3" />
+                                                        {client.starhome_account}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Unlink className="w-3 h-3" />
+                                                        Vincular
+                                                    </>
+                                                )}
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded text-xs font-bold border ${

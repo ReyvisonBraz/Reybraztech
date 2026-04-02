@@ -29,39 +29,69 @@ const sql = postgres(connectionString, {
   prepare: false,
 });
 
+function normalizeName(name: string): { firstName: string; lastName: string } {
+  const parts = name.trim().split(/\s+/);
+  const firstName = parts[0] || '';
+  const lastName = parts.slice(1).join(' ') || '';
+  return { firstName, lastName };
+}
+
 export async function updateDatabase(clients: ClientData[]) {
   console.log(`\n💾 Atualizando ${clients.length} clientes no banco de dados...`);
 
-  let updated = 0;
-  let created = 0;
+  let found = 0;
+  let notFound = 0;
   let errors = 0;
 
   for (const client of clients) {
     try {
-      // Normaliza o telefone (remove espaços, traços, parênteses)
-      const cleanPhone = client.account.replace(/[\s\-\(\)]/g, '');
-      
-      // Verifica se o cliente já existe pelo WhatsApp
-      const [existing] = await sql`
-        SELECT id FROM clients WHERE whatsapp = ${cleanPhone}
-      `;
+      const { firstName, lastName } = normalizeName(client.buyer_name);
+      const newStatus = client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo';
 
-      if (existing) {
-        // Atualiza dias restantes e status
-        const newStatus = client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo';
-        
+      let existingId: number | null = null;
+      let matchType = '';
+
+      // 1º: Buscar pelo starhome_account (código do StarHome)
+      if (client.account) {
+        const [byStarhome] = await sql`
+          SELECT id FROM clients 
+          WHERE starhome_account = ${client.account}
+          LIMIT 1
+        `;
+        if (byStarhome) {
+          existingId = byStarhome.id;
+          matchType = 'starhome_account';
+        }
+      }
+
+      // 2º: Buscar pelo nome (primeiro + último nome)
+      if (!existingId && firstName && lastName) {
+        const [byName] = await sql`
+          SELECT id FROM clients 
+          WHERE name ILIKE ${`%${firstName}%`}
+            AND name ILIKE ${`%${lastName}%`}
+          LIMIT 1
+        `;
+        if (byName) {
+          existingId = byName.id;
+          matchType = 'nome';
+        }
+      }
+
+      if (existingId) {
         await sql`
           UPDATE clients 
           SET days_remaining = ${client.days_remaining},
               status = ${newStatus},
-              app_password = ${client.password}
-          WHERE whatsapp = ${cleanPhone}
+              app_password = ${client.password},
+              starhome_account = ${client.account}
+          WHERE id = ${existingId}
         `;
-        updated++;
+        console.log(`   ✅ ${client.buyer_name || client.account} → ${matchType}`);
+        found++;
       } else {
-        // Cliente não existe - não cria automaticamente para evitar duplicatas
-        console.log(`   ⚪ Cliente não encontrado: ${client.account} (${client.buyer_name})`);
-        created++;
+        console.log(`   ⚪ Não encontrado: ${client.account} (${client.buyer_name || 'sem nome'})`);
+        notFound++;
       }
 
     } catch (err: any) {
@@ -71,9 +101,9 @@ export async function updateDatabase(clients: ClientData[]) {
   }
 
   console.log(`\n✅ Atualização concluída:`);
-  console.log(`   📝 ${updated} clientes atualizados`);
-  console.log(`   ⚪ ${created} clientes não encontrados no banco`);
+  console.log(`   📝 ${found} clientes atualizados`);
+  console.log(`   ⚪ ${notFound} clientes não encontrados no banco`);
   console.log(`   ❌ ${errors} erros`);
 
-  return { updated, created, errors };
+  return { found, notFound, errors };
 }

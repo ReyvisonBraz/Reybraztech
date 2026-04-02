@@ -47,7 +47,7 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
         const offset = (page - 1) * limit;
 
         const clients = await sql`
-            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining
+            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
             FROM clients
             ORDER BY created_at DESC
             LIMIT ${limit} OFFSET ${offset}
@@ -75,9 +75,9 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
 router.patch('/clients/:id/status', async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { status, days_remaining } = req.body;
+        const { status, days_remaining, starhome_account } = req.body;
 
-        if (!status || !['Ativo', 'Inativo'].includes(status)) {
+        if (status && !['Ativo', 'Inativo'].includes(status)) {
             res.status(400).json({ error: 'Status deve ser "Ativo" ou "Inativo".' });
             return;
         }
@@ -89,7 +89,9 @@ router.patch('/clients/:id/status', async (req: AuthRequest, res: Response) => {
 
         await sql`
             UPDATE clients 
-            SET status = ${status}, days_remaining = ${status === 'Ativo' ? days_remaining : 0}
+            SET status = ${status || sql`status`}, 
+                days_remaining = ${status === 'Ativo' ? days_remaining : 0},
+                starhome_account = ${starhome_account ?? sql`starhome_account`}
             WHERE id = ${id}
         `;
 
@@ -97,6 +99,32 @@ router.patch('/clients/:id/status', async (req: AuthRequest, res: Response) => {
     } catch (error) {
         logger.error('Erro ao atualizar status do cliente:', error);
         res.status(500).json({ error: 'Erro ao atualizar status do cliente.' });
+    }
+});
+
+// ============================================================
+// PATCH /api/admin/clients/:id/starhome — Definir código StarHome
+// ============================================================
+router.patch('/clients/:id/starhome', async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { starhome_account } = req.body;
+
+        if (!starhome_account || typeof starhome_account !== 'string') {
+            res.status(400).json({ error: 'Código StarHome é obrigatório.' });
+            return;
+        }
+
+        await sql`
+            UPDATE clients 
+            SET starhome_account = ${starhome_account}
+            WHERE id = ${id}
+        `;
+
+        res.json({ message: 'Código StarHome atualizado com sucesso.' });
+    } catch (error) {
+        logger.error('Erro ao atualizar starhome_account:', error);
+        res.status(500).json({ error: 'Erro ao atualizar código StarHome.' });
     }
 });
 

@@ -225,15 +225,19 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       if (callbackData.startsWith('cmd|')) {
         const cmd = callbackData.replace('cmd|', '');
         
+        console.log('[Telegram] Callback recebido:', cmd);
+        
         // Executar o comando correspondente
         if (cmd === 'sync') {
           const scraperUrl = process.env.SCRAPER_URL;
           const scraperKey = process.env.SCRAPER_API_KEY;
           
+          console.log('[Scraper] URL:', scraperUrl, 'Key:', scraperKey ? 'ok' : 'missing');
+          
           if (!scraperUrl || !scraperKey) {
-            await sendTelegram(`⚠️ Scraper não configurado no servidor.`);
+            await sendTelegram(`⚠️ <b>Scraper não configurado!</b>\n\nVariáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.`);
           } else {
-            await sendTelegram(`🔄 <b>Sincronização iniciada!</b>\n\nExecutando no Render...`);
+            await sendTelegram(`🔄 <b>Sincronização iniciada!</b>\n\nExecutando scraper no Render...\n\n⏳ Aguarde, isso pode levar alguns minutos.`);
             
             try {
               await axios.post(
@@ -242,7 +246,8 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
                 { headers: { 'x-api-key': scraperKey }, timeout: 300000 }
               );
             } catch (err: any) {
-              await sendTelegram(`🚨 Erro: ${err.message}`);
+              console.error('[Scraper] Erro:', err.message);
+              await sendTelegram(`🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}`);
             }
           }
         } else if (cmd === 'status') {
@@ -635,10 +640,12 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       const scraperUrl = process.env.SCRAPER_URL;
       const scraperKey = process.env.SCRAPER_API_KEY;
 
+      console.log('[Sync] URL:', scraperUrl, 'Key:', scraperKey ? 'ok' : 'missing');
+
       if (!scraperUrl || !scraperKey) {
         await sendTelegram(
-          `⚠️ <b>Scraper não configurado</b>\n\n` +
-          `Variáveis SCRAPER_URL e SCRAPER_API_KEY não estão configuradas no servidor.`
+          `⚠️ <b>Scraper não configurado!</b>\n\n` +
+          `Variáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.`
         );
         return;
       }
@@ -651,7 +658,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       );
 
       try {
-        const response = await axios.post(
+        await axios.post(
           `${scraperUrl}/run`,
           { action: 'sync' },
           {
@@ -660,21 +667,14 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           }
         );
         
-        if (response.data.success) {
-          await sendTelegram(
-            `✅ <b>Sincronização concluída pelo Render!</b>\n\n` +
-            `Verifique a mensagem anterior para os detalhes.`
-          );
-        } else {
-          await sendTelegram(
-            `🚨 <b>Erro na sincronização!</b>\n\n${response.data.error || 'Erro desconhecido'}`
-          );
-        }
-      } catch (err: any) {
         await sendTelegram(
-          `🚨 <b>Erro ao chamar scraper:</b>\n\n` +
-          `${err.message}\n\n` +
-          `Verifique se o serviço no Render está online.`
+          `✅ <b>Sincronização enviada ao Render!</b>\n\n` +
+          `O scraper está executando. Você receberá uma notificação quando concluír.`
+        );
+      } catch (err: any) {
+        console.error('[Sync] Erro:', err.message);
+        await sendTelegram(
+          `🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}`
         );
       }
     }

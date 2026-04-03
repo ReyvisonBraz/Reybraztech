@@ -103,6 +103,9 @@ logger.on('data', (log) => {
     logCache.shift(); // Remove o mais antigo (FIFO)
   }
 
+  // ⚠️ Notificações automáticas DESATIVADAS para não lotar o Telegram
+  // Se quiser ativar novamente, descomente as linhas abaixo:
+  /*
   // Enviar erros automaticamente
   if (log.level === 'error') {
     sendTelegramNotification(log.message, 'error', log);
@@ -111,6 +114,7 @@ logger.on('data', (log) => {
   else if (log.level === 'info' && log.message.includes('✅')) {
     sendTelegramNotification(log.message, 'info');
   }
+  */
 });
 
 // ==========================================
@@ -237,9 +241,9 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           console.log('[Scraper] URL:', scraperUrl, 'Key:', scraperKey ? 'ok' : 'missing');
           
           if (!scraperUrl || !scraperKey) {
-            await sendTelegram(`⚠️ <b>Scraper não configurado!</b>\n\nVariáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.\n\n⏱️ Este delay é normal - o Vercel está "acordando".`);
+            await sendTelegram(`⚠️ <b>Scraper não configurado!</b>\n\nVariáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.`);
           } else {
-            await sendTelegram(`⏳ <b>Processando sincronização...</b>\n\nO servidor está "acordando" (pode levar alguns segundos).\n\nAssim que o Render iniciar, você receberá a confirmação.`);
+            await sendTelegram(`⏳ Sincronização iniciada!\nO scraper está sendo executado no Render...\n\nVocê receberá uma notificação quando concluír.`);
             
             try {
               await axios.post(
@@ -249,20 +253,111 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
               );
             } catch (err: any) {
               console.error('[Scraper] Erro:', err.message);
-              await sendTelegram(`🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}\n\n⚠️ O Render pode estar offline.`);
+              await sendTelegram(`🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}`);
             }
           }
         } else if (cmd === 'status') {
-          await sendTelegram(`⏳ <b>Consultando status...</b>\n\nO servidor está "acordando" (pode levar alguns segundos)...`);
-          await sendTelegram(`📊 <b>Status Reybraztech</b>\n\nUse /status para ver detalhes completos.`);
+          // Redireciona para o comando /status
+          const getDb = async () => (await import('../database.js')).default;
+          const sql = await getDb();
+
+          let dbStatus = '❌ Offline';
+          let dbTime = '';
+          try {
+            const [row] = await sql`SELECT NOW() as t`;
+            dbStatus = '✅ Online';
+            dbTime = new Date(row.t).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          } catch {}
+
+          let totalClientes = 0;
+          let ativos = 0;
+          let inativos = 0;
+          let expiring = 0;
+          try {
+            const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients`;
+            totalClientes = row.total;
+          } catch {}
+          try {
+            const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Used'`;
+            ativos = row.total;
+          } catch {}
+          try {
+            const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Unused'`;
+            inativos = row.total;
+          } catch {}
+          try {
+            const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE days_remaining <= 7 AND days_remaining > 0`;
+            expiring = row.total;
+          } catch {}
+
+          let lastSync = 'Nunca';
+          try {
+            const [row] = await sql`SELECT MAX(created_at) as last_sync FROM starhome_clients`;
+            if (row.last_sync) {
+              lastSync = new Date(row.last_sync).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+            }
+          } catch {}
+
+          await sendTelegram(
+            `📊 <b>Status Reybraztech</b>\n\n` +
+            `🔄 <b>Última Sync:</b> ${lastSync}\n` +
+            `📦 <b>Total Clientes:</b> ${totalClientes}\n` +
+            `✅ <b>Ativos:</b> ${ativos}\n` +
+            `❌ <b>Inativos:</b> ${inativos}\n` +
+            `⚠️ <b>Expirando (7 dias):</b> ${expiring}\n\n` +
+            `🗄️ <b>Banco:</b> ${dbStatus}\n` +
+            `🕐 <b>Hora:</b> ${dbTime || 'N/A'}`
+          );
         } else if (cmd === 'buscar') {
-          await sendTelegram(`🔍 <b>Buscar Cliente</b>\n\nUse: /buscar [conta]\nExemplo: /buscar conta123\n\n⏱️ O servidor pode demorar alguns segundos para responder.`);
+          await sendTelegram(`🔍 <b>Buscar Cliente</b>\n\nUse: /buscar [conta]\nExemplo: /buscar conta123`);
         } else if (cmd === 'expirando') {
-          await sendTelegram(`⏳ <b>Buscando clientes expirando...</b>\n\nAguarde, o servidor está "acordando"...`);
-          await sendTelegram(`⚠️ <b>Clientes Expirando</b>\n\nUse /expirando [dias] para ver.\nExemplo: /expirando 7`);
+          const getDb = async () => (await import('../database.js')).default;
+          const sql = await getDb();
+
+          const clients = await sql`
+            SELECT account, buyer_name, package_name, days_remaining, expiration_date
+            FROM starhome_clients
+            WHERE days_remaining <= 7 AND days_remaining > 0
+            ORDER BY days_remaining ASC
+            LIMIT 15
+          `;
+
+          if (clients.length === 0) {
+            await sendTelegram(`✅ <b>Nenhum cliente expirando em 7 dias!</b>`);
+          } else {
+            let list = '';
+            for (const c of clients) {
+              list += `\n• <b>${c.account}</b> - ${c.buyer_name}\n  📦 ${c.package_name} | ⏰ ${c.days_remaining} dias | 📅 ${c.expiration_date || 'N/A'}`;
+            }
+            await sendTelegram(
+              `⚠️ <b>Clientes Expirando em 7 dias (${clients.length})</b>${list}\n\n` +
+              `<i>Use /expirando [dias] para ver mais.</i>`
+            );
+          }
         } else if (cmd === 'inativos') {
-          await sendTelegram(`⏳ <b>Buscando clientes inativos...</b>\n\nAguarde, o servidor está "acordando"...`);
-          await sendTelegram(`❌ <b>Clientes Inativos</b>\n\nUse /inativos para ver a lista.`);
+          const getDb = async () => (await import('../database.js')).default;
+          const sql = await getDb();
+
+          const clients = await sql`
+            SELECT account, buyer_name, package_name, days_remaining, expiration_date
+            FROM starhome_clients
+            WHERE in_use = 'Unused'
+            ORDER BY created_at DESC
+            LIMIT 15
+          `;
+
+          if (clients.length === 0) {
+            await sendTelegram(`✅ <b>Nenhum cliente inativo!</b>`);
+          } else {
+            let list = '';
+            for (const c of clients) {
+              list += `\n• <b>${c.account}</b> - ${c.buyer_name}\n  📦 ${c.package_name} | 📅 ${c.expiration_date || 'N/A'}`;
+            }
+            await sendTelegram(
+              `❌ <b>Clientes Inativos (${clients.length})</b>${list}\n\n` +
+              `<i>Mostrando até 15. Use /buscar [conta] para detalhes.</i>`
+            );
+          }
         } else if (cmd === 'ajuda') {
           await sendTelegram(
             `🤖 <b>Ajuda Reybraztech</b>\n\n` +

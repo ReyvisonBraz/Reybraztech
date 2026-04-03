@@ -197,7 +197,10 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
-  if (!adminChatId) { res.status(200).json({ ok: true }); return; }
+  // Responde imediatamente ao Telegram (evita timeout)
+  res.status(200).json({ ok: true });
+
+  if (!adminChatId) { return; }
 
   try {
     const update = req.body;
@@ -765,9 +768,6 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       await sendTelegram(`🚨 <b>Erro ao processar comando:</b>\n<code>${err.message}</code>`);
     } catch { /* ignora erro ao reportar erro */ }
   }
-
-  // Responde 200 DEPOIS de processar (em serverless, a function morre após res.json)
-  res.status(200).json({ ok: true });
 };
 
 /**

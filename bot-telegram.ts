@@ -223,11 +223,11 @@ async function handleSearchMode(text: string, chatId: number): Promise<boolean> 
     let searchBy: string = 'account';
 
     if (choice === '1') {
-        searchBy = 'account';
+        searchBy = 'buyer_name';
     } else if (choice === '2') {
-        searchBy = 'nome';
+        searchBy = 'account';
     } else if (choice === '3') {
-        searchBy = 'telefone';
+        searchBy = 'phone';
     } else {
         await sendMessage('❌ Opção inválida. Digite 1, 2 ou 3.');
         return true;

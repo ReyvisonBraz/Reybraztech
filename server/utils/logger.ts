@@ -237,9 +237,9 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           console.log('[Scraper] URL:', scraperUrl, 'Key:', scraperKey ? 'ok' : 'missing');
           
           if (!scraperUrl || !scraperKey) {
-            await sendTelegram(`⚠️ <b>Scraper não configurado!</b>\n\nVariáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.`);
+            await sendTelegram(`⚠️ <b>Scraper não configurado!</b>\n\nVariáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.\n\n⏱️ Este delay é normal - o Vercel está "acordando".`);
           } else {
-            await sendTelegram(`🔄 <b>Sincronização iniciada!</b>\n\nExecutando scraper no Render...\n\n⏳ Aguarde, isso pode levar alguns minutos.`);
+            await sendTelegram(`⏳ <b>Processando sincronização...</b>\n\nO servidor está "acordando" (pode levar alguns segundos).\n\nAssim que o Render iniciar, você receberá a confirmação.`);
             
             try {
               await axios.post(
@@ -249,16 +249,19 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
               );
             } catch (err: any) {
               console.error('[Scraper] Erro:', err.message);
-              await sendTelegram(`🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}`);
+              await sendTelegram(`🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}\n\n⚠️ O Render pode estar offline.`);
             }
           }
         } else if (cmd === 'status') {
-          await sendTelegram(`📊 Consultando status...\n\nUse /status para ver detalhes.`);
+          await sendTelegram(`⏳ <b>Consultando status...</b>\n\nO servidor está "acordando" (pode levar alguns segundos)...`);
+          await sendTelegram(`📊 <b>Status Reybraztech</b>\n\nUse /status para ver detalhes completos.`);
         } else if (cmd === 'buscar') {
-          await sendTelegram(`🔍 <b>Buscar Cliente</b>\n\nUse: /buscar [conta]\nExemplo: /buscar conta123`);
+          await sendTelegram(`🔍 <b>Buscar Cliente</b>\n\nUse: /buscar [conta]\nExemplo: /buscar conta123\n\n⏱️ O servidor pode demorar alguns segundos para responder.`);
         } else if (cmd === 'expirando') {
+          await sendTelegram(`⏳ <b>Buscando clientes expirando...</b>\n\nAguarde, o servidor está "acordando"...`);
           await sendTelegram(`⚠️ <b>Clientes Expirando</b>\n\nUse /expirando [dias] para ver.\nExemplo: /expirando 7`);
         } else if (cmd === 'inativos') {
+          await sendTelegram(`⏳ <b>Buscando clientes inativos...</b>\n\nAguarde, o servidor está "acordando"...`);
           await sendTelegram(`❌ <b>Clientes Inativos</b>\n\nUse /inativos para ver a lista.`);
         } else if (cmd === 'ajuda') {
           await sendTelegram(

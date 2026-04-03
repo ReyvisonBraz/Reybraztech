@@ -289,15 +289,26 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     if (!message?.text) { res.status(200).json({ ok: true }); return; }
 
     // Segurança: só responde ao dono do sistema
-    if (message.chat.id.toString() !== adminChatId) return;
+    if (message.chat.id.toString() !== adminChatId) {
+      res.status(200).json({ ok: true });
+      return;
+    }
 
-    const text = message.text.trim().toLowerCase();
+    const text = message.text.trim();
+
+    // Ignora mensagens que não são comandos
+    if (!text.startsWith('/')) {
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    const textLower = text.toLowerCase();
 
     // Importa o banco só quando precisa (lazy import para serverless)
     const getDb = async () => (await import('../database.js')).default;
 
     // ─── /ajuda ─────────────────────────────────────
-    if (text === '/ajuda' || text === '/help' || text === '/start') {
+    if (textLower === '/ajuda' || textLower === '/help' || textLower === '/start') {
       await sendTelegram(
         `🤖 <b>Comandos Reybraztech</b>\n\n` +
         `📊 <b>Monitoramento:</b>\n` +
@@ -316,7 +327,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /status ────────────────────────────────────
-    else if (text === '/status') {
+    else if (textLower === '/status') {
       const sql = await getDb();
 
       // Testa conexão com banco
@@ -346,7 +357,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /clientes ──────────────────────────────────
-    else if (text === '/clientes') {
+    else if (textLower === '/clientes') {
       const sql = await getDb();
 
       const [countRow] = await sql`SELECT COUNT(*)::int as total FROM clients`;
@@ -372,7 +383,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /pagamentos ────────────────────────────────
-    else if (text === '/pagamentos') {
+    else if (textLower === '/pagamentos') {
       const sql = await getDb();
 
       const [totalRow] = await sql`SELECT COUNT(*)::int as total FROM payments`;
@@ -399,7 +410,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /otp ───────────────────────────────────────
-    else if (text === '/otp') {
+    else if (textLower === '/otp') {
       const sql = await getDb();
 
       const recentes = await sql`
@@ -421,7 +432,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /trials ─────────────────────────────────────
-    else if (text === '/trials') {
+    else if (textLower === '/trials') {
       const sql = await getDb();
 
       const trials = await sql`
@@ -448,7 +459,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /aprovar [id] ──────────────────────────────
-    else if (text.startsWith('/aprovar')) {
+    else if (textLower.startsWith('/aprovar')) {
       const sql = await getDb();
       const parts = message.text.trim().split(/\s+/);
       const trialId = parts[1];
@@ -484,13 +495,13 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /logs ──────────────────────────────────────
-    else if (text === '/logs') {
+    else if (textLower === '/logs') {
       const logsText = logCache.length > 0 ? logCache.join('\n') : 'Nenhum log recente na memória.';
       await sendTelegram(`📋 <b>Últimos 20 Logs (memória):</b>\n\n<pre>${logsText}</pre>`);
     }
 
     // ─── /menu ──────────────────────────────────────
-    else if (text === '/menu' || text === '/start') {
+    else if (textLower === '/menu' || textLower === '/start') {
       await sendTelegram(
         `🤖 <b>Menu Reybraztech</b>\n\nEscolha uma opção:`,
         {
@@ -507,7 +518,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /status ────────────────────────────────────
-    else if (text === '/status') {
+    else if (textLower === '/status') {
       const sql = await getDb();
 
       // Testa conexão com banco
@@ -591,7 +602,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /inativos ──────────────────────────────────
-    else if (text === '/inativos') {
+    else if (textLower === '/inativos') {
       const sql = await getDb();
 
       const clients = await sql`
@@ -617,7 +628,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /sync ──────────────────────────────────────
-    else if (text === '/sync') {
+    else if (textLower === '/sync') {
       const scraperUrl = process.env.SCRAPER_URL;
       const scraperKey = process.env.SCRAPER_API_KEY;
 
@@ -666,7 +677,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── /buscar ─────────────────────────────────────
-    else if (text.startsWith('/buscar') || text.startsWith('/search') || text.startsWith('/busca')) {
+    else if (textLower.startsWith('/buscar') || textLower.startsWith('/search') || textLower.startsWith('/busca')) {
       const originalText = req.body?.message?.text?.trim() || text;
       const queryMatch = originalText.match(/\/buscar\s+(.+)|\/search\s+(.+)|\/busca\s+(.+)/i);
       
@@ -744,7 +755,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     }
 
     // ─── Comando desconhecido ───────────────────────
-    else if (text.startsWith('/')) {
+    else if (textLower.startsWith('/')) {
       await sendTelegram(`❓ Comando não reconhecido. Use /ajuda para ver os comandos disponíveis.`);
     }
 

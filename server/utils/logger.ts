@@ -169,6 +169,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         `🔑 /otp — Tokens OTP recentes\n` +
         `📋 /logs — Últimos registros do sistema\n` +
         `🔄 /sync — Executar scraper Starhome\n` +
+        `🔍 /buscar [conta] — Buscar cliente rápido\n` +
         `❓ /ajuda — Esta mensagem`
       );
     }
@@ -404,6 +405,117 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
 
       child.on('error', async (err: Error) => {
         await sendTelegram(`🚨 <b>Erro ao iniciar scraper:</b>\n\n${err.message}`);
+      });
+    }
+
+    // ─── /buscar ─────────────────────────────────────
+    else if (text.startsWith('/buscar') || text.startsWith('/search') || text.startsWith('/busca')) {
+      const originalText = req.body?.message?.text?.trim() || text;
+      const queryMatch = originalText.match(/\/buscar\s+(.+)|\/search\s+(.+)|\/busca\s+(.+)/i);
+      
+      let query = '';
+      let explicitType = '';
+      
+      if (queryMatch) {
+        query = (queryMatch[1] || queryMatch[2] || queryMatch[3] || '').trim();
+      }
+      
+      if (originalText.match(/--account|--conta/i)) {
+        explicitType = 'account';
+      } else if (originalText.match(/--nome|--name/i)) {
+        explicitType = 'buyer_name';
+      } else if (originalText.match(/--telefone|--phone/i)) {
+        explicitType = 'phone';
+      }
+      
+      if (!query) {
+        await sendTelegram(
+          '🔍 <b>Como deseja buscar?</b>\n\n' +
+          'Use: /buscar [conta]\n' +
+          'Exemplos:\n' +
+          '• /buscar conta123\n' +
+          '• /buscar "João Silva"\n' +
+          '• /buscar 11999999999\n\n' +
+          'Também pode usar:\n' +
+          '• /buscar conta123 --account\n' +
+          '• /buscar "João Silva" --nome\n' +
+          '• /buscar 11999999999 --telefone'
+        );
+        return;
+      }
+      
+      const searchBy = explicitType || 'account';
+      
+      await sendTelegram(`🔍 <b>Buscando "${query}"</b> por ${searchBy}...\n\nAguarde, isso leva apenas alguns segundos...`);
+      
+      const { spawn } = await import('child_process');
+      const path = await import('path');
+      const scraperDir = path.join(process.cwd(), 'scraper', 'src');
+      
+      const args = ['--search=' + query];
+      if (searchBy !== 'account') {
+        args.push('--by=' + searchBy);
+      }
+      
+      const child = spawn('npx', ['ts-node', 'index.ts', ...args], {
+        cwd: scraperDir,
+        env: { ...process.env },
+        shell: true
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data: Buffer) => {
+        const txt = data.toString();
+        stdout += txt;
+        console.log('[Search]', txt);
+      });
+
+      child.stderr.on('data', (data: Buffer) => {
+        const txt = data.toString();
+        stderr += txt;
+        console.error('[Search Error]', txt);
+      });
+
+      child.on('close', async (code: number) => {
+        if (code !== 0) {
+          await sendTelegram(`🚨 <b>Erro na Busca!</b>\n\nCódigo: ${code}\n\n<pre>${stderr.slice(-500)}</pre>`);
+          return;
+        }
+
+        try {
+          const fs = await import('fs');
+          const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'client_search.json');
+          
+          if (fs.existsSync(jsonPath)) {
+            const clientData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+            
+            if (clientData && clientData.length > 0) {
+              const c = clientData[0];
+              await sendTelegram(
+                `✅ <b>Cliente Encontrado!</b>\n\n` +
+                `📋 <b>Account:</b> ${c.account}\n` +
+                `👤 <b>Nome:</b> ${c.buyer_name}\n` +
+                `🔑 <b>Senha:</b> ${c.password}\n` +
+                `📦 <b>Pacote:</b> ${c.package_name}\n` +
+                `⏰ <b>Dias restantes:</b> ${c.days_remaining}\n` +
+                `📊 <b>Status:</b> ${c.in_use}\n` +
+                `📅 <b>Expira:</b> ${c.expiration_date || 'N/A'}`
+              );
+            } else {
+              await sendTelegram(`❌ Cliente não encontrado: "${query}"`);
+            }
+          } else {
+            await sendTelegram(`❌ Cliente não encontrado: "${query}"`);
+          }
+        } catch (err: any) {
+          await sendTelegram(`🚨 <b>Erro ao processar busca:</b>\n\n${err.message}`);
+        }
+      });
+
+      child.on('error', async (err: Error) => {
+        await sendTelegram(`🚨 <b>Erro ao iniciar busca:</b>\n\n${err.message}`);
       });
     }
 

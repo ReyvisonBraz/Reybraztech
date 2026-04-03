@@ -197,19 +197,21 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
-  // Responde imediatamente ao Telegram (evita timeout)
-  res.status(200).json({ ok: true });
-
-  if (!adminChatId) { return; }
+  if (!adminChatId) { 
+    res.status(200).json({ ok: true });
+    return; 
+  }
 
   try {
     const update = req.body;
+    console.log('[Telegram Webhook] Update recebido:', JSON.stringify(update).substring(0, 200));
     
     // ─── Callback Query (botões inline) ───
     const callbackQuery = update?.callback_query;
     if (callbackQuery) {
       const callbackData = callbackQuery.data;
       const callbackChatId = callbackQuery.message?.chat.id;
+      console.log('[Telegram] Callback:', callbackData, 'Chat:', callbackChatId);
       
       if (callbackChatId?.toString() !== adminChatId) {
         res.status(200).json({ ok: true });
@@ -225,7 +227,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       if (callbackData.startsWith('cmd|')) {
         const cmd = callbackData.replace('cmd|', '');
         
-        console.log('[Telegram] Callback recebido:', cmd);
+        console.log('[Telegram] Comando do menu:', cmd);
         
         // Executar o comando correspondente
         if (cmd === 'sync') {
@@ -252,6 +254,8 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           }
         } else if (cmd === 'status') {
           await sendTelegram(`📊 Consultando status...\n\nUse /status para ver detalhes.`);
+        } else if (cmd === 'buscar') {
+          await sendTelegram(`🔍 <b>Buscar Cliente</b>\n\nUse: /buscar [conta]\nExemplo: /buscar conta123`);
         } else if (cmd === 'expirando') {
           await sendTelegram(`⚠️ <b>Clientes Expirando</b>\n\nUse /expirando [dias] para ver.\nExemplo: /expirando 7`);
         } else if (cmd === 'inativos') {
@@ -263,7 +267,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
             `📊 /status — Ver status geral\n` +
             `🔍 /buscar [conta] — Buscar cliente\n` +
             `⚠️ /expirando [dias] — Clientes próximos de expirar\n` +
-            `❌ /inativos — Ver clientes inativos\n` +
+            `❌ /inativos — Clientes inativos\n` +
             `❓ /menu — Mostrar menu`
           );
         }
@@ -272,7 +276,7 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         return;
       }
       
-      // Processa callbacks de busca existentes
+      // Processa callbacks de busca (search)
       const [action, type, query] = callbackData.split('|');
       
       if (action === 'search') {

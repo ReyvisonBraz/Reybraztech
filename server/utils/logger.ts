@@ -218,14 +218,60 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         callback_query_id: callbackQuery.id
       });
       
-      // Processa o callback
+      // Processa o callback - comandos do menu
+      if (callbackData.startsWith('cmd|')) {
+        const cmd = callbackData.replace('cmd|', '');
+        
+        // Executar o comando correspondente
+        if (cmd === 'sync') {
+          const scraperUrl = process.env.SCRAPER_URL;
+          const scraperKey = process.env.SCRAPER_API_KEY;
+          
+          if (!scraperUrl || !scraperKey) {
+            await sendTelegram(`⚠️ Scraper não configurado no servidor.`);
+          } else {
+            await sendTelegram(`🔄 <b>Sincronização iniciada!</b>\n\nExecutando no Render...`);
+            
+            try {
+              await axios.post(
+                `${scraperUrl}/run`,
+                { action: 'sync' },
+                { headers: { 'x-api-key': scraperKey }, timeout: 300000 }
+              );
+            } catch (err: any) {
+              await sendTelegram(`🚨 Erro: ${err.message}`);
+            }
+          }
+        } else if (cmd === 'status') {
+          await sendTelegram(`📊 Consultando status...\n\nUse /status para ver detalhes.`);
+        } else if (cmd === 'expirando') {
+          await sendTelegram(`⚠️ <b>Clientes Expirando</b>\n\nUse /expirando [dias] para ver.\nExemplo: /expirando 7`);
+        } else if (cmd === 'inativos') {
+          await sendTelegram(`❌ <b>Clientes Inativos</b>\n\nUse /inativos para ver a lista.`);
+        } else if (cmd === 'ajuda') {
+          await sendTelegram(
+            `🤖 <b>Ajuda Reybraztech</b>\n\n` +
+            `🔄 /sync — Sincronizar clientes\n` +
+            `📊 /status — Ver status geral\n` +
+            `🔍 /buscar [conta] — Buscar cliente\n` +
+            `⚠️ /expirando [dias] — Clientes próximos de expirar\n` +
+            `❌ /inativos — Ver clientes inativos\n` +
+            `❓ /menu — Mostrar menu`
+          );
+        }
+        
+        res.status(200).json({ ok: true });
+        return;
+      }
+      
+      // Processa callbacks de busca existentes
       const [action, type, query] = callbackData.split('|');
       
       if (action === 'search') {
         const searchBy = type;
         const searchQuery = decodeURIComponent(query);
         
-        await sendTelegram(`🔍 <b>Buscando "${searchQuery}"</b> por ${searchBy}...\n\nAguarde, isso leva apenas alguns segundos...`);
+        await sendTelegram(`🔍 <b>Buscando "${searchQuery}"</b> por ${searchBy}...`);
         
         try {
           await runSearchInServer(searchQuery, searchBy);
@@ -254,19 +300,18 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     if (text === '/ajuda' || text === '/help' || text === '/start') {
       await sendTelegram(
         `🤖 <b>Comandos Reybraztech</b>\n\n` +
-        `📊 /status — Saúde geral (servidor + banco)\n` +
-        `👥 /clientes — Total e últimos cadastros\n` +
-        `💰 /pagamentos — Resumo de pagamentos\n` +
-        `🎁 /trials — Trials pendentes de aprovação\n` +
-        `✅ /aprovar [id] — Aprovar um trial\n` +
-        `🔑 /otp — Tokens OTP recentes\n` +
-        `📋 /logs — Últimos registros do sistema\n` +
-        `❓ /ajuda — Esta mensagem\n\n` +
-        `───── Scraper (local) ─────\n` +
-        `🔄 /sync — Sincronizar clientes\n` +
-        `🔍 /buscar [conta] — Buscar cliente\n\n` +
-        `⚠️ Para usar /sync e /buscar:\n` +
-        `Rode <pre>npm run bot</pre> localmente`
+        `📊 <b>Monitoramento:</b>\n` +
+        `• /status — Saúde geral do sistema\n` +
+        `• /expirando [dias] — Clientes expirando\n` +
+        `• /inativos — Clientes inativos\n\n` +
+        `🔄 <b>Scraper:</b>\n` +
+        `• /sync — Sincronizar clientes (via Render)\n` +
+        `• /buscar [conta] — Buscar cliente\n\n` +
+        `🔧 <b>Outros:</b>\n` +
+        `• /menu — Menu interativo\n` +
+        `• /logs — Últimos logs\n` +
+        `• /ajuda — Esta mensagem\n\n` +
+        `💡 Use os botões do menu para ações rápidas!`
       );
     }
 
@@ -444,18 +489,180 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       await sendTelegram(`📋 <b>Últimos 20 Logs (memória):</b>\n\n<pre>${logsText}</pre>`);
     }
 
+    // ─── /menu ──────────────────────────────────────
+    else if (text === '/menu' || text === '/start') {
+      await sendTelegram(
+        `🤖 <b>Menu Reybraztech</b>\n\nEscolha uma opção:`,
+        {
+          inline_keyboard: [
+            [{ text: '🔄 Sincronizar', callback_data: 'cmd|sync' }],
+            [{ text: '📊 Status', callback_data: 'cmd|status' }],
+            [{ text: '🔍 Buscar Cliente', callback_data: 'cmd|buscar' }],
+            [{ text: '⚠️ Expirando', callback_data: 'cmd|expirando' }],
+            [{ text: '❌ Inativos', callback_data: 'cmd|inativos' }],
+            [{ text: '❓ Ajuda', callback_data: 'cmd|ajuda' }]
+          ]
+        }
+      );
+    }
+
+    // ─── /status ────────────────────────────────────
+    else if (text === '/status') {
+      const sql = await getDb();
+
+      // Testa conexão com banco
+      let dbStatus = '❌ Offline';
+      let dbTime = '';
+      try {
+        const [row] = await sql`SELECT NOW() as t`;
+        dbStatus = '✅ Online';
+        dbTime = new Date(row.t).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      } catch { /* mantém offline */ }
+
+      // Conta clientes
+      let totalClientes = 0;
+      let ativos = 0;
+      let inativos = 0;
+      let expiring = 0;
+      try {
+        const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients`;
+        totalClientes = row.total;
+      } catch { /* ignora */ }
+      try {
+        const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Used'`;
+        ativos = row.total;
+      } catch { /* ignora */ }
+      try {
+        const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Unused'`;
+        inativos = row.total;
+      } catch { /* ignora */ }
+      try {
+        const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE days_remaining <= 7 AND days_remaining > 0`;
+        expiring = row.total;
+      } catch { /* ignora */ }
+
+      // Última sincronização
+      let lastSync = 'Nunca';
+      try {
+        const [row] = await sql`SELECT MAX(created_at) as last_sync FROM starhome_clients`;
+        if (row.last_sync) {
+          lastSync = new Date(row.last_sync).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        }
+      } catch { /* ignora */ }
+
+      await sendTelegram(
+        `📊 <b>Status Reybraztech</b>\n\n` +
+        `🔄 <b>Última Sync:</b> ${lastSync}\n` +
+        `📦 <b>Total Clientes:</b> ${totalClientes}\n` +
+        `✅ <b>Ativos:</b> ${ativos}\n` +
+        `❌ <b>Inativos:</b> ${inativos}\n` +
+        `⚠️ <b>Expirando (7 dias):</b> ${expiring}\n\n` +
+        `🗄️ <b>Banco:</b> ${dbStatus}\n` +
+        `🕐 <b>Hora:</b> ${dbTime || 'N/A'}`
+      );
+    }
+
+    // ─── /expirando [dias] ───────────────────────────
+    else if (text.startsWith('/expirando')) {
+      const sql = await getDb();
+      const parts = message.text.trim().split(/\s+/);
+      const days = parseInt(parts[1]) || 7;
+
+      const clients = await sql`
+        SELECT account, buyer_name, package_name, days_remaining, expiration_date
+        FROM starhome_clients
+        WHERE days_remaining <= ${days} AND days_remaining > 0
+        ORDER BY days_remaining ASC
+        LIMIT 15
+      `;
+
+      if (clients.length === 0) {
+        await sendTelegram(`✅ <b>Nenhum cliente expirando em ${days} dias!</b>`);
+      } else {
+        let list = '';
+        for (const c of clients) {
+          list += `\n• <b>${c.account}</b> - ${c.buyer_name}\n  📦 ${c.package_name} | ⏰ ${c.days_remaining} dias | 📅 ${c.expiration_date || 'N/A'}`;
+        }
+        await sendTelegram(
+          `⚠️ <b>Clientes Expirando em ${days} dias (${clients.length})</b>${list}\n\n` +
+          `<i>Use /expirando [dias] para ver mais.</i>`
+        );
+      }
+    }
+
+    // ─── /inativos ──────────────────────────────────
+    else if (text === '/inativos') {
+      const sql = await getDb();
+
+      const clients = await sql`
+        SELECT account, buyer_name, package_name, days_remaining, expiration_date
+        FROM starhome_clients
+        WHERE in_use = 'Unused'
+        ORDER BY created_at DESC
+        LIMIT 15
+      `;
+
+      if (clients.length === 0) {
+        await sendTelegram(`✅ <b>Nenhum cliente inativo!</b>`);
+      } else {
+        let list = '';
+        for (const c of clients) {
+          list += `\n• <b>${c.account}</b> - ${c.buyer_name}\n  📦 ${c.package_name} | 📅 ${c.expiration_date || 'N/A'}`;
+        }
+        await sendTelegram(
+          `❌ <b>Clientes Inativos (${clients.length})</b>${list}\n\n` +
+          `<i>Mostrando até 15. Use /buscar [conta] para detalhes.</i>`
+        );
+      }
+    }
+
     // ─── /sync ──────────────────────────────────────
     else if (text === '/sync') {
-      // O Vercel não consegue rodar Puppeteer (headless Chrome)
-      // Use o bot local: npm run bot
+      const scraperUrl = process.env.SCRAPER_URL;
+      const scraperKey = process.env.SCRAPER_API_KEY;
+
+      if (!scraperUrl || !scraperKey) {
+        await sendTelegram(
+          `⚠️ <b>Scraper não configurado</b>\n\n` +
+          `Variáveis SCRAPER_URL e SCRAPER_API_KEY não estão configuradas no servidor.`
+        );
+        return;
+      }
+
+      // Envia confirmação imediata
       await sendTelegram(
-        `⚠️ <b>Comando /sync só funciona localmente</b>\n\n` +
-        `O servidor atual não suporta Puppeteer.\n\n` +
-        `Para usar, rode:\n` +
-        `<pre>npm run bot</pre>\n` +
-        `E depois envie /sync pelo Telegram\n\n` +
-        `O bot local tem todas as funções!`
+        `🔄 <b>Sincronização iniciada!</b>\n\n` +
+        `O scraper está sendo executado no Render...\n` +
+        `Aguarde a conclusão (pode levar alguns minutos).`
       );
+
+      try {
+        const response = await axios.post(
+          `${scraperUrl}/run`,
+          { action: 'sync' },
+          {
+            headers: { 'x-api-key': scraperKey },
+            timeout: 300000 // 5 minutos timeout
+          }
+        );
+        
+        if (response.data.success) {
+          await sendTelegram(
+            `✅ <b>Sincronização concluída pelo Render!</b>\n\n` +
+            `Verifique a mensagem anterior para os detalhes.`
+          );
+        } else {
+          await sendTelegram(
+            `🚨 <b>Erro na sincronização!</b>\n\n${response.data.error || 'Erro desconhecido'}`
+          );
+        }
+      } catch (err: any) {
+        await sendTelegram(
+          `🚨 <b>Erro ao chamar scraper:</b>\n\n` +
+          `${err.message}\n\n` +
+          `Verifique se o serviço no Render está online.`
+        );
+      }
     }
 
     // ─── /buscar ─────────────────────────────────────
@@ -486,9 +693,39 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           '• /buscar conta123\n' +
           '• /buscar "João Silva"\n' +
           '• /buscar 11999999999\n\n' +
-          '⚠️ <b>Nota:</b> Este comando só funciona no bot local.\n' +
-          'Rode npm run bot e use pelo Telegram.'
+          'Também pode especificar:\n' +
+          '• /buscar conta123 --account\n' +
+          '• /buscar "João Silva" --nome\n' +
+          '• /buscar 11999999999 --telefone'
         );
+        return;
+      }
+      
+      // Se especificado explicitamente, usar o scraper do Render
+      if (explicitType) {
+        const scraperUrl = process.env.SCRAPER_URL;
+        const scraperKey = process.env.SCRAPER_API_KEY;
+        
+        await sendTelegram(`🔍 <b>Buscando "${query}"</b> por ${explicitType}...`);
+        
+        if (scraperUrl && scraperKey) {
+          try {
+            await axios.post(
+              `${scraperUrl}/run`,
+              { action: 'search', query, searchBy: explicitType },
+              { headers: { 'x-api-key': scraperKey }, timeout: 60000 }
+            );
+          } catch (err: any) {
+            await sendTelegram(`❌ Erro na busca: ${err.message}`);
+          }
+        } else {
+          // Fallback para busca no banco
+          try {
+            await runSearchInServer(query, explicitType);
+          } catch (err: any) {
+            await sendTelegram(`❌ Erro: ${err.message}`);
+          }
+        }
         return;
       }
       

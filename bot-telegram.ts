@@ -208,7 +208,7 @@ function detectSearchType(query: string): 'account' | 'buyer_name' | 'phone' {
     if (/^\d{10,11}$/.test(cleaned)) {
         return 'phone';
     }
-    if (query.includes(' ') || /^[A-Za-zÀ-ÿ\s]+$/.test(query)) {
+    if (/[A-Za-zÀ-ÿ]/.test(query)) {
         return 'buyer_name';
     }
     return 'account';

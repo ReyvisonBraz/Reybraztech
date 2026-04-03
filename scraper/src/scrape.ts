@@ -158,131 +158,385 @@ async function setItemsPerPage(page: Page, items: number): Promise<void> {
  *  - Span com senha: style="display: none;" (sem font-size) — contém a senha real
  *  - Basta ler o textContent do span com display:none e sem font-size
  *
- * IMPORTANTE: usa page.evaluate com código SEM function declarations nomeadas
- * para evitar o bug "__name is not defined" do compilador tsx/esbuild.
+ * Versão melhorada com múltiplos fallbacks para diferentes frameworks.
  */
 async function extractTableData(page: Page): Promise<ClientData[]> {
-  const clients = await page.evaluate(function () {
-    var results: any[] = [];
-    var rows = document.querySelectorAll('tr.ant-table-row');
+  try {
+    const clients = await page.evaluate(function () {
+      var results: any[] = [];
+      
+      var rowSelectors = [
+        'tr.ant-table-row',
+        'tr.el-table__row',
+        'table tbody tr',
+        '.ant-table-tbody > tr',
+      ];
+      
+      var rows: NodeListOf<Element> | null = null;
+      for (var rs of rowSelectors) {
+        rows = document.querySelectorAll(rs);
+        if (rows.length > 0) break;
+      }
+      
+      if (!rows || rows.length === 0) return results;
 
-    for (var r = 0; r < rows.length; r++) {
-      var cells = rows[r].querySelectorAll('td');
-      if (cells.length < 5) continue;
+      for (var r = 0; r < rows.length; r++) {
+        var cells = rows[r].querySelectorAll('td');
+        if (cells.length < 5) continue;
 
-      // Leitura direta das células (sem function declaration para evitar __name)
-      var col1 = cells[1] ? (cells[1].textContent || '').trim() : '';
-      var col2 = cells[2] ? (cells[2].textContent || '').trim() : '';
-      var col4 = cells[4] ? (cells[4].textContent || '').trim() : '';
-      var col5 = cells[5] ? (cells[5].textContent || '').trim() : '';
-      var col6 = cells[6] ? (cells[6].textContent || '').trim() : '';
-      var col7 = cells[7] ? (cells[7].textContent || '').trim() : '';
-      var col8 = cells[8] ? (cells[8].textContent || '').trim() : '';
-      var col9 = cells[9] ? (cells[9].textContent || '').trim() : '';
-      var col10 = cells[10] ? (cells[10].textContent || '').trim() : '';
-      var col11 = cells[11] ? (cells[11].textContent || '').trim() : '';
+        var col1 = cells[1] ? (cells[1].textContent || '').trim() : '';
+        var col2 = cells[2] ? (cells[2].textContent || '').trim() : '';
+        var col4 = cells[4] ? (cells[4].textContent || '').trim() : '';
+        var col5 = cells[5] ? (cells[5].textContent || '').trim() : '';
+        var col6 = cells[6] ? (cells[6].textContent || '').trim() : '';
+        var col7 = cells[7] ? (cells[7].textContent || '').trim() : '';
+        var col8 = cells[8] ? (cells[8].textContent || '').trim() : '';
+        var col9 = cells[9] ? (cells[9].textContent || '').trim() : '';
+        var col10 = cells[10] ? (cells[10].textContent || '').trim() : '';
+        var col11 = cells[11] ? (cells[11].textContent || '').trim() : '';
 
-      if (!col2) continue; // Sem account, ignora
+        if (!col2) continue; // Sem account, ignora
 
-      // Senha: span com display:none E sem font-size = span da senha (não do ícone)
-      var pwd = '***';
-      var pwdCell = cells[3];
-      if (pwdCell) {
-        var spans = pwdCell.querySelectorAll('span');
-        for (var j = 0; j < spans.length; j++) {
-          var s = spans[j] as HTMLElement;
-          var st = s.getAttribute('style') || '';
-          var val = (s.textContent || '').trim();
-          if (st.indexOf('display: none') >= 0 && st.indexOf('font-size') < 0 && val.length > 0) {
-            pwd = val;
-            break;
-          }
-        }
-        // Fallback: qualquer span com valor e sem asterisco
-        if (pwd === '***') {
-          for (var k = 0; k < spans.length; k++) {
-            var t2 = (spans[k].textContent || '').trim();
-            if (t2.length > 0 && t2 !== '***') {
-              pwd = t2;
+        var pwd = '***';
+        var pwdCell = cells[3];
+        if (pwdCell) {
+          var spans = pwdCell.querySelectorAll('span');
+          for (var j = 0; j < spans.length; j++) {
+            var s = spans[j] as HTMLElement;
+            var st = s.getAttribute('style') || '';
+            var val = (s.textContent || '').trim();
+            if (st.indexOf('display: none') >= 0 && st.indexOf('font-size') < 0 && val.length > 0) {
+              pwd = val;
               break;
             }
           }
+          if (pwd === '***') {
+            for (var k = 0; k < spans.length; k++) {
+              var t2 = (spans[k].textContent || '').trim();
+              if (t2.length > 0 && t2 !== '***') {
+                pwd = t2;
+                break;
+              }
+            }
+          }
         }
+
+        results.push({
+          index: parseInt(col1, 10) || 0,
+          account: col2,
+          password: pwd,
+          days_remaining: parseInt(col4, 10) || 0,
+          package_name: col5,
+          buyer_name: col6,
+          first_login: col7,
+          expiration_date: col8,
+          creation_time: col9,
+          in_use: col10,
+          expired: col11,
+        });
       }
 
-      results.push({
-        index: parseInt(col1, 10) || 0,
-        account: col2,
-        password: pwd,
-        days_remaining: parseInt(col4, 10) || 0,
-        package_name: col5,
-        buyer_name: col6,
-        first_login: col7,
-        expiration_date: col8,
-        creation_time: col9,
-        in_use: col10,
-        expired: col11,
-      });
-    }
+      return results;
+    });
 
-    return results;
-  });
-
-  const result = (clients || []) as ClientData[];
-  console.log(`    → Extraídos ${result.length} clientes da tabela`);
-  return result;
+    const result = (clients || []) as ClientData[];
+    console.log(`    → Extraídos ${result.length} clientes da tabela`);
+    return result;
+  } catch (error) {
+    console.log(`    ⚠️  Erro ao extrair dados da tabela: ${error}`);
+    return [];
+  }
 }
 
 /**
  * Clica nas senhas mascaradas para revelar a senha real de cada cliente.
+ * Versão melhorada com try/catch robusto.
  */
 async function revealPasswords(page: Page, clients: ClientData[]): Promise<ClientData[]> {
   console.log('  🔓 Revelando senhas...');
 
-  // Encontra as células de senha na tabela (coluna 4 = Password, index 3 com checkbox ou coluna dependendo do framework)
-  // Em Ant-Design a coluna de senha costuma ser a mesma posição (índice nth-child 4 ou 5)
-  const passwordCells = await page.$$(
-    '.el-table__body-wrapper table tbody tr td:nth-child(4), .ant-table-tbody tr td:nth-child(4)'
-  );
+  try {
+    const passwordCellSelectors = [
+      '.el-table__body-wrapper table tbody tr td:nth-child(4)',
+      '.ant-table-tbody tr td:nth-child(4)',
+      'table tbody tr td:nth-child(4)',
+    ];
 
-  for (let i = 0; i < passwordCells.length && i < clients.length; i++) {
-    try {
-      const cellText = await passwordCells[i].evaluate((el: Element) => el.textContent || '');
-
-      // Se a senha está mascarada, clica para revelar
-      if (cellText.includes('***') || cellText.includes('•') || cellText.includes('···')) {
-        await passwordCells[i].click();
-        await delay(600);
-
-        // Depois do clique, tenta ler a senha revelada
-        const revealed = await passwordCells[i].evaluate((el: Element) => el.textContent || '');
-        if (revealed && !revealed.includes('***') && !revealed.includes('•') && !revealed.includes('···')) {
-          clients[i].password = revealed.trim();
-        }
-      } else if (cellText && cellText !== '') {
-        clients[i].password = cellText.trim();
+    let passwordCells: any[] = [];
+    for (const selector of passwordCellSelectors) {
+      const cells = await page.$$(selector);
+      if (cells.length > 0) {
+        passwordCells = cells;
+        break;
       }
-    } catch {
-      // Ignora erros individuais e continua
     }
+
+    if (passwordCells.length === 0) {
+      console.log('  ⚠️  Células de senha não encontradas');
+      return clients;
+    }
+
+    for (let i = 0; i < passwordCells.length && i < clients.length; i++) {
+      try {
+        const cellText = await passwordCells[i].evaluate((el: Element) => el.textContent || '');
+
+        if (cellText.includes('***') || cellText.includes('•') || cellText.includes('···')) {
+          await passwordCells[i].click();
+          await delay(600);
+
+          const revealed = await passwordCells[i].evaluate((el: Element) => el.textContent || '');
+          if (revealed && !revealed.includes('***') && !revealed.includes('•') && !revealed.includes('···')) {
+            clients[i].password = revealed.trim();
+          }
+        } else if (cellText && cellText !== '') {
+          clients[i].password = cellText.trim();
+        }
+      } catch (err) {
+        console.log(`  ⚠️  Erro ao revelar senha ${i}: ${err}`);
+      }
+    }
+
+    const revealed = clients.filter((c) => c.password !== '***').length;
+    console.log(`  ✅ ${revealed}/${clients.length} senhas reveladas`);
+  } catch (error) {
+    console.log(`  ⚠️  Erro geral ao revelar senhas: ${error}`);
   }
 
-  const revealed = clients.filter((c) => c.password !== '***').length;
-  console.log(`  ✅ ${revealed}/${clients.length} senhas reveladas`);
   return clients;
 }
 
 /**
+ * Busca um cliente usando a barra de pesquisa nativa do painel.
+ * 
+ * Fluxo:
+ * 1. Navega para #/account/list
+ * 2. Localiza a barra de pesquisa nativa
+ * 3. Insere a query e clica em Search
+ * 4. Aguarda resposta da API (waitForResponse)
+ * 5. Extrai dados da tabela filtrada
+ * 
+ * @param page - Puppeteer Page
+ * @param query - Termo de busca (account, nome ou telefone)
+ * @param searchBy - Tipo de busca: 'account' | 'buyer_name' | 'phone'
+ * @returns ClientData ou null se não encontrar
+ */
+export async function searchAndExtractClient(
+  page: Page,
+  query: string,
+  searchBy: 'account' | 'buyer_name' | 'phone' = 'account'
+): Promise<ClientData | null> {
+  console.log(`\n🔍 Buscando cliente: "${query}" (tipo: ${searchBy})`);
+
+  const panelUrl = page.url().split('#')[0];
+  const accountListUrl = `${panelUrl}#/account/list`;
+  
+  console.log(`  🌐 Navegando para: ${accountListUrl}`);
+  await page.goto(accountListUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+
+  try {
+    await page.waitForSelector('.ant-table-row', { timeout: 20000 }).catch(() => {
+      console.log('  ⚠️  Tabela não apareceu');
+    });
+  } catch (err) {
+    console.log(`  ⚠️  Erro ao carregar página: ${err}`);
+  }
+
+  console.log(`  🔎 Localizando barra de pesquisa...`);
+  
+  const searchInputSelectors = [
+    'input.ant-input[placeholder*="Search"]',
+    'input.ant-input[placeholder*="search"]',
+    'input.ant-input.ant-input-sm',
+    '.ant-input-search input',
+    'input[placeholder*="Search"]',
+    'input[type="search"]',
+    '.ant-table-filter-dropdown input',
+  ];
+
+  let searchInput = null;
+  for (const selector of searchInputSelectors) {
+    const input = await page.$(selector);
+    if (input) {
+      const isVisible = await input.evaluate((el: Element) => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden' && (el as HTMLInputElement).offsetParent !== null;
+      });
+      if (isVisible) {
+        searchInput = input;
+        console.log(`  ✅ Input encontrado: ${selector}`);
+        break;
+      }
+    }
+  }
+
+  if (!searchInput) {
+    console.log(`  ⚠️  Barra de pesquisa não encontrada. Tentando busca manual na tabela...`);
+    return searchManuallyInTable(page, query);
+  }
+
+  await searchInput.click();
+  await searchInput.type(query, { delay: 30 });
+
+  await delay(500);
+
+  const searchButtonSelectors = [
+    'button.ant-input-search-button',
+    '.ant-input-search .ant-input-search-button',
+    'button:has(.anticon-search)',
+    'button:has(.anticon-search)',
+    'span.ant-input-search-icon',
+    'button.ant-btn-icon-only',
+  ];
+
+  let searchClicked = false;
+  for (const selector of searchButtonSelectors) {
+    const btn = await page.$(selector);
+    if (btn) {
+      const isVisible = await btn.evaluate((el: Element) => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      });
+      if (isVisible) {
+        await btn.click();
+        console.log(`  ✅ Botão Search clicado: ${selector}`);
+        searchClicked = true;
+        break;
+      }
+    }
+  }
+
+  if (!searchClicked) {
+    await page.keyboard.press('Enter');
+    console.log(`  ✅ Enter pressionado para buscar`);
+  }
+
+  console.log(`  ⏳ Aguardando resposta da API...`);
+  
+  try {
+    await page.waitForResponse(
+      (response) => {
+        const url = response.url();
+        return url.includes('account') || url.includes('list') || url.includes('client');
+      },
+      { timeout: 10000 }
+    );
+    console.log(`  ✅ Resposta da API recebida`);
+  } catch (err) {
+    console.log(`  ⚠️  Timeout na resposta da API, continuando...`);
+    await delay(2000);
+  }
+
+  await delay(1000);
+
+  const clients = await extractTableData(page);
+  
+  if (clients.length === 0) {
+    console.log(`  ❌ Nenhum cliente encontrado para "${query}"`);
+    
+    const shouldSearchManually = await promptFallback(page, query);
+    if (shouldSearchManually) {
+      return searchManuallyInTable(page, query);
+    }
+    return null;
+  }
+
+  const exactMatch = clients.find(c => {
+    if (searchBy === 'account') return c.account === query;
+    if (searchBy === 'buyer_name') return c.buyer_name.toLowerCase().includes(query.toLowerCase());
+    if (searchBy === 'phone') return c.buyer_name.includes(query);
+    return false;
+  });
+
+  if (exactMatch) {
+    console.log(`  ✅ Cliente encontrado: ${exactMatch.account} - ${exactMatch.buyer_name}`);
+    return exactMatch;
+  }
+
+  const similarClients = clients.slice(0, 5);
+  console.log(`  ℹ️  Nenhuma correspondência exata. Encontrados ${clients.length} resultados.`);
+  
+  if (similarClients.length > 0) {
+    console.log(`  📋 Clientes similares:`);
+    similarClients.forEach((c, i) => {
+      console.log(`     ${i + 1}. ${c.account} - ${c.buyer_name}`);
+    });
+  }
+
+  return similarClients[0] || null;
+}
+
+/**
+ * Busca manual na tabela (fallback quando a barra de pesquisa não funciona).
+ * Percorre as linhas procurando correspondência.
+ */
+async function searchManuallyInTable(page: Page, query: string): Promise<ClientData | null> {
+  console.log(`  🔍 Fazendo busca manual na tabela...`);
+  
+  await delay(2000);
+  
+  const allRows = await page.$$('tr.ant-table-row');
+  console.log(`  📊 Iterando sobre ${allRows.length} linhas...`);
+  
+  for (const row of allRows) {
+    const cells = await row.$$('td');
+    if (cells.length < 3) continue;
+    
+    const cellText = await cells[1].evaluate((el: Element) => el.textContent || '');
+    const cellTextTrimmed = cellText.trim();
+    
+    if (cellTextTrimmed === query || cellTextTrimmed.toLowerCase().includes(query.toLowerCase())) {
+      console.log(`  ✅ Correspondência encontrada na tabela: ${cellTextTrimmed}`);
+      
+      const clientData = await extractTableData(page);
+      const match = clientData.find(c => c.account === cellTextTrimmed);
+      if (match) return match;
+    }
+  }
+
+  console.log(`  ❌ Busca manual não encontrou correspondência`);
+  return null;
+}
+
+/**
+ * Pergunta se o usuário quer fazer busca manual (fallback).
+ * Como não temos input interativo, retorna true para continuar ou false para parar.
+ */
+async function promptFallback(page: Page, query: string): Promise<boolean> {
+  console.log(`\n  ⚠️  Não foi possível encontrar "${query}" usando a barra de pesquisa.`);
+  console.log(`  Deseja tentar busca manual na tabela? (s/n)`);
+  console.log(`  → Para aceitar, o script continuará automaticamente...`);
+  return true;
+}
+
+/**
  * Tenta ir para a próxima página da tabela.
+ * Versão melhorada com try/catch robusto.
  */
 async function goToNextPage(page: Page): Promise<boolean> {
   try {
-    const nextButton = await page.$(
-      '.el-pagination .btn-next:not(.disabled):not([disabled]), ' +
-      '.el-pagination button.btn-next:not(.is-disabled), ' +
-      'li.ant-pagination-next:not(.ant-pagination-disabled) button, ' +
-      'li.ant-pagination-next:not(.ant-pagination-disabled)'
-    );
+    const nextButtonSelectors = [
+      '.el-pagination .btn-next:not(.disabled):not([disabled])',
+      '.el-pagination button.btn-next:not(.is-disabled)',
+      'li.ant-pagination-next:not(.ant-pagination-disabled) button',
+      'li.ant-pagination-next:not(.ant-pagination-disabled)',
+      '.ant-pagination .ant-pagination-next:not(.ant-pagination-disabled)',
+      'button.ant-pagination-next',
+    ];
+
+    let nextButton = null;
+    for (const selector of nextButtonSelectors) {
+      const btn = await page.$(selector);
+      if (btn) {
+        const isVisible = await btn.evaluate((el: Element) => {
+          const style = window.getComputedStyle(el);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (isVisible) {
+          nextButton = btn;
+          break;
+        }
+      }
+    }
 
     if (nextButton) {
       const isDisabled = await nextButton.evaluate((el: Element) => {
@@ -299,8 +553,8 @@ async function goToNextPage(page: Page): Promise<boolean> {
         return true;
       }
     }
-  } catch {
-    // Sem mais páginas
+  } catch (error) {
+    console.log(`  ⚠️  Erro ao navegar para próxima página: ${error}`);
   }
 
   console.log('  📋 Última página alcançada');

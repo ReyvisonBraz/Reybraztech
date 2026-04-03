@@ -1,12 +1,38 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { loginToPanel } from './login';
-import { scrapeClients } from './scrape';
+import { scrapeClients, searchAndExtractClient } from './scrape';
 import { exportAll } from './export';
 import { updateDatabase } from './update-db';
 
-// Carrega variáveis de ambiente
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const config = {
+    search: '',
+    searchBy: 'account' as 'account' | 'buyer_name' | 'phone',
+    sync: false,
+  };
+
+  for (const arg of args) {
+    if (arg.startsWith('--search=')) {
+      config.search = arg.replace('--search=', '').trim();
+    } else if (arg.startsWith('--search ') || arg.startsWith('--search')) {
+      const match = arg.match(/--search\s+(.+)/);
+      if (match) config.search = match[1].trim();
+    } else if (arg.startsWith('--by=')) {
+      const by = arg.replace('--by=', '').trim().toLowerCase();
+      if (by === 'nome' || by === 'name') config.searchBy = 'buyer_name';
+      else if (by === 'telefone' || by === 'phone') config.searchBy = 'phone';
+      else config.searchBy = 'account';
+    } else if (arg === '--sync') {
+      config.sync = true;
+    }
+  }
+
+  return config;
+}
 
 /**
  * Função principal do scraper (exportada para ser usada no bot ou terminal)
@@ -17,7 +43,8 @@ export async function runScraper() {
   console.log('║   📦 Reybraztech — Extração de Clientes     ║');
   console.log('╚══════════════════════════════════════════════╝');
 
-  // Verifica variáveis de ambiente
+  const args = parseArgs();
+
   const config = {
     url: process.env.PANEL_URL || 'https://panel.web.starhome.vip',
     account: process.env.PANEL_ACCOUNT || '',
@@ -36,10 +63,22 @@ export async function runScraper() {
   console.log(`   Headless: ${config.headless}`);
   console.log(`   Itens/página: ${config.itemsPerPage}`);
 
+  if (args.search) {
+    console.log(`\n🔍 Modo BUSCA RÁPIDA:`);
+    console.log(`   Query: "${args.search}"`);
+    console.log(`   Tipo: ${args.searchBy}`);
+  } else if (args.sync) {
+    console.log(`\n🔄 Modo SINCRONIZAÇÃO COMPLETA:`);
+  } else {
+    console.log(`\n⚠️  Nenhum modo especificado. Use --search ou --sync`);
+    console.log(`   Exemplo: npm run scraper -- --search=conta123`);
+    console.log(`   Exemplo: npm run scraper -- --sync`);
+    return [];
+  }
+
   let browser;
 
   try {
-    // 1. Login
     const session = await loginToPanel({
       url: config.url,
       account: config.account,
@@ -48,22 +87,44 @@ export async function runScraper() {
     });
     browser = session.browser;
 
-    // 2. Scraping
-    const clients = await scrapeClients(session.page, config.itemsPerPage);
+    let clients: any[] = [];
+
+    if (args.search) {
+      const client = await searchAndExtractClient(session.page, args.search, args.searchBy);
+      if (client) {
+        clients = [client];
+        console.log(`\n✅ Cliente encontrado!`);
+        console.log(`   Account: ${client.account}`);
+        console.log(`   Nome: ${client.buyer_name}`);
+        console.log(`   Senha: ${client.password}`);
+        console.log(`   Pacote: ${client.package_name}`);
+        console.log(`   Dias restantes: ${client.days_remaining}`);
+        console.log(`   Status: ${client.in_use}`);
+      } else {
+        console.log(`\n❌ Cliente não encontrado: "${args.search}"`);
+      }
+    } else {
+      clients = await scrapeClients(session.page, config.itemsPerPage);
+    }
 
     if (clients.length === 0) {
       console.log('\n⚠️  Nenhum cliente encontrado. Verifique se o login foi bem sucedido.');
       return [];
     }
 
-    // 3. Exportação para arquivo
+    if (args.search) {
+      const outputPath = path.join(__dirname, '..', 'output', 'client_search.json');
+      const fs = await import('fs');
+      fs.writeFileSync(outputPath, JSON.stringify(clients, null, 2));
+      console.log(`  💾 output/client_search.json`);
+      return clients;
+    }
+
     const { json, csv } = exportAll(clients);
 
-    // 4. Atualizar banco de dados
     console.log('\n💾 Atualizando banco de dados...');
     await updateDatabase(clients);
 
-    // Resumo final
     console.log('╔══════════════════════════════════════════════╗');
     console.log('║            ✅ EXTRAÇÃO CONCLUÍDA             ║');
     console.log('╠══════════════════════════════════════════════╣');
@@ -72,7 +133,6 @@ export async function runScraper() {
     console.log(`║  CSV:  ${path.basename(csv).padEnd(37)}║`);
     console.log('╚══════════════════════════════════════════════╝');
 
-    // Estatísticas úteis
     const active = clients.filter((c) => c.in_use === 'Used').length;
     const inactive = clients.filter((c) => c.in_use === 'Unused').length;
     const expiring = clients.filter((c) => c.days_remaining <= 3 && c.days_remaining > 0).length;

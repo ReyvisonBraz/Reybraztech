@@ -16,6 +16,8 @@ if (!TOKEN || !CHAT_ID) {
 
 const LAST_UPDATE_FILE = '.last_update_id';
 
+let pendingSearch: { query: string; chatId: number } | null = null;
+
 function getLastUpdateId(): number {
     try {
         if (fs.existsSync(LAST_UPDATE_FILE)) {
@@ -120,8 +122,204 @@ async function runScraper(): Promise<void> {
     });
 }
 
+async function runSearch(query: string, searchBy: string = 'account'): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+        const scraperDir = path.join(process.cwd(), 'scraper', 'src');
+        
+        console.log('🔍 Executando busca:', query, 'tipo:', searchBy);
+        
+        const args = ['--search=' + query];
+        if (searchBy !== 'account') {
+            args.push('--by=' + searchBy);
+        }
+        
+        const child = spawn('npx', ['ts-node', 'index.ts', ...args], {
+            cwd: scraperDir,
+            env: { ...process.env },
+            shell: true
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (data: Buffer) => {
+            const text = data.toString();
+            stdout += text;
+            console.log('[Search]', text);
+        });
+
+        child.stderr.on('data', (data: Buffer) => {
+            const text = data.toString();
+            stderr += text;
+            console.error('[Search Error]', text);
+        });
+
+        child.on('close', async (code: number) => {
+            console.log('🔍 Busca encerrou com código:', code);
+            
+            if (code !== 0) {
+                await sendMessage(`🚨 <b>Erro na Busca!</b>\n\nCódigo: ${code}\n\n<pre>${stderr.slice(-500)}</pre>`);
+                reject(new Error(`Search exited with code ${code}`));
+                return;
+            }
+
+            try {
+                const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'client_search.json');
+                
+                if (fs.existsSync(jsonPath)) {
+                    const clientData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                    
+                    if (clientData && clientData.length > 0) {
+                        const c = clientData[0];
+                        await sendMessage(
+                            `✅ <b>Cliente Encontrado!</b>\n\n` +
+                            `📋 <b>Account:</b> ${c.account}\n` +
+                            `👤 <b>Nome:</b> ${c.buyer_name}\n` +
+                            `🔑 <b>Senha:</b> ${c.password}\n` +
+                            `📦 <b>Pacote:</b> ${c.package_name}\n` +
+                            `⏰ <b>Dias restantes:</b> ${c.days_remaining}\n` +
+                            `📊 <b>Status:</b> ${c.in_use}\n` +
+                            `📅 <b>Expira:</b> ${c.expiration_date || 'N/A'}`
+                        );
+                    } else {
+                        await sendMessage(`❌ Cliente não encontrado: "${query}"`);
+                    }
+                    resolve();
+                } else {
+                    await sendMessage(`❌ Cliente não encontrado: "${query}"`);
+                    reject(new Error('Arquivo não encontrado'));
+                }
+            } catch (err: any) {
+                await sendMessage(`🚨 <b>Erro ao processar busca:</b>\n\n${err.message}`);
+                reject(err);
+            }
+        });
+
+        child.on('error', async (err: Error) => {
+            await sendMessage(`🚨 <b>Erro ao iniciar busca:</b>\n\n${err.message}`);
+            reject(err);
+        });
+    });
+}
+
+function detectSearchType(query: string): 'account' | 'buyer_name' | 'phone' {
+    const cleaned = query.replace(/\s/g, '');
+    if (/^\d{10,11}$/.test(cleaned)) {
+        return 'phone';
+    }
+    if (query.includes(' ') || /^[A-Za-zÀ-ÿ\s]+$/.test(query)) {
+        return 'buyer_name';
+    }
+    return 'account';
+}
+
+async function handleSearchMode(text: string, chatId: number): Promise<boolean> {
+    if (!pendingSearch || pendingSearch.chatId !== chatId) {
+        return false;
+    }
+
+    const choice = text.trim().toLowerCase();
+    let searchBy: string = 'account';
+
+    if (choice === '1') {
+        searchBy = 'account';
+    } else if (choice === '2') {
+        searchBy = 'buyer_name';
+    } else if (choice === '3') {
+        searchBy = 'phone';
+    } else {
+        await sendMessage('❌ Opção inválida. Digite 1, 2 ou 3.');
+        return true;
+    }
+
+    const query = pendingSearch.query;
+    pendingSearch = null;
+
+    await sendMessage(`🔍 <b>Buscando "${query}"</b> por ${searchBy}...\n\nAguarde, isso leva apenas alguns segundos...`);
+    
+    try {
+        await runSearch(query, searchBy);
+    } catch {}
+    
+    return true;
+}
+
 async function processCommand(text: string): Promise<boolean> {
     const cmd = text.trim().toLowerCase();
+    const originalText = text.trim();
+    
+    if (cmd.startsWith('/buscar') || cmd.startsWith('/search') || cmd.startsWith('/busca')) {
+        const queryMatch = originalText.match(/\/buscar\s+(.+)|\/search\s+(.+)|\/busca\s+(.+)/i);
+        
+        let query = '';
+        let explicitType = '';
+        
+        if (queryMatch) {
+            query = (queryMatch[1] || queryMatch[2] || queryMatch[3] || '').trim();
+        }
+        
+        if (originalText.match(/--account|--conta/i)) {
+            explicitType = 'account';
+        } else if (originalText.match(/--nome|--name/i)) {
+            explicitType = 'buyer_name';
+        } else if (originalText.match(/--telefone|--phone/i)) {
+            explicitType = 'phone';
+        }
+        
+        if (!query) {
+            await sendMessage(
+                '🔍 <b>Como deseja buscar?</b>\n\n' +
+                'Use: /buscar [conta]\n' +
+                'Exemplos:\n' +
+                '• /buscar conta123\n' +
+                '• /buscar "João Silva"\n' +
+                '• /buscar 11999999999\n\n' +
+                'Também pode usar:\n' +
+                '• /buscar conta123 --account\n' +
+                '• /buscar "João Silva" --nome\n' +
+                '• /buscar 11999999999 --telefone'
+            );
+            return true;
+        }
+        
+        if (explicitType) {
+            await sendMessage(`🔍 <b>Buscando "${query}"</b> por ${explicitType}...\n\nAguarde, isso leva apenas alguns segundos...`);
+            try {
+                await runSearch(query, explicitType);
+            } catch {}
+            return true;
+        }
+        
+        const detectedType = detectSearchType(query);
+        
+        if (detectedType === 'phone') {
+            await sendMessage(
+                `🔍 <b>Buscando "${query}"</b>\n\n` +
+                `Detectei que é um telefone. Confirmar?\n\n` +
+                `1. 📱 Buscar por telefone\n` +
+                `2. ❌ Cancelar`
+            );
+            pendingSearch = { query, chatId: parseInt(CHAT_ID) };
+            return true;
+        }
+        
+        if (detectedType === 'buyer_name') {
+            await sendMessage(
+                `🔍 <b>Buscando "${query}"</b>\n\n` +
+                `Detectei que é um nome. Confirmar?\n\n` +
+                `1. 👤 Buscar por nome\n` +
+                `2. ❌ Cancelar`
+            );
+            pendingSearch = { query, chatId: parseInt(CHAT_ID) };
+            return true;
+        }
+        
+        await sendMessage(`🔍 <b>Buscando "${query}"</b> por account...\n\nAguarde, isso leva apenas alguns segundos...`);
+        try {
+            await runSearch(query, 'account');
+        } catch {}
+        return true;
+    }
     
     if (cmd === '/sync' || cmd === '/sincronizar') {
         await sendMessage('🔄 <b>Sincronização Starhome iniciada!</b>\n\nPor favor aguarde, isso pode levar alguns minutos...');
@@ -135,10 +333,29 @@ async function processCommand(text: string): Promise<boolean> {
     if (cmd === '/ajuda' || cmd === '/help') {
         await sendMessage(
             '🤖 <b>Comandos do Bot</b>\n\n' +
-            '🔄 /sync — Executar scraper Starhome\n' +
+            '🔄 /sync — Sincronização completa\n' +
+            '🔍 /buscar [conta] — Busca rápida\n' +
+            '   Exemplos:\n' +
+            '   • /buscar conta123\n' +
+            '   • /buscar "João Silva"\n' +
+            '   • /buscar 11999999999 --telefone\n' +
             '❓ /ajuda — Esta mensagem'
         );
         return true;
+    }
+    
+    if (cmd === '1' || cmd === '2' || cmd === '3') {
+        const chatId = parseInt(CHAT_ID);
+        const handled = await handleSearchMode(text, chatId);
+        if (handled) return true;
+    }
+    
+    if (cmd === 'cancelar' || cmd === 'cancel' || cmd === 'não' || cmd === 'nao') {
+        if (pendingSearch) {
+            pendingSearch = null;
+            await sendMessage('❌ Busca cancelada.');
+            return true;
+        }
     }
     
     return false;

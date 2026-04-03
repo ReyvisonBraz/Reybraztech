@@ -168,9 +168,12 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         `✅ /aprovar [id] — Aprovar um trial\n` +
         `🔑 /otp — Tokens OTP recentes\n` +
         `📋 /logs — Últimos registros do sistema\n` +
-        `🔄 /sync — Executar scraper Starhome\n` +
-        `🔍 /buscar [conta] — Buscar cliente rápido\n` +
-        `❓ /ajuda — Esta mensagem`
+        `❓ /ajuda — Esta mensagem\n\n` +
+        `───── Scraper (local) ─────\n` +
+        `🔄 /sync — Sincronizar clientes\n` +
+        `🔍 /buscar [conta] — Buscar cliente\n\n` +
+        `⚠️ Para usar /sync e /buscar:\n` +
+        `Rode <pre>npm run bot</pre> localmente`
       );
     }
 
@@ -351,12 +354,14 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
     // ─── /sync ──────────────────────────────────────
     else if (text === '/sync') {
       // O Vercel não consegue rodar Puppeteer (headless Chrome)
+      // Use o bot local: npm run bot
       await sendTelegram(
-        `⚠️ <b>Sincronização via Telegram em manutenção</b>\n\n` +
-        `O servidor atual (Vercel) não suporta Puppeteer.\n\n` +
-        `Para sincronizar agora, rode localmente:\n` +
-        `<pre>npm run scraper:sync</pre>\n\n` +
-        `Em breve a sincronização funcionará automaticamente!`
+        `⚠️ <b>Comando /sync só funciona localmente</b>\n\n` +
+        `O servidor atual não suporta Puppeteer.\n\n` +
+        `Para usar, rode:\n` +
+        `<pre>npm run bot</pre>\n` +
+        `E depois envie /sync pelo Telegram\n\n` +
+        `O bot local tem todas as funções!`
       );
     }
 
@@ -388,23 +393,19 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           '• /buscar conta123\n' +
           '• /buscar "João Silva"\n' +
           '• /buscar 11999999999\n\n' +
-          'Também pode usar:\n' +
-          '• /buscar conta123 --account\n' +
-          '• /buscar "João Silva" --nome\n' +
-          '• /buscar 11999999999 --telefone\n\n' +
-          '⚠️ <b>Nota:</b> A busca rápida requer um servidor com Puppeteer.\n' +
-          'No momento, use o comando local: npm run scraper -- --search=conta'
+          '⚠️ <b>Nota:</b> Este comando só funciona no bot local.\n' +
+          'Rode npm run bot e use pelo Telegram.'
         );
         return;
       }
       
-      // O Vercel não consegue rodar Puppeteer, então redirije para modo local
+      // O Vercel não consegue rodar Puppeteer
       await sendTelegram(
-        `⚠️ <b>Busca via Telegram em manutenção</b>\n\n` +
-        `O servidor atual (Vercel) não suporta Puppeteer.\n\n` +
-        `Para buscar agora, rode localmente:\n` +
-        `<pre>npm run scraper -- --search=${query}</pre>\n\n` +
-        `Em breve a busca funcionará automaticamente!`
+        `⚠️ <b>Comando /buscar só funciona localmente</b>\n\n` +
+        `O servidor atual não suporta Puppeteer.\n\n` +
+        `Para usar, rode:\n` +
+        `<pre>npm run bot</pre>\n` +
+        `E depois envie /buscar ${query} pelo Telegram`
       );
       return;
     }

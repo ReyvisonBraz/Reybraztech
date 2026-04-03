@@ -113,10 +113,17 @@ export async function runScraper() {
     }
 
     if (args.search) {
-      const outputPath = path.join(__dirname, '..', 'output', 'client_search.json');
       const fs = await import('fs');
-      fs.writeFileSync(outputPath, JSON.stringify(clients, null, 2));
-      console.log(`  💾 output/client_search.json`);
+      const outputPath = path.join(__dirname, '..', 'output', 'client_search.json');
+      
+      if (clients.length > 0) {
+        fs.writeFileSync(outputPath, JSON.stringify(clients, null, 2));
+        console.log(`  💾 output/client_search.json`);
+      } else {
+        fs.writeFileSync(outputPath, JSON.stringify([], null, 2));
+        console.log(`  💾 output/client_search.json (vazio - não encontrado)`);
+      }
+      
       return clients;
     }
 

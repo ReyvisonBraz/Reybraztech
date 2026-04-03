@@ -130,7 +130,8 @@ async function runSearch(query: string, searchBy: string = 'account'): Promise<v
         
         const args = ['--search=' + query];
         if (searchBy !== 'account') {
-            args.push('--by=' + searchBy);
+            const byArg = searchBy === 'nome' ? 'name' : searchBy;
+            args.push('--by=' + byArg);
         }
         
         const child = spawn('npx', ['ts-node', 'index.ts', ...args], {
@@ -182,16 +183,16 @@ async function runSearch(query: string, searchBy: string = 'account'): Promise<v
                             `📅 <b>Expira:</b> ${c.expiration_date || 'N/A'}`
                         );
                     } else {
-                        await sendMessage(`❌ Cliente não encontrado: "${query}"`);
+                        await sendMessage(`❌ Cliente não encontrado: "${query}"\n\nTente buscar por outro termo ou use /sync para sincronizar todos os clientes.`);
                     }
                     resolve();
                 } else {
-                    await sendMessage(`❌ Cliente não encontrado: "${query}"`);
-                    reject(new Error('Arquivo não encontrado'));
+                    await sendMessage(`❌ Cliente não encontrado: "${query}"\n\nTente buscar por outro termo ou use /sync para sincronizar todos os clientes.`);
+                    resolve();
                 }
             } catch (err: any) {
-                await sendMessage(`🚨 <b>Erro ao processar busca:</b>\n\n${err.message}`);
-                reject(err);
+                await sendMessage(`❌ Cliente não encontrado: "${query}"\n\nTente buscar por outro termo ou use /sync para sincronizar todos os clientes.`);
+                resolve();
             }
         });
 
@@ -224,9 +225,9 @@ async function handleSearchMode(text: string, chatId: number): Promise<boolean> 
     if (choice === '1') {
         searchBy = 'account';
     } else if (choice === '2') {
-        searchBy = 'buyer_name';
+        searchBy = 'nome';
     } else if (choice === '3') {
-        searchBy = 'phone';
+        searchBy = 'telefone';
     } else {
         await sendMessage('❌ Opção inválida. Digite 1, 2 ou 3.');
         return true;

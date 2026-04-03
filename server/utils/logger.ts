@@ -123,7 +123,7 @@ logger.on('data', (log) => {
 import type { Request, Response } from 'express';
 
 // Helper para enviar mensagem no Telegram
-const sendTelegram = async (text: string) => {
+const sendTelegram = async (text: string, replyMarkup?: any) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
@@ -131,8 +131,62 @@ const sendTelegram = async (text: string) => {
   await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
     chat_id: chatId,
     text,
-    parse_mode: 'HTML'
+    parse_mode: 'HTML',
+    reply_markup: replyMarkup || undefined
   });
+};
+
+// Função de busca que funciona no servidor (sem Puppeteer)
+const runSearchInServer = async (query: string, searchBy: string): Promise<void> => {
+  // O Vercel não suporta Puppeteer, então busca no banco de dados local
+  const getDb = async () => (await import('../database.js')).default;
+  const sql = await getDb();
+  
+  let results;
+  
+  if (searchBy === 'buyer_name') {
+    results = await sql`
+      SELECT account, buyer_name, password, package_name, days_remaining, in_use, expiration_date
+      FROM starhome_clients
+      WHERE buyer_name ILIKE ${'%' + query + '%'}
+      ORDER BY days_remaining DESC
+      LIMIT 5
+    `;
+  } else if (searchBy === 'phone') {
+    results = await sql`
+      SELECT account, buyer_name, password, package_name, days_remaining, in_use, expiration_date
+      FROM starhome_clients
+      WHERE buyer_name LIKE ${'%' + query + '%'}
+      ORDER BY days_remaining DESC
+      LIMIT 5
+    `;
+  } else {
+    // account
+    results = await sql`
+      SELECT account, buyer_name, password, package_name, days_remaining, in_use, expiration_date
+      FROM starhome_clients
+      WHERE account = ${query}
+      LIMIT 1
+    `;
+  }
+  
+  if (results.length === 0) {
+    await sendTelegram(`❌ Cliente não encontrado: "${query}"\n\nTente buscar por outro termo ou use /sync para sincronizar.`);
+    return;
+  }
+  
+  for (const c of results) {
+    await sendTelegram(
+      `✅ <b>Cliente Encontrado!</b>\n\n` +
+      `📋 <b>Account:</b> ${c.account}\n` +
+      `👤 <b>Nome:</b> ${c.buyer_name}\n` +
+      `🔑 <b>Senha:</b> ${c.password}\n` +
+      `📦 <b>Pacote:</b> ${c.package_name}\n` +
+      `⏰ <b>Dias restantes:</b> ${c.days_remaining}\n` +
+      `📊 <b>Status:</b> ${c.in_use}\n` +
+      `📅 <b>Expira:</b> ${c.expiration_date || 'N/A'}`
+    );
+  }
 };
 
 /**
@@ -141,11 +195,50 @@ const sendTelegram = async (text: string) => {
  */
 export const handleTelegramWebhook = async (req: Request, res: Response) => {
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
+  const token = process.env.TELEGRAM_BOT_TOKEN;
 
   if (!adminChatId) { res.status(200).json({ ok: true }); return; }
 
   try {
     const update = req.body;
+    
+    // ─── Callback Query (botões inline) ───
+    const callbackQuery = update?.callback_query;
+    if (callbackQuery) {
+      const callbackData = callbackQuery.data;
+      const callbackChatId = callbackQuery.message?.chat.id;
+      
+      if (callbackChatId?.toString() !== adminChatId) {
+        res.status(200).json({ ok: true });
+        return;
+      }
+      
+      // Responde ao callback para remover o "loading"
+      await axios.post(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+        callback_query_id: callbackQuery.id
+      });
+      
+      // Processa o callback
+      const [action, type, query] = callbackData.split('|');
+      
+      if (action === 'search') {
+        const searchBy = type;
+        const searchQuery = decodeURIComponent(query);
+        
+        await sendTelegram(`🔍 <b>Buscando "${searchQuery}"</b> por ${searchBy}...\n\nAguarde, isso leva apenas alguns segundos...`);
+        
+        try {
+          await runSearchInServer(searchQuery, searchBy);
+        } catch (err: any) {
+          await sendTelegram(`❌ Erro na busca: ${err.message}`);
+        }
+      }
+      
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ─── Mensagem de texto ───
     const message = update?.message;
     if (!message?.text) { res.status(200).json({ ok: true }); return; }
 
@@ -399,13 +492,16 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         return;
       }
       
-      // O Vercel não consegue rodar Puppeteer
+      // Mostrar botões inline para escolher tipo de busca
       await sendTelegram(
-        `⚠️ <b>Comando /buscar só funciona localmente</b>\n\n` +
-        `O servidor atual não suporta Puppeteer.\n\n` +
-        `Para usar, rode:\n` +
-        `<pre>npm run bot</pre>\n` +
-        `E depois envie /buscar ${query} pelo Telegram`
+        `🔍 <b>Buscando "${query}"</b>\n\nSelecione o tipo de busca:`,
+        {
+          inline_keyboard: [
+            [{ text: '👤 Nome (Buyer Name)', callback_data: `search|buyer_name|${encodeURIComponent(query)}` }],
+            [{ text: '🔑 Conta (Account)', callback_data: `search|account|${encodeURIComponent(query)}` }],
+            [{ text: '📱 Telefone', callback_data: `search|phone|${encodeURIComponent(query)}` }]
+          ]
+        }
       );
       return;
     }

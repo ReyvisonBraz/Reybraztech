@@ -31,25 +31,36 @@ function saveLastUpdateId(id: number) {
     fs.writeFileSync(LAST_UPDATE_FILE, id.toString());
 }
 
-async function sendMessage(text: string) {
+interface InlineButton {
+    text: string;
+    callback_data: string;
+}
+
+interface InlineKeyboard {
+    inline_keyboard: InlineButton[][];
+}
+
+async function sendMessage(text: string, replyMarkup?: InlineKeyboard) {
     try {
         await axios.post(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
             chat_id: CHAT_ID,
             text: text,
-            parse_mode: 'HTML'
+            parse_mode: 'HTML',
+            reply_markup: replyMarkup || undefined
         });
     } catch (err: any) {
         console.error('❌ Erro ao enviar mensagem:', err.message);
     }
 }
 
-async function sendMessageWithRetry(text: string, retries = 3) {
+async function sendMessageWithRetry(text: string, retries = 3, replyMarkup?: InlineKeyboard) {
     for (let i = 0; i < retries; i++) {
         try {
             await axios.post(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
                 chat_id: CHAT_ID,
                 text: text,
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+                reply_markup: replyMarkup || undefined
             });
             return;
         } catch (err: any) {
@@ -293,32 +304,20 @@ async function processCommand(text: string): Promise<boolean> {
         
         const detectedType = detectSearchType(query);
         
-        if (detectedType === 'phone') {
-            await sendMessage(
-                `🔍 <b>Buscando "${query}"</b>\n\n` +
-                `Detectei que é um telefone. Confirmar?\n\n` +
-                `1. 📱 Buscar por telefone\n` +
-                `2. ❌ Cancelar`
-            );
-            pendingSearch = { query, chatId: parseInt(CHAT_ID) };
-            return true;
-        }
+        const typeLabel = detectedType === 'phone' ? 'telefone' : detectedType === 'buyer_name' ? 'nome (buyer_name)' : 'conta (account)';
         
-        if (detectedType === 'buyer_name') {
-            await sendMessage(
-                `🔍 <b>Buscando "${query}"</b>\n\n` +
-                `Detectei que é um nome. Confirmar?\n\n` +
-                `1. 👤 Buscar por nome\n` +
-                `2. ❌ Cancelar`
-            );
-            pendingSearch = { query, chatId: parseInt(CHAT_ID) };
-            return true;
-        }
-        
-        await sendMessage(`🔍 <b>Buscando "${query}"</b> por account...\n\nAguarde, isso leva apenas alguns segundos...`);
-        try {
-            await runSearch(query, 'account');
-        } catch {}
+        await sendMessage(
+            `🔍 <b>Buscando "${query}"</b>\n\n` +
+            `Como deseja buscar?\n\n` +
+            `Selecione o tipo de busca:`,
+            {
+                inline_keyboard: [
+                    [{ text: '👤 Nome (Buyer Name)', callback_data: `search|buyer_name|${encodeURIComponent(query)}` }],
+                    [{ text: '🔑 Conta (Account)', callback_data: `search|account|${encodeURIComponent(query)}` }],
+                    [{ text: '📱 Telefone', callback_data: `search|phone|${encodeURIComponent(query)}` }]
+                ]
+            }
+        );
         return true;
     }
     
@@ -362,6 +361,21 @@ async function processCommand(text: string): Promise<boolean> {
     return false;
 }
 
+async function handleCallbackQuery(data: string, chatId: number): Promise<void> {
+    const [action, type, query] = data.split('|');
+    
+    if (action === 'search') {
+        const searchBy = type;
+        const searchQuery = decodeURIComponent(query);
+        
+        await sendMessage(`🔍 <b>Buscando "${searchQuery}"</b> por ${searchBy}...\n\nAguarde, isso leva apenas alguns segundos...`);
+        
+        try {
+            await runSearch(searchQuery, searchBy);
+        } catch {}
+    }
+}
+
 async function poll() {
     console.log('🤖 Bot Telegram iniciado...');
     console.log('📱 Envie /sync para executar o scraper');
@@ -383,6 +397,20 @@ async function poll() {
             
             for (const update of updates) {
                 const updateId = update.update_id;
+                
+                if (update.callback_query) {
+                    const callbackData = update.callback_query.data;
+                    const callbackChatId = update.callback_query.message?.chat.id;
+                    
+                    console.log('📩 Callback recebido:', callbackData, 'de', callbackChatId);
+                    
+                    if (callbackChatId && callbackChatId.toString() === CHAT_ID) {
+                        await handleCallbackQuery(callbackData, callbackChatId);
+                        saveLastUpdateId(updateId);
+                    }
+                    continue;
+                }
+                
                 const message = update.message;
                 
                 if (message && message.text) {

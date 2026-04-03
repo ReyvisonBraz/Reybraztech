@@ -341,6 +341,14 @@ export async function searchAndExtractClient(
     console.log(`  ⚠️  Erro ao carregar página: ${err}`);
   }
 
+  if (searchBy === 'buyer_name' || searchBy === 'phone') {
+    console.log(`  🔍 Busca por nome/telefone - configurando 100 por página...`);
+    await setItemsPerPage(page, 100);
+    await delay(2000);
+    console.log(`  🔍 Busca por nome/telefone - fazendo busca manual na tabela...`);
+    return searchManuallyInTable(page, query, searchBy);
+  }
+
   console.log(`  🔎 Localizando barra de pesquisa...`);
   
   const searchInputSelectors = [
@@ -410,23 +418,7 @@ export async function searchAndExtractClient(
     console.log(`  ✅ Enter pressionado para buscar`);
   }
 
-  console.log(`  ⏳ Aguardando resposta da API...`);
-  
-  try {
-    await page.waitForResponse(
-      (response) => {
-        const url = response.url();
-        return url.includes('account') || url.includes('list') || url.includes('client');
-      },
-      { timeout: 10000 }
-    );
-    console.log(`  ✅ Resposta da API recebida`);
-  } catch (err) {
-    console.log(`  ⚠️  Timeout na resposta da API, continuando...`);
-    await delay(2000);
-  }
-
-  await delay(1000);
+  await delay(2000);
 
   const clients = await extractTableData(page);
   
@@ -442,7 +434,7 @@ export async function searchAndExtractClient(
 
   const exactMatch = clients.find(c => {
     if (searchBy === 'account') return c.account === query;
-    if (searchBy === 'buyer_name') return c.buyer_name.toLowerCase().includes(query.toLowerCase());
+    if (searchBy === 'buyer_name') return c.buyer_name.toLowerCase() === query.toLowerCase();
     if (searchBy === 'phone') return c.buyer_name.includes(query);
     return false;
   });
@@ -452,48 +444,116 @@ export async function searchAndExtractClient(
     return exactMatch;
   }
 
+  let bestMatch: ClientData | null = null;
+  const searchByStr = searchBy as string;
+  
+  if (searchByStr === 'buyer_name') {
+    const queryLower = query.toLowerCase();
+    const partialMatches = clients.filter(c => 
+      c.buyer_name && c.buyer_name.toLowerCase().includes(queryLower)
+    );
+    
+    if (partialMatches.length > 0) {
+      partialMatches.sort((a, b) => {
+        const aExact = a.buyer_name.toLowerCase().startsWith(queryLower);
+        const bExact = b.buyer_name.toLowerCase().startsWith(queryLower);
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        if (a.in_use === 'Used' && b.in_use !== 'Used') return -1;
+        if (a.in_use !== 'Used' && b.in_use === 'Used') return 1;
+        return b.days_remaining - a.days_remaining;
+      });
+      bestMatch = partialMatches[0];
+      console.log(`  ✅ Melhor correspondência: ${bestMatch.account} - ${bestMatch.buyer_name}`);
+      return bestMatch;
+    }
+  }
+
   const similarClients = clients.slice(0, 5);
   console.log(`  ℹ️  Nenhuma correspondência exata. Encontrados ${clients.length} resultados.`);
   
   if (similarClients.length > 0) {
     console.log(`  📋 Clientes similares:`);
     similarClients.forEach((c, i) => {
-      console.log(`     ${i + 1}. ${c.account} - ${c.buyer_name}`);
+      console.log(`     ${i + 1}. ${c.account} - ${c.buyer_name || '(sem nome)'} - ${c.in_use}`);
     });
   }
 
-  return similarClients[0] || null;
+  const usedMatches = similarClients.filter(c => c.in_use === 'Used');
+  if (usedMatches.length > 0) {
+    console.log(`  ✅ Retornando cliente ativo: ${usedMatches[0].account}`);
+    return usedMatches[0];
+  }
+
+  const validMatches = similarClients.filter(c => c.buyer_name && c.buyer_name.trim() !== '');
+  if (validMatches.length > 0) {
+    console.log(`  ✅ Retornando cliente com nome: ${validMatches[0].account}`);
+    return validMatches[0];
+  }
+
+  console.log(`  ❌ Nenhuma correspondência válida encontrada`);
+  return null;
 }
 
 /**
  * Busca manual na tabela (fallback quando a barra de pesquisa não funciona).
- * Percorre as linhas procurando correspondência.
+ * Percorre TODAS as linhas de TODAS as páginas procurando correspondência.
  */
-async function searchManuallyInTable(page: Page, query: string): Promise<ClientData | null> {
-  console.log(`  🔍 Fazendo busca manual na tabela...`);
+async function searchManuallyInTable(page: Page, query: string, searchBy: 'account' | 'buyer_name' | 'phone' = 'account'): Promise<ClientData | null> {
+  console.log(`  🔍 Fazendo busca manual completa por ${searchBy}...`);
   
-  await delay(2000);
+  const queryLower = query.toLowerCase();
+  let pageNum = 1;
+  let hasNextPage = true;
+  let foundDebug = false;
   
-  const allRows = await page.$$('tr.ant-table-row');
-  console.log(`  📊 Iterando sobre ${allRows.length} linhas...`);
-  
-  for (const row of allRows) {
-    const cells = await row.$$('td');
-    if (cells.length < 3) continue;
+  while (hasNextPage) {
+    await delay(1500);
     
-    const cellText = await cells[1].evaluate((el: Element) => el.textContent || '');
-    const cellTextTrimmed = cellText.trim();
+    const allRows = await page.$$('tr.ant-table-row');
+    console.log(`  📄 Página ${pageNum}: ${allRows.length} linhas...`);
     
-    if (cellTextTrimmed === query || cellTextTrimmed.toLowerCase().includes(query.toLowerCase())) {
-      console.log(`  ✅ Correspondência encontrada na tabela: ${cellTextTrimmed}`);
+    for (const row of allRows) {
+      const cells = await row.$$('td');
+      if (cells.length < 7) continue;
       
-      const clientData = await extractTableData(page);
-      const match = clientData.find(c => c.account === cellTextTrimmed);
-      if (match) return match;
+      let cellText = '';
+      let matchFound = false;
+      let accountText = '';
+      
+      if (searchBy === 'account') {
+        accountText = await cells[2].evaluate((el: Element) => el.textContent || '');
+        const cellTextTrimmed = accountText.trim();
+        if (cellTextTrimmed === query || cellTextTrimmed.toLowerCase().includes(queryLower)) {
+          matchFound = true;
+          cellText = cellTextTrimmed;
+        }
+      } else if (searchBy === 'buyer_name' || searchBy === 'phone') {
+        const nameCell = cells[6];
+        if (nameCell) {
+          cellText = await nameCell.evaluate((el: Element) => el.textContent || '');
+          const cellTextTrimmed = cellText.trim().toLowerCase();
+          if (cellTextTrimmed.includes(queryLower)) {
+            matchFound = true;
+            accountText = await cells[2].evaluate((el: Element) => el.textContent?.trim() || '');
+          }
+        }
+      }
+      
+      if (matchFound) {
+        const clientData = await extractTableData(page);
+        const match = clientData.find(c => c.account === accountText);
+        if (match) return match;
+      }
+    }
+    
+    hasNextPage = await goToNextPage(page);
+    if (hasNextPage) {
+      pageNum++;
     }
   }
 
-  console.log(`  ❌ Busca manual não encontrou correspondência`);
+  console.log(`  ❌ Busca manual não encontrou correspondência em ${pageNum} páginas`);
   return null;
 }
 

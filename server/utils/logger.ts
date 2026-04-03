@@ -350,62 +350,14 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
 
     // ─── /sync ──────────────────────────────────────
     else if (text === '/sync') {
-      await sendTelegram('🔄 <b>Iniciando Scraping Starhome...</b>\n\nPor favor aguarde, isso pode levar alguns minutos.');
-      
-      const { spawn } = await import('child_process');
-      const path = await import('path');
-      const scraperDir = path.join(process.cwd(), 'scraper', 'src');
-      
-      const child = spawn('npx', ['ts-node', 'index.ts'], {
-        cwd: scraperDir,
-        env: { ...process.env },
-        shell: true
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (data: Buffer) => {
-        const text = data.toString();
-        stdout += text;
-        console.log('[Scraper]', text);
-      });
-
-      child.stderr.on('data', (data: Buffer) => {
-        const text = data.toString();
-        stderr += text;
-        console.error('[Scraper Error]', text);
-      });
-
-      child.on('close', async (code: number) => {
-        if (code !== 0) {
-          await sendTelegram(`🚨 <b>Erro no Scraping!</b>\n\nCódigo: ${code}\n\n<pre>${stderr.slice(-1000)}</pre>`);
-          return;
-        }
-
-        try {
-          const fs = await import('fs');
-          const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'clients.json');
-          
-          if (fs.existsSync(jsonPath)) {
-            const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-            const clientsData = fileContent.clients || [];
-            
-            await sendTelegram(`✅ <b>Scraping concluído!</b>\n\n📊 ${clientsData.length} clientes encontrados.\n\nAtualizando banco de dados...`);
-
-            // Aqui poderia atualizar o banco automaticamente
-            await sendTelegram(`🎉 <b>Sincronização completa!</b>\n\n${clientsData.length} clientes processados.`);
-          } else {
-            await sendTelegram('⚠️ Scraping concluído mas arquivo não encontrado.');
-          }
-        } catch (err: any) {
-          await sendTelegram(`🚨 <b>Erro ao processar dados:</b>\n\n${err.message}`);
-        }
-      });
-
-      child.on('error', async (err: Error) => {
-        await sendTelegram(`🚨 <b>Erro ao iniciar scraper:</b>\n\n${err.message}`);
-      });
+      // O Vercel não consegue rodar Puppeteer (headless Chrome)
+      await sendTelegram(
+        `⚠️ <b>Sincronização via Telegram em manutenção</b>\n\n` +
+        `O servidor atual (Vercel) não suporta Puppeteer.\n\n` +
+        `Para sincronizar agora, rode localmente:\n` +
+        `<pre>npm run scraper:sync</pre>\n\n` +
+        `Em breve a sincronização funcionará automaticamente!`
+      );
     }
 
     // ─── /buscar ─────────────────────────────────────
@@ -439,84 +391,22 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           'Também pode usar:\n' +
           '• /buscar conta123 --account\n' +
           '• /buscar "João Silva" --nome\n' +
-          '• /buscar 11999999999 --telefone'
+          '• /buscar 11999999999 --telefone\n\n' +
+          '⚠️ <b>Nota:</b> A busca rápida requer um servidor com Puppeteer.\n' +
+          'No momento, use o comando local: npm run scraper -- --search=conta'
         );
         return;
       }
       
-      const searchBy = explicitType || 'account';
-      
-      await sendTelegram(`🔍 <b>Buscando "${query}"</b> por ${searchBy}...\n\nAguarde, isso leva apenas alguns segundos...`);
-      
-      const { spawn } = await import('child_process');
-      const path = await import('path');
-      const scraperDir = path.join(process.cwd(), 'scraper', 'src');
-      
-      const args = ['--search=' + query];
-      if (searchBy !== 'account') {
-        args.push('--by=' + searchBy);
-      }
-      
-      const child = spawn('npx', ['ts-node', 'index.ts', ...args], {
-        cwd: scraperDir,
-        env: { ...process.env },
-        shell: true
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (data: Buffer) => {
-        const txt = data.toString();
-        stdout += txt;
-        console.log('[Search]', txt);
-      });
-
-      child.stderr.on('data', (data: Buffer) => {
-        const txt = data.toString();
-        stderr += txt;
-        console.error('[Search Error]', txt);
-      });
-
-      child.on('close', async (code: number) => {
-        if (code !== 0) {
-          await sendTelegram(`🚨 <b>Erro na Busca!</b>\n\nCódigo: ${code}\n\n<pre>${stderr.slice(-500)}</pre>`);
-          return;
-        }
-
-        try {
-          const fs = await import('fs');
-          const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'client_search.json');
-          
-          if (fs.existsSync(jsonPath)) {
-            const clientData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-            
-            if (clientData && clientData.length > 0) {
-              const c = clientData[0];
-              await sendTelegram(
-                `✅ <b>Cliente Encontrado!</b>\n\n` +
-                `📋 <b>Account:</b> ${c.account}\n` +
-                `👤 <b>Nome:</b> ${c.buyer_name}\n` +
-                `🔑 <b>Senha:</b> ${c.password}\n` +
-                `📦 <b>Pacote:</b> ${c.package_name}\n` +
-                `⏰ <b>Dias restantes:</b> ${c.days_remaining}\n` +
-                `📊 <b>Status:</b> ${c.in_use}\n` +
-                `📅 <b>Expira:</b> ${c.expiration_date || 'N/A'}`
-              );
-            } else {
-              await sendTelegram(`❌ Cliente não encontrado: "${query}"`);
-            }
-          } else {
-            await sendTelegram(`❌ Cliente não encontrado: "${query}"`);
-          }
-        } catch (err: any) {
-          await sendTelegram(`🚨 <b>Erro ao processar busca:</b>\n\n${err.message}`);
-        }
-      });
-
-      child.on('error', async (err: Error) => {
-        await sendTelegram(`🚨 <b>Erro ao iniciar busca:</b>\n\n${err.message}`);
-      });
+      // O Vercel não consegue rodar Puppeteer, então redirije para modo local
+      await sendTelegram(
+        `⚠️ <b>Busca via Telegram em manutenção</b>\n\n` +
+        `O servidor atual (Vercel) não suporta Puppeteer.\n\n` +
+        `Para buscar agora, rode localmente:\n` +
+        `<pre>npm run scraper -- --search=${query}</pre>\n\n` +
+        `Em breve a busca funcionará automaticamente!`
+      );
+      return;
     }
 
     // ─── Comando desconhecido ───────────────────────

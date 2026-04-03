@@ -8,6 +8,8 @@
     "server": "tsx server/index.ts",
     "start": "tsx server/index.ts",
     "scraper": "cd scraper/src && npx ts-node index.ts",
+    "scraper:search": "cd scraper/src && npx ts-node index.ts --search=",
+    "scraper:sync": "cd scraper/src && npx ts-node index.ts --sync",
     "bot": "npx ts-node bot-telegram.ts",
     "build": "vite build",
     "preview": "vite preview",

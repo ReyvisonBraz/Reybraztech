@@ -77,8 +77,8 @@ async function runScraper(): Promise<{ success: boolean; clients: number; error?
     console.log('🔄 Executando scraper...');
     console.log('🔄 Scraper dir:', scraperDir);
     
-    // Install e roda na pasta scraper (script correto é "scraper" com --sync)
-    const child = spawn('npm install && npm run scraper -- --sync', {
+    // Usar npx ts-node para garantir que funcione
+    const child = spawn('npm install && npx ts-node src/index.ts --sync', {
       cwd: scraperDir,
       env: { ...process.env },
       shell: true,
@@ -131,8 +131,7 @@ async function runScraper(): Promise<{ success: boolean; clients: number; error?
 
 async function runSearch(query: string, searchBy: string): Promise<{ success: boolean; data?: any; error?: string }> {
   return new Promise((resolve) => {
-    const scraperDir = path.join(process.cwd(), 'scraper', 'src');
-    const indexPath = path.join(scraperDir, 'index.ts');
+    const scraperDir = path.join(process.cwd(), 'scraper');
     console.log('🔍 Executando busca:', query, 'tipo:', searchBy);
 
     const args = ['--search=' + query];
@@ -140,7 +139,8 @@ async function runSearch(query: string, searchBy: string): Promise<{ success: bo
       args.push('--by=' + (searchBy === 'buyer_name' ? 'name' : searchBy));
     }
 
-    const child = spawn('npx', ['ts-node', indexPath, ...args], {
+    // Usar npx ts-node para garantir funcionamento
+    const child = spawn('npx ts-node src/index.ts ' + args.join(' '), {
       cwd: scraperDir,
       env: { ...process.env },
       shell: true,
@@ -297,8 +297,10 @@ async function runSearchInServer(query: string, searchBy: string): Promise<void>
 const handleTelegramWebhook = async (req: express.Request, res: express.Response) => {
   res.status(200).json({ ok: true });
   
-  const adminChatId = process.env.TELEGRAM_CHAT_ID;
   const token = process.env.TELEGRAM_BOT_TOKEN;
+
+  // FORÇAR Chat ID correto
+  const adminChatId = FINAL_CHAT_ID;
 
   if (!adminChatId || !token) {
     console.error('[Telegram] Missing env vars!');
@@ -552,10 +554,6 @@ const handleTelegramWebhook = async (req: express.Request, res: express.Response
 };
 
 app.post('/api/telegram-webhook', handleTelegramWebhook);
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

@@ -8,13 +8,14 @@ import { sendTrialActivation, sendRegistrationComplete } from '../services/whats
 
 const router = Router();
 
-async function logLoginEvent(action: string, whatsapp?: string, email?: string, details?: string, success: boolean = true) {
+async function logLoginEvent(action: string, whatsapp?: string, email?: string, details?: string, success: boolean = true, ip?: string, userAgent?: string) {
   try {
     await sql`
-      INSERT INTO login_logs (action, whatsapp, email, details, success)
-      VALUES (${action}, ${whatsapp || null}, ${email || null}, ${details || null}, ${success})
+      INSERT INTO login_logs (action, whatsapp, email, details, success, ip_address, user_agent)
+      VALUES (${action}, ${whatsapp || null}, ${email || null}, ${details || null}, ${success}, ${ip || null}, ${userAgent || null})
     `;
   } catch (err: any) {
+    // Silencioso - não queremos que o logging atrapalhe a operação principal
     console.error('Erro ao salvar log:', err.message);
   }
 }
@@ -91,7 +92,8 @@ router.post('/register', async (req: Request, res: Response) => {
         logger.info(logMsg);
 
         // Log do cadastro
-        await logLoginEvent('register', whatsapp, email || undefined, `Novo cliente: ${name}`);
+        const userAgent = req.headers['user-agent'] || undefined;
+        await logLoginEvent('register', whatsapp, email || undefined, `Novo cliente: ${name}`, true, req.ip || undefined, userAgent);
 
         // Gerar JWT para auto-login após cadastro
         const token = jwt.sign(
@@ -166,13 +168,15 @@ router.post('/login', async (req: Request, res: Response) => {
 
         if (!passwordMatch) {
             // Log de falha de login
-            await logLoginEvent('failed_login', cleanPhone, undefined, 'Senha incorreta', false);
+            const userAgent = req.headers['user-agent'] || undefined;
+            await logLoginEvent('failed_login', cleanPhone, undefined, 'Senha incorreta', false, req.ip || undefined, userAgent);
             res.status(401).json({ error: 'Credenciais inválidas.' });
             return;
         }
 
         // Log de login bem-sucedido
-        await logLoginEvent('login', cleanPhone, isEmail ? identifier : undefined, `Login bem-sucedido: ${client.name}`);
+        const userAgent = req.headers['user-agent'] || undefined;
+        await logLoginEvent('login', cleanPhone, isEmail ? identifier : undefined, `Login bem-sucedido: ${client.name}`, true, req.ip || undefined, userAgent);
 
         const jwtStart = performance.now();
         const JWT_SECRET = process.env.JWT_SECRET!;

@@ -24,4 +24,33 @@ const sql = postgres(connectionString, {
 
 logger.info('✅ Conectado ao Supabase (PostgreSQL)!');
 
+// Criar tabelas automaticamente se não existirem
+export async function ensureTables() {
+  try {
+    // Tabela login_logs
+    await sql`
+      CREATE TABLE IF NOT EXISTS login_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        action VARCHAR(50) NOT NULL,
+        whatsapp VARCHAR(20),
+        email VARCHAR(255),
+        details TEXT,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        success BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    
+    // Índices para login_logs
+    await sql`CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC)`.catch(() => {});
+    await sql`CREATE INDEX IF NOT EXISTS idx_login_logs_whatsapp ON login_logs(whatsapp)`.catch(() => {});
+    await sql`CREATE INDEX IF NOT EXISTS idx_login_logs_action ON login_logs(action)`.catch(() => {});
+    
+    logger.info('✅ Tabelas verificadas/criadas automaticamente');
+  } catch (err: any) {
+    logger.error('⚠️ Erro ao criar tabelas:', err.message);
+  }
+}
+
 export default sql;

@@ -34,6 +34,7 @@ import scraperRoutes from './routes/scraper.js';
 import paymentRoutes from './routes/payments.js';
 import orderRoutes from './routes/orders.js';
 import axios from 'axios';
+import { ensureTables } from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -366,7 +367,12 @@ async function startTelegramBot() {
                             await sendTelegram(text);
                         }
                     } catch (err: any) {
-                        await sendTelegram(`⚠️ Erro ao buscar logs: ${err.message}`);
+                        // Tabela pode não existir ainda
+                        if (err.message?.includes('relation') && err.message?.includes('does not exist')) {
+                            await sendTelegram('📋 <b>Logs de Login</b>\n\nTabela ainda não criada. Logs serão salvos a partir do próximo login.');
+                        } else {
+                            await sendTelegram(`⚠️ Erro ao buscar logs: ${err.message}`);
+                        }
                     }
                 }
                 
@@ -386,11 +392,14 @@ async function startTelegramBot() {
 
 // ─── Iniciar servidor ────────────────────────────────────────
 if (!process.env.VERCEL) {
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
         logger.info('🚀 ================================');
         logger.info(`🚀  Servidor Reybraztech Online!`);
         logger.info(`🚀  Porta: http://localhost:${PORT}`);
         logger.info('🚀 ================================');
+        
+        // Garantir que tabelas existam (apenas no Render/local, não na Vercel)
+        await ensureTables();
         
         // Iniciar bot de polling (só no Render/local)
         startTelegramBot().catch(console.error);

@@ -201,8 +201,12 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
-  if (!adminChatId) { 
-    res.status(200).json({ ok: true });
+  console.log('[Telegram Webhook] chatId config:', adminChatId ? 'set' : 'MISSING');
+  console.log('[Telegram Webhook] token config:', token ? 'set' : 'MISSING');
+
+  if (!adminChatId || !token) { 
+    console.error('[Telegram Webhook] FATAL: Missing env vars!');
+    res.status(200).json({ ok: true, error: 'Missing env vars' });
     return; 
   }
 
@@ -405,21 +409,30 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
 
     // ─── Mensagem de texto ───
     const message = update?.message;
-    if (!message?.text) { res.status(200).json({ ok: true }); return; }
+    console.log('[Telegram Webhook] message:', message ? 'present' : 'missing');
+    
+    if (!message?.text) { 
+      console.log('[Telegram Webhook] No text in message, ignoring');
+      res.status(200).json({ ok: true }); 
+      return; 
+    }
 
     // Segurança: só responde ao dono do sistema
+    console.log('[Telegram Webhook] Chat ID msg:', message.chat.id, 'adminChatId:', adminChatId);
     if (message.chat.id.toString() !== adminChatId) {
+      console.log('[Telegram Webhook] Chat ID mismatch, ignoring');
       res.status(200).json({ ok: true });
       return;
     }
 
     const text = message.text.trim();
+    console.log('[Telegram Webhook] Text received:', text);
 
-    // Ignora mensagens que não são comandos
-    if (!text.startsWith('/')) {
-      res.status(200).json({ ok: true });
-      return;
-    }
+    // Por agora, aceitar qualquer texto (remover verificação de /)
+    // if (!text.startsWith('/')) {
+    //   res.status(200).json({ ok: true });
+    //   return;
+    // }
 
     const textLower = text.toLowerCase();
 

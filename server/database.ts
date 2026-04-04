@@ -1,16 +1,18 @@
 // server/database.ts
-import dotenv from 'dotenv';
-dotenv.config(); // Carrega .env ANTES de ler DATABASE_URL
+// NÃO usar dotenv aqui - as variáveis já vêm do sistema (Render/Vercel)
 
 import postgres from 'postgres';
 import logger from './utils/logger.js';
 
-// A CONNECTION STRING vem do .env (segredo!)
+// Log para debug
+console.log('[DB] DATABASE_URL está definida?', !!process.env.DATABASE_URL);
+
+// A CONNECTION STRING vem das variáveis de ambiente do sistema
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  logger.error('❌ DATABASE_URL não definida no .env!');
-  throw new Error('❌ DATABASE_URL não definida no .env!');
+  console.error('[DB] DATABASE_URL não encontrada!');
+  throw new Error('❌ DATABASE_URL não definida!');
 }
 
 // Cria a conexão principal com o banco

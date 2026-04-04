@@ -41,15 +41,20 @@ async function sendTelegram(text: string, replyMarkup?: InlineKeyboard): Promise
     console.error('❌ Telegram não configurado');
     return;
   }
+  console.log('[TELEGRAM DEBUG] Enviando para chat_id:', CHAT_ID, ' tipo:', typeof CHAT_ID);
   try {
-    await axios.post(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    const response = await axios.post(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       chat_id: CHAT_ID,
       text,
       parse_mode: 'HTML',
       reply_markup: replyMarkup || undefined
     });
+    console.log('[TELEGRAM] Mensagem enviada com sucesso');
   } catch (err: any) {
     console.error('❌ Erro ao enviar Telegram:', err.message);
+    if (err.response?.data) {
+      console.error('[TELEGRAM] Detalhes:', JSON.stringify(err.response.data));
+    }
   }
 }
 
@@ -62,13 +67,18 @@ function authenticate(req: express.Request, res: express.Response, next: express
 async function runScraper(): Promise<{ success: boolean; clients: number; error?: string }> {
   return new Promise((resolve) => {
     const scraperDir = path.join(process.cwd(), 'scraper', 'src');
-    const indexPath = path.join(scraperDir, 'index.ts');
+    const projectRoot = process.cwd();
     
-    console.log('🔄 Executando scraper em:', scraperDir);
-    console.log('🔄 Caminho do index:', indexPath);
+    console.log('🔄 Executando scraper...');
+    console.log('🔄 Projeto root:', projectRoot);
     
-    const child = spawn('npx', ['ts-node', indexPath, '--sync'], {
-      cwd: scraperDir,
+    // Primeiro instala as dependências do scraper, depois roda
+    const installCmd = 'cd scraper && npm install';
+    const runCmd = 'npm run scraper:sync';
+    
+    // Install primeiro, depois run
+    const child = spawn(installCmd + ' && ' + runCmd, {
+      cwd: projectRoot,
       env: { ...process.env },
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe']

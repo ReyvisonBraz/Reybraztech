@@ -243,14 +243,23 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
           if (!scraperUrl || !scraperKey) {
             await sendTelegram(`⚠️ <b>Scraper não configurado!</b>\n\nVariáveis SCRAPER_URL e SCRAPER_API_KEY não estão definidas no Vercel.`);
           } else {
-            await sendTelegram(`⏳ Sincronização iniciada!\nO scraper está sendo executado no Render...\n\nVocê receberá uma notificação quando concluír.`);
+            const startTime = Date.now();
+            await sendTelegram(`⏳ Sincronização iniciada!\nO Render está sendo acordado...\n\nAguarde, você será notificado quando concluír.`);
             
             try {
-              await axios.post(
+              const response = await axios.post(
                 `${scraperUrl}/run`,
                 { action: 'sync' },
                 { headers: { 'x-api-key': scraperKey }, timeout: 300000 }
               );
+              
+              const elapsed = Math.round((Date.now() - startTime) / 1000);
+              
+              if (elapsed > 8) {
+                console.log(`[Scraper] Render estava hibernando (${elapsed}s para acordar)`);
+              }
+              
+              console.log('[Scraper] Completed in', elapsed, 's');
             } catch (err: any) {
               console.error('[Scraper] Erro:', err.message);
               await sendTelegram(`🚨 <b>Erro ao executar scraper:</b>\n\n${err.message}`);
@@ -755,24 +764,29 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       // Envia confirmação imediata
       await sendTelegram(
         `🔄 <b>Sincronização iniciada!</b>\n\n` +
-        `O scraper está sendo executado no Render...\n` +
-        `Aguarde a conclusão (pode levar alguns minutos).`
+        `O Render está sendo acordado...\n` +
+        `Aguarde, você será notificado quando concluír.`
       );
 
+      const startTime = Date.now();
+
       try {
-        await axios.post(
+        const response = await axios.post(
           `${scraperUrl}/run`,
           { action: 'sync' },
           {
             headers: { 'x-api-key': scraperKey },
-            timeout: 300000 // 5 minutos timeout
+            timeout: 300000
           }
         );
         
-        await sendTelegram(
-          `✅ <b>Sincronização enviada ao Render!</b>\n\n` +
-          `O scraper está executando. Você receberá uma notificação quando concluír.`
-        );
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        
+        if (elapsed > 8) {
+          await sendTelegram(`💤 <b>Render estava hibernando</b>\n\nTempo para acordar: ${elapsed}s\n\nO scraper está executando...`);
+        }
+        
+        console.log('[Sync] Completed in', elapsed, 's');
       } catch (err: any) {
         console.error('[Sync] Erro:', err.message);
         await sendTelegram(
@@ -822,7 +836,8 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
         const scraperUrl = process.env.SCRAPER_URL;
         const scraperKey = process.env.SCRAPER_API_KEY;
         
-        await sendTelegram(`🔍 <b>Buscando "${query}"</b> por ${explicitType}...`);
+        const startTime = Date.now();
+        await sendTelegram(`🔍 <b>Buscando "${query}"</b> por ${explicitType}...\n\nO Render está sendo acordado...`);
         
         if (scraperUrl && scraperKey) {
           try {
@@ -831,6 +846,11 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
               { action: 'search', query, searchBy: explicitType },
               { headers: { 'x-api-key': scraperKey }, timeout: 60000 }
             );
+            
+            const elapsed = Math.round((Date.now() - startTime) / 1000);
+            if (elapsed > 5) {
+              console.log('[Search] Render estava hibernando (', elapsed, 's)');
+            }
           } catch (err: any) {
             await sendTelegram(`❌ Erro na busca: ${err.message}`);
           }

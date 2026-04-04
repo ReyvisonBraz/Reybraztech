@@ -220,5 +220,4 @@ app.get('/health', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Scraper Runner rodando na porta ${PORT}`);
-  sendTelegram('✅ <b>Scraper Runner online!</b>\n\nPronto para receber comandos.');
 });

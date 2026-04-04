@@ -380,7 +380,7 @@ async function poll() {
     console.log('🤖 Bot Telegram iniciado...');
     console.log('📱 Envie /sync para executar o scraper');
     
-    await sendMessage('🤖 <b>Bot de Sincronização Starhome ativo!</b>\n\nDigite /sync para iniciar a sincronização.');
+
     
     while (true) {
         try {

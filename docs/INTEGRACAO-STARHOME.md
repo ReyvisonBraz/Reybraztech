@@ -299,6 +299,31 @@ npm run migrate:starhome
 | 2026-04-04 | Implementação inicial da integração |
 | 2026-04-04 | Adição de criptografia bcrypt |
 | 2026-04-04 | Atualização do bot para mostrar dados StarHome |
+| 2026-04-04 | **CORREÇÃO**: Script agora faz apenas UPDATE (não cria registros duplicados) |
+| 2026-04-04 | **CORREÇÃO**: /status agora mostra clientes unificados |
+
+---
+
+## ⚠️ ATENÇÃO - Correção Importante
+
+### Problema Anterior:
+O script de importação criava **novos registros** quando não encontrava匹配, causando duplicação:
+- "Usuários do App" vs "Clientes StarHome" separados
+
+### Solução Implementada:
+- Script `sync:starhome` agora **apenas atualiza** registros existentes
+- Não cria novos registros
+- Se não encontrar匹配, simplesmente pula (não cria nada)
+- `/status` agora mostra dados unificados
+
+### Scripts Disponíveis:
+```bash
+# Adicionar colunas (primeira vez)
+npm run migrate:starhome
+
+# Sincronizar dados (apenas atualiza, não cria)
+npm run sync:starhome
+```
 
 ---
 

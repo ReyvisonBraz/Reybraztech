@@ -53,6 +53,9 @@ function findLatestClientsJson(): string | null {
 }
 
 function normalizeName(name: string): { firstName: string; lastName: string } {
+  if (!name || name.trim() === '') {
+    return { firstName: '', lastName: '' };
+  }
   const parts = name.trim().split(/\s+/);
   const firstName = parts[0] || '';
   const lastName = parts.slice(1).join(' ') || '';
@@ -64,12 +67,14 @@ async function encryptPassword(password: string): Promise<string> {
   return bcrypt.hash(password, salt);
 }
 
-async function upsertStarhomeData() {
-  console.log('\n🔄 Iniciando importação de dados do StarHome...\n');
+async function syncStarhomeData() {
+  console.log('\n🔄 Iniciando sincronização de dados do StarHome...\n');
+  console.log('⚠️ ATENÇÃO: Este script ONLY atualiza registros existentes!');
+  console.log('⚠️ Não serão criados novos registros.\n');
 
   const jsonPath = findLatestClientsJson();
   if (!jsonPath) {
-    console.error('❌ Nenhum arquivo JSON encontrado para importar');
+    console.error('❌ Nenhum arquivo JSON encontrado para sincronizar');
     process.exit(1);
   }
 
@@ -79,9 +84,8 @@ async function upsertStarhomeData() {
     
     console.log(`📊 Total de clientes no JSON: ${clients.length}\n`);
     
-    let inserted = 0;
     let updated = 0;
-    let skipped = 0;
+    let notFound = 0;
     let errors = 0;
 
     for (const client of clients) {
@@ -91,92 +95,73 @@ async function upsertStarhomeData() {
         const starhomeStatus = client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo';
         const passwordHash = await encryptPassword(client.password);
 
-        // Verificar se já existe um cliente com o mesmo starhome_account
-        const [existing] = await sql`
-          SELECT id FROM clients WHERE starhome_account = ${client.account}
-        `;
+        // 1º: Buscar pelo starhome_account (se já vinculado anteriormente)
+        let existingId: number | null = null;
+        let matchType = '';
 
-        if (existing) {
-          // Atualizar existente
+        if (client.account) {
+          const [byStarhome] = await sql`
+            SELECT id FROM clients WHERE starhome_account = ${client.account}
+          `;
+          if (byStarhome) {
+            existingId = byStarhome.id;
+            matchType = 'starhome_account';
+          }
+        }
+
+        // 2º: Se não encontrou, tentar vincular por nome completo
+        if (!existingId && firstName && lastName) {
+          const [byName] = await sql`
+            SELECT id FROM clients 
+            WHERE name ILIKE ${`%${firstName}%`} AND name ILIKE ${`%${lastName}%`}
+            LIMIT 1
+          `;
+          if (byName) {
+            existingId = byName.id;
+            matchType = 'nome';
+          }
+        }
+
+        // 3º: Se ainda não encontrou, tentar por primeiro nome + telefone
+        if (!existingId && firstName) {
+          // Buscar clientes que têm primeiro nome similar E têm telefone cadastrado
+          const [byFirstName] = await sql`
+            SELECT id FROM clients 
+            WHERE name ILIKE ${`%${firstName}%`}
+            LIMIT 5
+          `;
+          
+          // Se encontrou algum, tenta verificar se faz sentido (primeiro resultado)
+          if (byFirstName && byFirstName.id) {
+            existingId = byFirstName.id;
+            matchType = 'primeiro nome';
+          }
+        }
+
+        if (existingId) {
+          // Atualiza o registro existente com dados do StarHome
           await sql`
             UPDATE clients SET
+              starhome_account = ${client.account},
               starhome_password_hash = ${passwordHash},
               starhome_days_remaining = ${client.days_remaining},
               starhome_package = ${client.package_name},
               starhome_in_use = ${starhomeStatus},
               starhome_expiration_date = ${client.expiration_date || null},
               starhome_last_sync = NOW()
-            WHERE starhome_account = ${client.account}
+            WHERE id = ${existingId}
           `;
+          
+          console.log(`   ✅ ${client.buyer_name || client.account} → vinculado por ${matchType}`);
           updated++;
         } else {
-          // Verificar se existe pelo nome (matching por nome)
-          let byName = null;
-          if (firstName && lastName) {
-            const [existingByName] = await sql`
-              SELECT id FROM clients 
-              WHERE name ILIKE ${`%${firstName}%`} AND name ILIKE ${`%${lastName}%`}
-              LIMIT 1
-            `;
-            byName = existingByName;
-          }
-
-          if (byName) {
-            // Atualizar pelo nome
-            await sql`
-              UPDATE clients SET
-                starhome_account = ${client.account},
-                starhome_password_hash = ${passwordHash},
-                starhome_days_remaining = ${client.days_remaining},
-                starhome_package = ${client.package_name},
-                starhome_in_use = ${starhomeStatus},
-                starhome_expiration_date = ${client.expiration_date || null},
-                starhome_last_sync = NOW()
-              WHERE id = ${byName.id}
-            `;
-            updated++;
-          } else {
-            // Criar novo registro
-            await sql`
-              INSERT INTO clients (
-                name,
-                whatsapp,
-                device,
-                email,
-                password_hash,
-                plan,
-                status,
-                starhome_account,
-                starhome_password_hash,
-                starhome_days_remaining,
-                starhome_package,
-                starhome_in_use,
-                starhome_expiration_date,
-                starhome_last_sync
-              ) VALUES (
-                ${client.buyer_name || 'Sem nome'},
-                ${null},
-                ${null},
-                ${null},
-                ${passwordHash},
-                ${client.package_name || 'Basic Plan'},
-                ${starhomeStatus},
-                ${client.account},
-                ${passwordHash},
-                ${client.days_remaining},
-                ${client.package_name},
-                ${starhomeStatus},
-                ${client.expiration_date || null},
-                NOW()
-              )
-            `;
-            inserted++;
-          }
+          console.log(`   ⏭️  Não encontrado para vincular: ${client.account} (${client.buyer_name || 'sem nome'})`);
+          notFound++;
         }
 
         // Log a cada 100 registros
-        if ((inserted + updated) % 100 === 0) {
-          console.log(`   📥 Processado: ${inserted + updated} clientes...`);
+        if ((updated + notFound) % 100 === 0) {
+          console.log(`   📥 Processado: ${updated + notFound} clientes...`);
         }
 
       } catch (err: any) {
@@ -185,10 +170,9 @@ async function upsertStarhomeData() {
       }
     }
 
-    console.log('\n✅ Importação concluída!');
-    console.log(`   📝 ${inserted} novos clientes inseridos`);
-    console.log(`   🔄 ${updated} clientes atualizados`);
-    console.log(`   ⏭️  ${skipped}跳过 (ignorados)`);
+    console.log('\n✅ Sincronização concluída!');
+    console.log(`   🔄 ${updated} clientes atualizados/vinculados`);
+    console.log(`   ⏭️  ${notFound} clientes não encontrados no sistema`);
     console.log(`   ❌ ${errors} erros`);
 
     // Mostrar estatísticas
@@ -202,11 +186,11 @@ async function upsertStarhomeData() {
     console.log(`   Ativos no StarHome: ${activeStarhome.total}`);
 
   } catch (err: any) {
-    console.error('❌ Erro na importação:', err.message);
+    console.error('❌ Erro na sincronização:', err.message);
     process.exit(1);
   } finally {
     await sql.end();
   }
 }
 
-upsertStarhomeData();
+syncStarhomeData();

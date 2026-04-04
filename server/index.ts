@@ -195,22 +195,22 @@ async function startTelegramBot() {
                         } else if (data === 'cmd|status') {
                             const sql = await getDb();
                             let total = 0, ativos = 0;
-                            let starhomeTotal = 0, starhomeAtivos = 0;
+                            let starhomeAtivos = 0;
+                            let expiring = 0;
                             
                             try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients`; total = r.total; } catch {}
                             try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`; ativos = r.total; } catch {}
-                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_account IS NOT NULL`; starhomeTotal = r.total; } catch {}
                             try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_in_use = 'Ativo'`; starhomeAtivos = r.total; } catch {}
+                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_days_remaining <= 7 AND starhome_days_remaining > 0`; expiring = r.total; } catch {}
                             
                             await sendTelegram(
                                 `📊 <b>Status Reybraztech</b>\n\n` +
-                                `👥 <b>Usuários do App:</b>\n` +
-                                `   📦 Total: ${total}\n` +
-                                `   ✅ Ativos: ${ativos}\n` +
-                                `   ❌ Inativos: ${total - ativos}\n\n` +
-                                `🔐 <b>Clientes StarHome:</b>\n` +
-                                `   📦 Total: ${starhomeTotal}\n` +
-                                `   ✅ Ativos: ${starhomeAtivos}`
+                                `👥 Total de Clientes: ${total}\n` +
+                                `✅ Ativos: ${ativos}\n` +
+                                `❌ Inativos: ${total - ativos}\n\n` +
+                                `🔐 StarHome:\n` +
+                                `   ⏰ Ativos: ${starhomeAtivos}\n` +
+                                `   ⚠️ Expirando em 7 dias: ${expiring}`
                             );
                         }
                     }
@@ -237,26 +237,23 @@ async function startTelegramBot() {
                 // /status
                 else if (textLower === '/status') {
                     const sql = await getDb();
-                    let total = 0, ativos = 0, inativos = 0;
-                    let starhomeTotal = 0, starhomeAtivos = 0;
+                    let total = 0, ativos = 0;
+                    let starhomeAtivos = 0;
+                    let expiring = 0;
                     
                     try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients`; total = r.total; } catch {}
                     try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`; ativos = r.total; } catch {}
-                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_account IS NOT NULL`; starhomeTotal = r.total; } catch {}
                     try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_in_use = 'Ativo'`; starhomeAtivos = r.total; } catch {}
-                    
-                    inativos = total - ativos;
+                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_days_remaining <= 7 AND starhome_days_remaining > 0`; expiring = r.total; } catch {}
                     
                     await sendTelegram(
                         `📊 <b>Status Reybraztech</b>\n\n` +
-                        `👥 <b>Usuários do App:</b>\n` +
-                        `   📦 Total: ${total}\n` +
-                        `   ✅ Ativos: ${ativos}\n` +
-                        `   ❌ Inativos: ${inativos}\n\n` +
-                        `🔐 <b>Clientes StarHome:</b>\n` +
-                        `   📦 Total: ${starhomeTotal}\n` +
-                        `   ✅ Ativos: ${starhomeAtivos}\n` +
-                        `   ❌ Inativos: ${starhomeTotal - starhomeAtivos}\n\n` +
+                        `👥 <b>Total de Clientes:</b> ${total}\n` +
+                        `✅ <b>Ativos:</b> ${ativos}\n` +
+                        `❌ <b>Inativos:</b> ${total - ativos}\n\n` +
+                        `🔐 <b>StarHome:</b>\n` +
+                        `   ⏰ Ativos no StarHome: ${starhomeAtivos}\n` +
+                        `   ⚠️ Expirando em 7 dias: ${expiring}\n\n` +
                         `🤖 Bot: OK`
                     );
                 }

@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import postgres from 'postgres';
 
+console.log('🔍 DATABASE_URL configurada:', process.env.DATABASE_URL ? 'SIM' : 'NÃO');
+
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {

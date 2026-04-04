@@ -1,11 +1,8 @@
-import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { loginToPanel } from './login';
 import { scrapeClients, searchAndExtractClient } from './scrape';
 import { exportAll } from './export';
 import { updateDatabase } from './update-db';
-
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 function parseArgs() {
   const args = process.argv.slice(2);

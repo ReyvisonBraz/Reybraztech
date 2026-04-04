@@ -1,9 +1,6 @@
-import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { loginToPanel } from './login';
 import { renewClient } from './renew';
-
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 async function main() {
   const account = 'ft3mhk';

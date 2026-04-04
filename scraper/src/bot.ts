@@ -1,6 +1,3 @@
-import * as dotenv from 'dotenv';
-dotenv.config();
-
 import axios from 'axios';
 import { runScraper } from './index';
 import { sendTelegramMessage } from './telegram';

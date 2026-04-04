@@ -1,8 +1,11 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import * as Sentry from "@sentry/node";
 import logger, { handleTelegramWebhook, setupTelegramWebhook } from './utils/logger.js';
+
+// Só carregar dotenv se necessário (para desenvolvimento local)
+if (!process.env.DATABASE_URL) {
+  const dotenv = await import('dotenv');
+  dotenv.config();
+}
 
 // Inicializar Sentry (v10+)
 if (process.env.SENTRY_DSN) {

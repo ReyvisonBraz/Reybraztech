@@ -1,9 +1,7 @@
-import * as dotenv from 'dotenv';
+// Usa variáveis de ambiente do sistema (não carrega .env)
 import * as path from 'path';
 import postgres from 'postgres';
 import bcrypt from 'bcryptjs';
-
-dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 interface ClientData {
   account: string;

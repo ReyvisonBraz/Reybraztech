@@ -1,11 +1,6 @@
 import winston from 'winston';
 import axios from 'axios';
 
-// Só carregar dotenv se não estiver em produção (Render/Vercel)
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL && !process.env.RENDER) {
-  import('dotenv/config');
-}
-
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
 // Formato personalizado para o console

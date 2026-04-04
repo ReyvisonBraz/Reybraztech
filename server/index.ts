@@ -265,11 +265,30 @@ async function startTelegramBot() {
                     if (!SCRAPER_URL || !SCRAPER_KEY) {
                         await sendTelegram('⚠️ Scraper não configurado!');
                     } else {
-                        await sendTelegram('⏳ Sincronização iniciada!\nO scraper está sendo executado...\n\nVocê receberá uma notificação quando concluir.');
+                        await sendTelegram('🔄 <b>Sincronização iniciada!</b>\n\nEtapa 1/4: Requisição recebida ✅');
+                        
+                        // Try to wake up Render first with a health check
                         try {
-                            await axios.post(`${SCRAPER_URL}/run`, { action: 'sync' }, { headers: { 'x-api-key': SCRAPER_KEY }, timeout: 300000 });
+                            await sendTelegram('⏰ Etapa 2/4: Acordando servidor...\n(Isso pode levar até 30 segundos)');
+                            await axios.get(`${SCRAPER_URL}/health`, { timeout: 35000 });
+                            await sendTelegram('✅ Servidor acordou! Iniciando scraper...');
                         } catch (err: any) {
-                            await sendTelegram(`🚨 Erro: ${err.message}`);
+                            const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
+                            if (isTimeout) {
+                                await sendTelegram('⏳ Servidor hibernando, continuando mesmo assim...');
+                            } else {
+                                await sendTelegram(`⚠️ Servidor não respondeu: ${err.message}\nTentando executar mesmo assim...`);
+                            }
+                        }
+                        
+                        try {
+                            await sendTelegram('🔄 Etapa 3/4: Executando scraper...\n(Aguarde, isso pode levar alguns minutos)');
+                            const startTime = Date.now();
+                            await axios.post(`${SCRAPER_URL}/run`, { action: 'sync' }, { headers: { 'x-api-key': SCRAPER_KEY }, timeout: 300000 });
+                            const duration = Math.round((Date.now() - startTime) / 1000);
+                            await sendTelegram(`✅ <b>Etapa 4/4: Concluído!</b>\n\n⏱️ Tempo total: ${duration}s\n\nUse /status para ver os dados atualizados.`);
+                        } catch (err: any) {
+                            await sendTelegram(`🚨 <b>Erro na sincronização:</b>\n\n${err.message}`);
                         }
                     }
                 }
@@ -320,6 +339,35 @@ async function startTelegramBot() {
                             [{ text: '📊 Status', callback_data: 'cmd|status' }]
                         ]
                     });
+                }
+                // /logs
+                else if (textLower === '/logs') {
+                    const sql = await getDb();
+                    try {
+                        const recentLogs = await sql`
+                            SELECT id, action, whatsapp, details, created_at
+                            FROM login_logs
+                            ORDER BY created_at DESC
+                            LIMIT 10
+                        `;
+                        
+                        if (recentLogs.length === 0) {
+                            await sendTelegram('📋 <b>Logs de Login</b>\n\nNenhum registro encontrado.');
+                        } else {
+                            let text = '📋 <b>Últimos 10 Eventos de Login/Cadastro:</b>\n\n';
+                            for (const log of recentLogs) {
+                                const date = new Date(log.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+                                const icon = log.action === 'login' ? '🔑' : log.action === 'register' ? '🆕' : log.action === 'failed_login' ? '❌' : 'ℹ️';
+                                text += `${icon} <b>${log.action}</b>\n`;
+                                text += `   📱 ${log.whatsapp || 'N/A'}\n`;
+                                text += `   📝 ${log.details || 'N/A'}\n`;
+                                text += `   🕐 ${date}\n\n`;
+                            }
+                            await sendTelegram(text);
+                        }
+                    } catch (err: any) {
+                        await sendTelegram(`⚠️ Erro ao buscar logs: ${err.message}`);
+                    }
                 }
                 
                 await saveUpdateId(updateId);

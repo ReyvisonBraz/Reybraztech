@@ -8,6 +8,17 @@ import { sendTrialActivation, sendRegistrationComplete } from '../services/whats
 
 const router = Router();
 
+async function logLoginEvent(action: string, whatsapp?: string, email?: string, details?: string, success: boolean = true) {
+  try {
+    await sql`
+      INSERT INTO login_logs (action, whatsapp, email, details, success)
+      VALUES (${action}, ${whatsapp || null}, ${email || null}, ${details || null}, ${success})
+    `;
+  } catch (err: any) {
+    console.error('Erro ao salvar log:', err.message);
+  }
+}
+
 // Schema de validação do login
 const loginSchema = z.object({
     identifier: z.string().min(1, 'WhatsApp/E-mail é obrigatório'),
@@ -79,6 +90,9 @@ router.post('/register', async (req: Request, res: Response) => {
 
         logger.info(logMsg);
 
+        // Log do cadastro
+        await logLoginEvent('register', whatsapp, email || undefined, `Novo cliente: ${name}`);
+
         // Gerar JWT para auto-login após cadastro
         const token = jwt.sign(
             { id: newClient.id, email: email || whatsapp },
@@ -124,6 +138,7 @@ router.post('/login', async (req: Request, res: Response) => {
         const isEmail = identifier.includes('@');
 
         let client: any;
+        let cleanPhone = '';
 
         const dbStart = performance.now();
         if (isEmail) {
@@ -132,7 +147,7 @@ router.post('/login', async (req: Request, res: Response) => {
             `;
         } else {
             // Limpar o telefone (remover espaços, traços, parênteses)
-            const cleanPhone = identifier.replace(/[\s\-\(\)]/g, '');
+            cleanPhone = identifier.replace(/[\s\-\(\)]/g, '');
             [client] = await sql`
               SELECT * FROM clients WHERE whatsapp = ${cleanPhone}
             `;
@@ -150,9 +165,14 @@ router.post('/login', async (req: Request, res: Response) => {
         const bcryptEnd = performance.now();
 
         if (!passwordMatch) {
+            // Log de falha de login
+            await logLoginEvent('failed_login', cleanPhone, undefined, 'Senha incorreta', false);
             res.status(401).json({ error: 'Credenciais inválidas.' });
             return;
         }
+
+        // Log de login bem-sucedido
+        await logLoginEvent('login', cleanPhone, isEmail ? identifier : undefined, `Login bem-sucedido: ${client.name}`);
 
         const jwtStart = performance.now();
         const JWT_SECRET = process.env.JWT_SECRET!;

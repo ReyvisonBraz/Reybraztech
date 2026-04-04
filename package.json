@@ -11,6 +11,8 @@
     "scraper:search": "cd scraper/src && npx ts-node index.ts --search=",
     "scraper:sync": "cd scraper/src && npx ts-node index.ts --sync",
     "bot": "npx ts-node bot-telegram.ts",
+    "migrate:starhome": "tsx server/scripts/migrate-starhome-columns.ts",
+    "import:starhome": "tsx server/scripts/upsert-starhome.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

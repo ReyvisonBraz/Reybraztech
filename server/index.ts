@@ -195,9 +195,23 @@ async function startTelegramBot() {
                         } else if (data === 'cmd|status') {
                             const sql = await getDb();
                             let total = 0, ativos = 0;
+                            let starhomeTotal = 0, starhomeAtivos = 0;
+                            
                             try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients`; total = r.total; } catch {}
                             try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`; ativos = r.total; } catch {}
-                            await sendTelegram(`📊 Status\n\n📦 Total: ${total}\n✅ Ativos: ${ativos}\n❌ Inativos: ${total - ativos}`);
+                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_account IS NOT NULL`; starhomeTotal = r.total; } catch {}
+                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_in_use = 'Ativo'`; starhomeAtivos = r.total; } catch {}
+                            
+                            await sendTelegram(
+                                `📊 <b>Status Reybraztech</b>\n\n` +
+                                `👥 <b>Usuários do App:</b>\n` +
+                                `   📦 Total: ${total}\n` +
+                                `   ✅ Ativos: ${ativos}\n` +
+                                `   ❌ Inativos: ${total - ativos}\n\n` +
+                                `🔐 <b>Clientes StarHome:</b>\n` +
+                                `   📦 Total: ${starhomeTotal}\n` +
+                                `   ✅ Ativos: ${starhomeAtivos}`
+                            );
                         }
                     }
                     await saveUpdateId(updateId);
@@ -223,10 +237,28 @@ async function startTelegramBot() {
                 // /status
                 else if (textLower === '/status') {
                     const sql = await getDb();
-                    let total = 0, ativos = 0;
+                    let total = 0, ativos = 0, inativos = 0;
+                    let starhomeTotal = 0, starhomeAtivos = 0;
+                    
                     try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients`; total = r.total; } catch {}
                     try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`; ativos = r.total; } catch {}
-                    await sendTelegram(`📊 <b>Status Reybraztech</b>\n\n📦 Total: ${total}\n✅ Ativos: ${ativos}\n❌ Inativos: ${total - ativos}\n\n🤖 Bot: OK`);
+                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_account IS NOT NULL`; starhomeTotal = r.total; } catch {}
+                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE starhome_in_use = 'Ativo'`; starhomeAtivos = r.total; } catch {}
+                    
+                    inativos = total - ativos;
+                    
+                    await sendTelegram(
+                        `📊 <b>Status Reybraztech</b>\n\n` +
+                        `👥 <b>Usuários do App:</b>\n` +
+                        `   📦 Total: ${total}\n` +
+                        `   ✅ Ativos: ${ativos}\n` +
+                        `   ❌ Inativos: ${inativos}\n\n` +
+                        `🔐 <b>Clientes StarHome:</b>\n` +
+                        `   📦 Total: ${starhomeTotal}\n` +
+                        `   ✅ Ativos: ${starhomeAtivos}\n` +
+                        `   ❌ Inativos: ${starhomeTotal - starhomeAtivos}\n\n` +
+                        `🤖 Bot: OK`
+                    );
                 }
                 // /sync
                 else if (textLower === '/sync' || textLower === '/sincronizar') {
@@ -248,18 +280,36 @@ async function startTelegramBot() {
                 else if (textLower.startsWith('/buscar') || textLower.startsWith('/search')) {
                     const query = text.replace(/\/buscar\s+|\/search\s+/i, '').trim();
                     if (!query) {
-                        await sendTelegram('Use: /buscar [nome ou whatsapp]\nEx: /buscar 11999999999');
+                        await sendTelegram('Use: /buscar [nome, whatsapp ou account StarHome]\nEx: /buscar 11999999999');
                     } else {
                         const sql = await getDb();
                         const results = await sql`
-                            SELECT name, whatsapp, plan, status
-                            FROM clients WHERE whatsapp LIKE ${'%' + query + '%'} OR name ILIKE ${'%' + query + '%'}
+                            SELECT name, whatsapp, plan, status, 
+                                   starhome_account, starhome_package, starhome_days_remaining, starhome_in_use
+                            FROM clients 
+                            WHERE whatsapp LIKE ${'%' + query + '%'} 
+                               OR name ILIKE ${'%' + query + '%'}
+                               OR starhome_account LIKE ${'%' + query + '%'}
                             LIMIT 1
                         `;
                         
                         if (results.length > 0) {
                             const c = results[0];
-                            await sendTelegram(`✅ <b>Cliente</b>\n\n👤 Nome: ${c.name}\n📱 WhatsApp: ${c.whatsapp}\n📦 Plano: ${c.plan}\n📊 Status: ${c.status}`);
+                            let response = `✅ <b>Cliente</b>\n\n`;
+                            response += `👤 Nome: ${c.name || 'N/A'}\n`;
+                            response += `📱 WhatsApp: ${c.whatsapp || 'N/A'}\n`;
+                            response += `📦 Plano App: ${c.plan || 'N/A'}\n`;
+                            response += `📊 Status App: ${c.status || 'N/A'}\n`;
+                            
+                            if (c.starhome_account) {
+                                response += `\n🔐 <b>Dados StarHome:</b>\n`;
+                                response += `   📋 Account: ${c.starhome_account}\n`;
+                                response += `   📦 Plano: ${c.starhome_package || 'N/A'}\n`;
+                                response += `   ⏰ Dias: ${c.starhome_days_remaining || 0}\n`;
+                                response += `   📊 Status: ${c.starhome_in_use || 'N/A'}`;
+                            }
+                            
+                            await sendTelegram(response);
                         } else {
                             await sendTelegram(`❌ Cliente não encontrado: ${query}`);
                         }

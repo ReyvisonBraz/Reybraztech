@@ -130,14 +130,30 @@ import type { Request, Response } from 'express';
 const sendTelegram = async (text: string, replyMarkup?: any) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
+  
+  console.log('[sendTelegram] token:', token ? 'set' : 'MISSING');
+  console.log('[sendTelegram] chatId:', chatId ? 'set' : 'MISSING');
+  
+  if (!token || !chatId) {
+    console.error('[sendTelegram] Missing token or chatId!');
+    return;
+  }
 
-  await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-    chat_id: chatId,
-    text,
-    parse_mode: 'HTML',
-    reply_markup: replyMarkup || undefined
-  });
+  try {
+    console.log('[sendTelegram] Sending message:', text.substring(0, 50));
+    const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      reply_markup: replyMarkup || undefined
+    });
+    console.log('[sendTelegram] Success!', response.data.ok);
+  } catch (err: any) {
+    console.error('[sendTelegram] Error:', err.message);
+    if (err.response) {
+      console.error('[sendTelegram] Response:', err.response.data);
+    }
+  }
 };
 
 // Função de busca que funciona no servidor (sem Puppeteer)

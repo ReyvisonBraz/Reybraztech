@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import postgres from 'postgres';
+import bcrypt from 'bcryptjs';
 
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
@@ -30,41 +31,57 @@ const sql = postgres(connectionString, {
 });
 
 function normalizeName(name: string): { firstName: string; lastName: string } {
+  if (!name || name.trim() === '') {
+    return { firstName: '', lastName: '' };
+  }
   const parts = name.trim().split(/\s+/);
   const firstName = parts[0] || '';
   const lastName = parts.slice(1).join(' ') || '';
   return { firstName, lastName };
 }
 
+async function encryptPassword(password: string): Promise<string> {
+  try {
+    const salt = await bcrypt.genSalt(10);
+    return await bcrypt.hash(password, salt);
+  } catch (err) {
+    console.error('❌ Erro ao criptografar senha:', err);
+    return password;
+  }
+}
+
 export async function updateDatabase(clients: ClientData[]) {
   console.log(`\n💾 Atualizando ${clients.length} clientes no banco de dados...`);
+  console.log('⚠️ Usando criptografia bcrypt para senhas\n');
 
-  let found = 0;
+  let updated = 0;
   let notFound = 0;
   let errors = 0;
 
   for (const client of clients) {
     try {
       const { firstName, lastName } = normalizeName(client.buyer_name);
-      const newStatus = client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo';
+      const starhomeStatus = client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo';
+      
+      // Criptografar a senha do StarHome
+      const passwordHash = await encryptPassword(client.password);
 
       let existingId: number | null = null;
       let matchType = '';
 
-      // 1º: Buscar pelo starhome_account (código do StarHome)
+      // 1º: Buscar pelo starhome_account (se já vinculado anteriormente)
       if (client.account) {
         const [byStarhome] = await sql`
-          SELECT id FROM clients 
-          WHERE starhome_account = ${client.account}
+          SELECT id FROM clients WHERE starhome_account = ${client.account}
           LIMIT 1
         `;
         if (byStarhome) {
           existingId = byStarhome.id;
-          matchType = 'starhome_account';
+          matchType = 'account StarHome';
         }
       }
 
-      // 2º: Buscar pelo nome (primeiro + último nome)
+      // 2º: Buscar pelo nome completo (primeiro + último nome)
       if (!existingId && firstName && lastName) {
         const [byName] = await sql`
           SELECT id FROM clients 
@@ -74,36 +91,71 @@ export async function updateDatabase(clients: ClientData[]) {
         `;
         if (byName) {
           existingId = byName.id;
-          matchType = 'nome';
+          matchType = 'nome completo';
+        }
+      }
+
+      // 3º: Buscar apenas pelo primeiro nome (se não encontrou ainda)
+      if (!existingId && firstName) {
+        const [byFirstName] = await sql`
+          SELECT id FROM clients 
+          WHERE name ILIKE ${`%${firstName}%`}
+          LIMIT 3
+        `;
+        if (byFirstName && byFirstName.id) {
+          existingId = byFirstName.id;
+          matchType = 'primeiro nome';
+        }
+      }
+
+      // 4º: Buscar por telefone no formato StarHome (buyer_name pode conter telefone)
+      if (!existingId && client.buyer_name) {
+        // Extrair números de telefone do buyer_name
+        const phoneMatch = client.buyer_name.match(/\d{10,11}/);
+        if (phoneMatch) {
+          const phone = phoneMatch[0];
+          const [byPhone] = await sql`
+            SELECT id FROM clients 
+            WHERE whatsapp LIKE ${`%${phone}%`}
+            LIMIT 1
+          `;
+          if (byPhone) {
+            existingId = byPhone.id;
+            matchType = 'telefone';
+          }
         }
       }
 
       if (existingId) {
+        // Atualiza TODOS os campos do StarHome
         await sql`
-          UPDATE clients 
-          SET days_remaining = ${client.days_remaining},
-              status = ${newStatus},
-              app_password = ${client.password},
-              starhome_account = ${client.account}
+          UPDATE clients SET
+            starhome_account = ${client.account},
+            starhome_password_hash = ${passwordHash},
+            starhome_days_remaining = ${client.days_remaining},
+            starhome_package = ${client.package_name},
+            starhome_in_use = ${starhomeStatus},
+            starhome_expiration_date = ${client.expiration_date || null},
+            starhome_last_sync = NOW()
           WHERE id = ${existingId}
         `;
-        console.log(`   ✅ ${client.buyer_name || client.account} → ${matchType}`);
-        found++;
+        console.log(`   ✅ ${client.buyer_name || client.account} → vinculado (${matchType})`);
+        updated++;
       } else {
-        console.log(`   ⚪ Não encontrado: ${client.account} (${client.buyer_name || 'sem nome'})`);
+        console.log(`   ⏭️  Não encontrado: ${client.account} (${client.buyer_name || 'sem nome'})`);
         notFound++;
       }
 
     } catch (err: any) {
-      console.error(`   ❌ Erro ao atualizar ${client.account}:`, err.message);
       errors++;
+      console.error(`   ❌ Erro ao atualizar ${client.account}: ${err.message.split('\n')[0]}`);
     }
   }
 
   console.log(`\n✅ Atualização concluída:`);
-  console.log(`   📝 ${found} clientes atualizados`);
-  console.log(`   ⚪ ${notFound} clientes não encontrados no banco`);
+  console.log(`   🔄 ${updated} clientes atualizados`);
+  console.log(`   ⏭️  ${notFound} clientes não encontrados no banco`);
   console.log(`   ❌ ${errors} erros`);
 
-  return { found, notFound, errors };
+  return { updated, notFound, errors };
 }

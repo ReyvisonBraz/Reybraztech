@@ -13,41 +13,46 @@ Este documento descreve a arquitetura e os processos implementados para integrar
 │                           FLUXO DE DADOS                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌────────────┐ │
-│  │  STARHOME   │───▶│   SCRAPER    │───▶│   JSON      │───▶│  UPSERT    │ │
-│  │  (Painel)   │    │  (Extração)  │    │  (Output)   │    │  (Import)  │ │
-│  └─────────────┘    └──────────────┘    └─────────────┘    └────────────┘ │
-│                                                                      │      │
-│                                                                      ▼      │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                      SUPABASE (PostgreSQL)                         │  │
-│  │                                                                      │  │
-│  │   ┌─────────────────────────────────────────────────────────────┐  │  │
-│  │   │                    TABELA: clients                          │  │  │
-│  │   │                                                              │  │  │
-│  │   │   COLUNAS PADRÃO:           COLUNAS STARHOME:               │  │  │
-│  │   │   ─────────────────          ─────────────────               │  │  │
-│  │   │   • id                      • starhome_account             │  │  │
-│  │   │   • name                   • starhome_password_hash       │  │  │
-│  │   │   • whatsapp               • starhome_days_remaining      │  │  │
-│  │   │   • email                  • starhome_package             │  │  │
-│  │   │   • password_hash          • starhome_in_use              │  │  │
-│  │   │   • plan                   • starhome_last_sync           │  │  │
-│  │   │   • status                 • starhome_expiration_date     │  │  │
-│  │   │   • created_at                                               │  │  │
-│  │   └─────────────────────────────────────────────────────────────┘  │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                              │                                              │
-│                              ▼                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                     TELEGRAM BOT (Polling)                         │  │
-│  │                                                                      │  │
-│  │   Comandos disponíveis:                                            │  │
-│  │   • /status  → Estatísticas gerais (App + StarHome)                 │  │
-│  │   • /sync    → Executa scraper e atualiza banco                   │  │
-│  │   • /buscar  → Busca cliente por nome, whatsapp ou account         │  │
-│  │   • /menu    → Menu interativo                                     │  │
-│  │   • /ajuda   → Ajuda                                               │  │
+│  ┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌────────────┐   │
+│  │  STARHOME   │───▶│   SCRAPER    │───▶│   SUPA     │◀───│   TELEGRAM │   │
+│  │  (Painel)   │    │  (Extração)  │    │   BASE     │    │    BOT     │   │
+│  └─────────────┘    └──────────────┘    └─────────────┘    └────────────┘   │
+│         │                                        │                 │          │
+│         │                                        ▼                 │          │
+│         │                              ┌──────────────────┐        │          │
+│         │                              │  TABELA clients │◀───────┘          │
+│         │                              │                  │                   │
+│         │                              │ Dados unificados │  /buscar          │
+│         │                              │ (App + StarHome) │  /status           │
+│         │                              └──────────────────┘                   │
+│         │                                                                         │
+│         └─────────────────────────────────────────────────────────────────────►│
+│                            (salva direto no banco)                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 🔄 Fluxo de Sincronização
+
+```
+/sync (Telegram)
+    ↓
+Scraper extrai dados do StarHome
+    ↓
+updateDatabase() → Salva DIRETO no Supabase (criptografado)
+    ↓
+Bot lê do Supabase ✓
+```
+
+### Detalhes do Fluxo:
+1. Usuário envia `/sync` ao bot
+2. Bot chama scraper no Render (POST /run)
+3. Scraper extrai dados do painel StarHome
+4. Função `updateDatabase()` salva diretamente no Supabase:
+   - Usa **bcrypt** para criptografar senhas
+   - Faz **UPDATE** em registros existentes
+   - Usa matching inteligente (account → nome → telefone)
+5. Bot notifica conclusão
+6. `/buscar` e `/status` leem do banco atualizado
 │  └─────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -301,6 +306,47 @@ npm run migrate:starhome
 | 2026-04-04 | Atualização do bot para mostrar dados StarHome |
 | 2026-04-04 | **CORREÇÃO**: Script agora faz apenas UPDATE (não cria registros duplicados) |
 | 2026-04-04 | **CORREÇÃO**: /status agora mostra clientes unificados |
+| 2026-04-04 | **MELHORIA**: Scraper agora salva DIRETO no Supabase (sem JSON intermediário) |
+| 2026-04-04 | **MELHORIA**: Scraper usa bcrypt para criptografar senhas |
+| 2026-04-04 | **MELHORIA**: Matching melhorado (account → nome → telefone) |
+
+---
+
+## 🔧 Arquivo: scraper/src/update-db.ts
+
+Este arquivo é o coração da integração - responsável por salvar os dados extraídos diretamente no Supabase.
+
+### Funções implementadas:
+
+1. **Criptografia bcrypt** - Todas as senhas são hasheadas antes de salvar
+2. **Campos salvos**:
+   - `starhome_account` - Código da conta
+   - `starhome_password_hash` - Senha criptografada
+   - `starhome_days_remaining` - Dias restantes
+   - `starhome_package` - Nome do plano
+   - `starhome_in_use` - Status (Ativo/Inativo)
+   - `starhome_expiration_date` - Data de expiração
+   - `starhome_last_sync` - Timestamp da última sincronização
+
+3. **Matching inteligente** (em ordem de prioridade):
+   1. Por `starhome_account` (se já vinculado antes)
+   2. Por nome completo (firstName + lastName)
+   3. Por primeiro nome
+   4. Por telefone (extraído do buyer_name)
+
+### Fluxo completo:
+```
+/sync → Scraper → updateDatabase() → Supabase (criptografado)
+```
+
+---
+
+## ✅ Pronto para Uso
+
+O sistema agora funciona de forma integrada:
+- Scraper extrai e salva diretamente no banco
+- Bot consulta dados atualizados do Supabase
+- Tudo com senhas criptografadas
 
 ---
 

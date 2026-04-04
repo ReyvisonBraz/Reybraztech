@@ -15,6 +15,11 @@ app.get('/health', (req, res) => {
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+// DEBUG forçar valor correto
+const FINAL_CHAT_ID = CHAT_ID || '7403274322';
+console.log('[DEBUG] TELEGRAM_CHAT_ID config:', CHAT_ID);
+console.log('[DEBUG] FINAL_CHAT_ID:', FINAL_CHAT_ID);
 const API_KEY = process.env.SCRAPER_API_KEY || 'scraper_secret_key_aqui';
 const SCRAPER_URL = process.env.SCRAPER_URL;
 const SCRAPER_KEY = process.env.SCRAPER_API_KEY || 'scraper_secret_key_aqui';
@@ -37,14 +42,14 @@ interface InlineKeyboard {
 }
 
 async function sendTelegram(text: string, replyMarkup?: InlineKeyboard): Promise<void> {
-  if (!TOKEN || !CHAT_ID) {
+  if (!TOKEN || !FINAL_CHAT_ID) {
     console.error('❌ Telegram não configurado');
     return;
   }
-  console.log('[TELEGRAM DEBUG] Enviando para chat_id:', CHAT_ID, ' tipo:', typeof CHAT_ID);
+  console.log('[TELEGRAM DEBUG] Enviando para chat_id:', FINAL_CHAT_ID, ' tipo:', typeof FINAL_CHAT_ID);
   try {
     const response = await axios.post(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-      chat_id: CHAT_ID,
+      chat_id: FINAL_CHAT_ID,
       text,
       parse_mode: 'HTML',
       reply_markup: replyMarkup || undefined
@@ -66,19 +71,15 @@ function authenticate(req: express.Request, res: express.Response, next: express
 
 async function runScraper(): Promise<{ success: boolean; clients: number; error?: string }> {
   return new Promise((resolve) => {
-    const scraperDir = path.join(process.cwd(), 'scraper', 'src');
     const projectRoot = process.cwd();
+    const scraperDir = path.join(projectRoot, 'scraper');
     
     console.log('🔄 Executando scraper...');
-    console.log('🔄 Projeto root:', projectRoot);
+    console.log('🔄 Scraper dir:', scraperDir);
     
-    // Primeiro instala as dependências do scraper, depois roda
-    const installCmd = 'cd scraper && npm install';
-    const runCmd = 'npm run scraper:sync';
-    
-    // Install primeiro, depois run
-    const child = spawn(installCmd + ' && ' + runCmd, {
-      cwd: projectRoot,
+    // Install e roda na pasta scraper (script correto é "scraper" com --sync)
+    const child = spawn('npm install && npm run scraper -- --sync', {
+      cwd: scraperDir,
       env: { ...process.env },
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe']

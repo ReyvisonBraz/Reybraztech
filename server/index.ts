@@ -248,18 +248,18 @@ async function startTelegramBot() {
                 else if (textLower.startsWith('/buscar') || textLower.startsWith('/search')) {
                     const query = text.replace(/\/buscar\s+|\/search\s+/i, '').trim();
                     if (!query) {
-                        await sendTelegram('Use: /buscar [conta]\nEx: /buscar conta123');
+                        await sendTelegram('Use: /buscar [nome ou whatsapp]\nEx: /buscar 11999999999');
                     } else {
                         const sql = await getDb();
                         const results = await sql`
-                            SELECT name, whatsapp, password, plan, status
-                            FROM clients WHERE whatsapp LIKE ${'%' + query + '%'} OR name LIKE ${'%' + query + '%'}
+                            SELECT name, whatsapp, plan, status
+                            FROM clients WHERE whatsapp LIKE ${'%' + query + '%'} OR name ILIKE ${'%' + query + '%'}
                             LIMIT 1
                         `;
                         
                         if (results.length > 0) {
                             const c = results[0];
-                            await sendTelegram(`✅ <b>Cliente</b>\n\n👤 Nome: ${c.name}\n📱 WhatsApp: ${c.whatsapp}\n🔑 Senha: ${c.password || 'N/A'}\n📦 Plano: ${c.plan}\n📊 Status: ${c.status}`);
+                            await sendTelegram(`✅ <b>Cliente</b>\n\n👤 Nome: ${c.name}\n📱 WhatsApp: ${c.whatsapp}\n📦 Plano: ${c.plan}\n📊 Status: ${c.status}`);
                         } else {
                             await sendTelegram(`❌ Cliente não encontrado: ${query}`);
                         }

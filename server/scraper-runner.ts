@@ -16,10 +16,10 @@ app.get('/health', (req, res) => {
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// DEBUG forçar valor correto
-const FINAL_CHAT_ID = CHAT_ID || '7403274322';
-console.log('[DEBUG] TELEGRAM_CHAT_ID config:', CHAT_ID);
-console.log('[DEBUG] FINAL_CHAT_ID:', FINAL_CHAT_ID);
+// FORÇAR valor correto - NUNCA usar o ID do bot
+const FINAL_CHAT_ID = '7403274322';
+console.log('[DEBUG] TELEGRAM_CHAT_ID do .env:', CHAT_ID);
+console.log('[DEBUG] FINAL_CHAT_ID (forçado):', FINAL_CHAT_ID);
 const API_KEY = process.env.SCRAPER_API_KEY || 'scraper_secret_key_aqui';
 const SCRAPER_URL = process.env.SCRAPER_URL;
 const SCRAPER_KEY = process.env.SCRAPER_API_KEY || 'scraper_secret_key_aqui';

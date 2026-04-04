@@ -8,6 +8,11 @@ import axios from 'axios';
 const app = express();
 app.use(express.json());
 
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const API_KEY = process.env.SCRAPER_API_KEY;

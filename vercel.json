@@ -8,5 +8,10 @@
       "source": "/(.*)",
       "destination": "/"
     }
+  ],
+  "ignore": [
+    "scraper/**",
+    "bot-telegram.ts",
+    "docs/**"
   ]
 }

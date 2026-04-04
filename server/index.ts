@@ -195,8 +195,8 @@ async function startTelegramBot() {
                         } else if (data === 'cmd|status') {
                             const sql = await getDb();
                             let total = 0, ativos = 0;
-                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients`; total = r.total; } catch {}
-                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Used'`; ativos = r.total; } catch {}
+                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients`; total = r.total; } catch {}
+                            try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`; ativos = r.total; } catch {}
                             await sendTelegram(`📊 Status\n\n📦 Total: ${total}\n✅ Ativos: ${ativos}\n❌ Inativos: ${total - ativos}`);
                         }
                     }
@@ -224,8 +224,8 @@ async function startTelegramBot() {
                 else if (textLower === '/status') {
                     const sql = await getDb();
                     let total = 0, ativos = 0;
-                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients`; total = r.total; } catch {}
-                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Used'`; ativos = r.total; } catch {}
+                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients`; total = r.total; } catch {}
+                    try { const [r] = await sql`SELECT COUNT(*)::int as total FROM clients WHERE status = 'Ativo'`; ativos = r.total; } catch {}
                     await sendTelegram(`📊 <b>Status Reybraztech</b>\n\n📦 Total: ${total}\n✅ Ativos: ${ativos}\n❌ Inativos: ${total - ativos}\n\n🤖 Bot: OK`);
                 }
                 // /sync
@@ -252,13 +252,14 @@ async function startTelegramBot() {
                     } else {
                         const sql = await getDb();
                         const results = await sql`
-                            SELECT account, buyer_name, password, package_name, days_remaining, in_use, expiration_date
-                            FROM starhome_clients WHERE account = ${query} LIMIT 1
+                            SELECT name, whatsapp, password, plan, status
+                            FROM clients WHERE whatsapp LIKE ${'%' + query + '%'} OR name LIKE ${'%' + query + '%'}
+                            LIMIT 1
                         `;
                         
                         if (results.length > 0) {
                             const c = results[0];
-                            await sendTelegram(`✅ <b>Cliente</b>\n\n📋 Account: ${c.account}\n👤 Nome: ${c.buyer_name}\n🔑 Senha: ${c.password}\n📦 Pacote: ${c.package_name}\n⏰ Dias: ${c.days_remaining}\n📊 Status: ${c.in_use}`);
+                            await sendTelegram(`✅ <b>Cliente</b>\n\n👤 Nome: ${c.name}\n📱 WhatsApp: ${c.whatsapp}\n🔑 Senha: ${c.password || 'N/A'}\n📦 Plano: ${c.plan}\n📊 Status: ${c.status}`);
                         } else {
                             await sendTelegram(`❌ Cliente não encontrado: ${query}`);
                         }

@@ -30,6 +30,7 @@ console.log('TELEGRAM_BOT_TOKEN:', TOKEN ? 'set' : 'MISSING');
 console.log('TELEGRAM_CHAT_ID:', CHAT_ID ? 'set' : 'MISSING');
 console.log('SCRAPER_API_KEY:', API_KEY ? 'set' : 'MISSING');
 console.log('SCRAPER_URL:', SCRAPER_URL ? 'set' : 'MISSING');
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'set' : 'MISSING');
 console.log('=== DEBUG END ===');
 
 interface InlineButton {

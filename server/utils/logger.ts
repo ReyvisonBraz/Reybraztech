@@ -198,6 +198,9 @@ const runSearchInServer = async (query: string, searchBy: string): Promise<void>
  * Registrado como rota POST /api/telegram-webhook no index.ts
  */
 export const handleTelegramWebhook = async (req: Request, res: Response) => {
+  // Responder imediatamente para evitar timeout do Telegram
+  res.status(200).json({ ok: true });
+  
   const adminChatId = process.env.TELEGRAM_CHAT_ID;
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -206,7 +209,6 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
 
   if (!adminChatId || !token) { 
     console.error('[Telegram Webhook] FATAL: Missing env vars!');
-    res.status(200).json({ ok: true, error: 'Missing env vars' });
     return; 
   }
 

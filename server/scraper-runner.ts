@@ -1,4 +1,4 @@
-import 'dotenv/config';
+// ⚠️ NÃO usar dotenv aqui - usar variáveis do sistema (Render/Vercel)
 import express from 'express';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -404,27 +404,32 @@ const handleTelegramWebhook = async (req: express.Request, res: express.Response
 
     // /status
     if (textLower === '/status') {
-      const getDb = async () => (await import('./database.js')).default;
-      const sql = await getDb();
-      
+      console.log('[STATUS] Tentando conectar ao banco...');
       let dbStatus = '❌ Offline';
       let dbTime = '';
+      let totalClientes = 0;
+      let ativos = 0;
+      
       try {
+        console.log('[STATUS] Importando database.js...');
+        const getDb = async () => (await import('./database.js')).default;
+        const sql = await getDb();
+        console.log('[STATUS] Executando query...');
+        
         const [row] = await sql`SELECT NOW() as t`;
         dbStatus = '✅ Online';
         dbTime = new Date(row.t).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-      } catch {}
-      
-      let totalClientes = 0;
-      let ativos = 0;
-      try {
-        const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients`;
-        totalClientes = row.total;
-      } catch {}
-      try {
-        const [row] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Used'`;
-        ativos = row.total;
-      } catch {}
+        
+        const [row2] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients`;
+        totalClientes = row2.total;
+        
+        const [row3] = await sql`SELECT COUNT(*)::int as total FROM starhome_clients WHERE in_use = 'Used'`;
+        ativos = row3.total;
+        
+        console.log('[STATUS] Banco online, clientes:', totalClientes);
+      } catch (err: any) {
+        console.error('[STATUS] Erro ao conectar banco:', err.message);
+      }
       
       await sendTelegram(
         `📊 <b>Status Reybraztech</b>\n\n` +

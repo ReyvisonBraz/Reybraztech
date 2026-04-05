@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink } from 'lucide-react';
+import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
+import { SystemMonitor } from '../components/admin/SystemMonitor';
 
 interface Client {
     id: number;
@@ -40,6 +41,7 @@ export const AdminPage = () => {
     const [linkClient, setLinkClient] = useState<Client | null>(null);
     const [starhomeCode, setStarhomeCode] = useState('');
     const [linking, setLinking] = useState(false);
+    const [activeTab, setActiveTab] = useState<'clients' | 'monitor'>('clients');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -470,9 +472,39 @@ export const AdminPage = () => {
                 </div>
             )}
 
-            {/* Tabela de Clientes */}
-            <div className="glass rounded-3xl overflow-hidden">
-                <div className="overflow-x-auto">
+            {/* Tab Bar */}
+            <div className="flex gap-1 mb-8 bg-white/5 p-1 rounded-2xl w-fit">
+                <button
+                    onClick={() => setActiveTab('clients')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'clients'
+                            ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30'
+                            : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                    <Users className="w-4 h-4" />
+                    Gestão de Clientes
+                </button>
+                <button
+                    onClick={() => setActiveTab('monitor')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'monitor'
+                            ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                    <Activity className="w-4 h-4" />
+                    {activeTab === 'monitor' && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+                    Monitor do Sistema
+                </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'monitor' ? (
+                <SystemMonitor />
+            ) : (
+                <div className="glass rounded-3xl overflow-hidden">
+                    <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-white/5 text-slate-300 border-b border-white/5">
                             <tr>
@@ -634,6 +666,7 @@ export const AdminPage = () => {
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 };

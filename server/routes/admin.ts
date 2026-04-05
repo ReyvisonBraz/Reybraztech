@@ -12,24 +12,13 @@ router.use(verifyAdmin);
 
 // ============================================================
 // POST /api/admin/verify-starhome — Verificar senha do Starhome
-// Usa credenciais do .env para validar
 // ============================================================
 router.post('/verify-starhome', async (req: AuthRequest, res: Response) => {
     try {
         const { starhome_password } = req.body;
-
-        if (!starhome_password) {
-            res.status(400).json({ error: 'Senha do Starhome é obrigatória.' });
-            return;
-        }
-
+        if (!starhome_password) { res.status(400).json({ error: 'Senha do Starhome é obrigatória.' }); return; }
         const envPassword = process.env.PANEL_PASSWORD;
-
-        if (starhome_password !== envPassword) {
-            res.status(401).json({ error: 'Senha do Starhome incorreta.' });
-            return;
-        }
-
+        if (starhome_password !== envPassword) { res.status(401).json({ error: 'Senha do Starhome incorreta.' }); return; }
         res.json({ verified: true });
     } catch (error) {
         logger.error('Erro ao verificar senha Starhome:', error);
@@ -38,31 +27,87 @@ router.post('/verify-starhome', async (req: AuthRequest, res: Response) => {
 });
 
 // ============================================================
-// GET /api/admin/clients — Listar clientes com paginação
+// GET /api/admin/system-stats — Métricas agregadas do sistema
+// ============================================================
+router.get('/system-stats', async (_req: AuthRequest, res: Response) => {
+    try {
+        const [totalRow]    = await sql`SELECT COUNT(*)::int as count FROM clients`;
+        const [activeRow]   = await sql`SELECT COUNT(*)::int as count FROM clients WHERE status = 'Ativo'`;
+        const [inactiveRow] = await sql`SELECT COUNT(*)::int as count FROM clients WHERE status != 'Ativo'`;
+        const [expiringRow] = await sql`SELECT COUNT(*)::int as count FROM clients WHERE days_remaining <= 7 AND days_remaining > 0 AND status = 'Ativo'`;
+        const [trialsRow]   = await sql`SELECT COUNT(*)::int as count FROM clients WHERE plan = 'trial'`;
+        const [newRow]      = await sql`SELECT COUNT(*)::int as count FROM clients WHERE created_at >= NOW() - INTERVAL '24 hours'`;
+
+        res.json({
+            total:        totalRow?.count ?? 0,
+            active:       activeRow?.count ?? 0,
+            inactive:     inactiveRow?.count ?? 0,
+            expiringSoon: expiringRow?.count ?? 0,
+            trials:       trialsRow?.count ?? 0,
+            newLast24h:   newRow?.count ?? 0,
+        });
+    } catch (error) {
+        logger.error('Erro ao buscar system-stats:', error);
+        res.status(500).json({ error: 'Erro ao buscar estatísticas.' });
+    }
+});
+
+// ============================================================
+// GET /api/admin/activity-log — Atividade recente do sistema
+// ============================================================
+router.get('/activity-log', async (req: AuthRequest, res: Response) => {
+    const limit = Math.min(parseInt(req.query.limit as string) || 15, 50);
+    try {
+        const rows = await sql`
+            SELECT id, action, whatsapp, details, created_at
+            FROM login_logs
+            ORDER BY created_at DESC
+            LIMIT ${limit}
+        `;
+        res.json(rows);
+    } catch (err: any) {
+        if (err.message?.includes('does not exist')) {
+            res.json([]);
+        } else {
+            logger.error('Erro ao buscar activity-log:', err);
+            res.status(500).json({ error: 'Erro ao buscar logs.' });
+        }
+    }
+});
+
+// ============================================================
+// GET /api/admin/clients — Listar clientes com paginação + busca
 // ============================================================
 router.get('/clients', async (req: AuthRequest, res: Response) => {
     try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 20;
+        const page   = parseInt(req.query.page as string) || 1;
+        const limit  = parseInt(req.query.limit as string) || 20;
         const offset = (page - 1) * limit;
+        const search = (req.query.search as string)?.trim() ?? '';
 
-        const clients = await sql`
-            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
-            FROM clients
-            ORDER BY created_at DESC
-            LIMIT ${limit} OFFSET ${offset}
-        `;
+        const clients = search
+            ? await sql`
+                SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
+                FROM clients
+                WHERE name ILIKE ${'%' + search + '%'}
+                   OR whatsapp ILIKE ${'%' + search + '%'}
+                   OR starhome_account ILIKE ${'%' + search + '%'}
+                ORDER BY created_at DESC
+                LIMIT ${limit} OFFSET ${offset}
+            `
+            : await sql`
+                SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
+                FROM clients
+                ORDER BY created_at DESC
+                LIMIT ${limit} OFFSET ${offset}
+            `;
 
-        const countResult = await sql`SELECT COUNT(*) as total FROM clients`;
-        const total = parseInt(countResult[0]?.total || 0);
+        const countResult = search
+            ? await sql`SELECT COUNT(*)::int as total FROM clients WHERE name ILIKE ${'%' + search + '%'} OR whatsapp ILIKE ${'%' + search + '%'}`
+            : await sql`SELECT COUNT(*)::int as total FROM clients`;
 
-        res.json({ 
-            clients, 
-            total, 
-            page, 
-            limit,
-            totalPages: Math.ceil(total / limit)
-        });
+        const total = countResult[0]?.total ?? 0;
+        res.json({ clients, total, page, limit, totalPages: Math.ceil(total / limit) });
     } catch (error) {
         logger.error('Erro ao buscar clientes no admin:', error);
         res.status(500).json({ error: 'Erro ao buscar a lista de clientes.' });
@@ -78,13 +123,10 @@ router.patch('/clients/:id/status', async (req: AuthRequest, res: Response) => {
         const { status, days_remaining, starhome_account } = req.body;
 
         if (status && !['Ativo', 'Inativo'].includes(status)) {
-            res.status(400).json({ error: 'Status deve ser "Ativo" ou "Inativo".' });
-            return;
+            res.status(400).json({ error: 'Status deve ser "Ativo" ou "Inativo".' }); return;
         }
-
         if (status === 'Ativo' && (!days_remaining || typeof days_remaining !== 'number')) {
-            res.status(400).json({ error: 'Informe os dias restantes ao ativar um cliente.' });
-            return;
+            res.status(400).json({ error: 'Informe os dias restantes ao ativar um cliente.' }); return;
         }
 
         await sql`
@@ -94,7 +136,6 @@ router.patch('/clients/:id/status', async (req: AuthRequest, res: Response) => {
                 starhome_account = ${starhome_account ?? sql`starhome_account`}
             WHERE id = ${id}
         `;
-
         res.json({ message: `Cliente ${status === 'Ativo' ? 'ativado' : 'desativado'} com sucesso.` });
     } catch (error) {
         logger.error('Erro ao atualizar status do cliente:', error);
@@ -109,18 +150,10 @@ router.patch('/clients/:id/starhome', async (req: AuthRequest, res: Response) =>
     try {
         const { id } = req.params;
         const { starhome_account } = req.body;
-
         if (!starhome_account || typeof starhome_account !== 'string') {
-            res.status(400).json({ error: 'Código StarHome é obrigatório.' });
-            return;
+            res.status(400).json({ error: 'Código StarHome é obrigatório.' }); return;
         }
-
-        await sql`
-            UPDATE clients 
-            SET starhome_account = ${starhome_account}
-            WHERE id = ${id}
-        `;
-
+        await sql`UPDATE clients SET starhome_account = ${starhome_account} WHERE id = ${id}`;
         res.json({ message: 'Código StarHome atualizado com sucesso.' });
     } catch (error) {
         logger.error('Erro ao atualizar starhome_account:', error);

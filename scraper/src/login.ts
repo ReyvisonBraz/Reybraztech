@@ -225,16 +225,22 @@ export async function loginToPanel(config: {
 
   const browser = await puppeteer.launch({
     headless: config.headless,
-    defaultViewport: { width: 1920, height: 1080 }, // Viewport fixo para coordenadas consistentes
+    defaultViewport: { width: 1280, height: 900 },
+    timeout: 60000, // Aumentado para 60s (Render pode ser lento no cold start)
     args: [
-      '--window-size=1920,1080',
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled',
+      '--disable-dev-shm-usage',     // Critico em containers com /dev/shm limitado
+      '--no-zygote',                 // Critico para Render/Docker
+      '--single-process',            // Necessário em ambientes sem fork
+      '--disable-gpu',
+      '--disable-extensions',
+      '--disable-software-rasterizer',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--no-first-run',
+      '--window-size=1280,900',
     ],
-    // Tenta usar um executável do Chrome real (se instalado no sistema), o que diminui muito o bot-score
-    // executablePath: '/usr/bin/google-chrome-stable', // Descomente e ajuste se o stealth falhar muito
   });
 
   const page = await browser.newPage();

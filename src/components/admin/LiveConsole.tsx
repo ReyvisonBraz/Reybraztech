@@ -170,7 +170,7 @@ export const LiveConsole = () => {
         setRunning(false); return;
       }
 
-      // sync full — com progresso e polling de status
+      // sync full — polling no frontend (evita timeout de 60s da Vercel)
       if (cmd === 'sync full') {
         addLog('system', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         addLog('info',   'Iniciando sincronização completa com StarHome...');

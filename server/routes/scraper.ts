@@ -24,11 +24,11 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
         });
 
         res.write('message: 🔄 Iniciando sincronização com Starhome...\n\n');
-        
+
         await sendTelegramNotification('🔄 *Sincronização Starhome iniciada!*');
 
         const scraperDir = path.join(process.cwd(), 'scraper', 'src');
-        
+
         res.write('message: 📂 Diretório do scraper: ' + scraperDir + '\n\n');
 
         const child = spawn('npx', ['ts-node', 'index.ts'], {
@@ -65,7 +65,7 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
 
             try {
                 const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'clients.json');
-                
+
                 if (fs.existsSync(jsonPath)) {
                     const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
                     const clientsData = fileContent.clients || [];

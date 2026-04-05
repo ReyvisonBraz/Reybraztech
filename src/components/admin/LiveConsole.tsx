@@ -71,6 +71,29 @@ export const LiveConsole = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs, twoFA.visible]);
 
+  // ── Polling de status 2FA enquanto sync está rodando ────────────────────
+  useEffect(() => {
+    if (!running) return;
+    const scraperUrl = (import.meta.env.VITE_SCRAPER_URL || 'https://reybraztech-scraper.onrender.com').replace(/\/+$/, '');
+    const scraperKey = import.meta.env.VITE_SCRAPER_API_KEY || '';
+
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch(`${scraperUrl}/2fa-status`, {
+          headers: { 'x-api-key': scraperKey },
+          signal: AbortSignal.timeout(4000),
+        });
+        const data = await r.json() as { waiting: boolean };
+        if (data.waiting && !twoFA.visible) {
+          setTwoFA(p => ({ ...p, visible: true }));
+          addLog('warn', '🔐 Scraper solicitou código 2FA — use o campo amarelo abaixo!');
+        }
+      } catch { /* silent */ }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [running, twoFA.visible]);
+
   const token = localStorage.getItem('reyb_token') ?? '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 

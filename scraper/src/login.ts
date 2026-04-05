@@ -3,7 +3,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as fs from 'fs';
 import * as path from 'path';
 import { solveCaptcha } from './captcha';
-import { sendTelegramMessage, waitForTelegramReply } from './telegram';
+import { sendTelegramMessage } from './telegram';
+import { waitFor2FACode } from './twofa';
 import type { Page, Browser } from 'puppeteer';
 
 // Configura o plugin Stealth para evitar detecção por bots (ex: Cloudflare)
@@ -134,30 +135,16 @@ async function handle2FA(page: Page): Promise<boolean> {
     console.log('  ⚠️  Botão "Send" não encontrado — o painel pode já ter enviado o código.');
   }
 
-  // PASSO 2: Envia alerta para o Telegram pedindo o código SMS
+  // PASSO 2: Notifica pelo Telegram (aviso apenas, não espera resposta)
   await sendTelegramMessage(
     '🔐 <b>Código 2FA necessário!</b>\n\n' +
     'O painel StarHome detectou um novo dispositivo.\n' +
     '📱 O SMS/e-mail já foi disparado pelo painel.\n\n' +
-    '<b>Acesse o painel Admin → Console e use o campo 2FA</b>\n' +
-    '<i>ou responda aqui com o código recebido.</i>'
-  );
+    '<b>Acesse o painel Admin → Console e use o campo 2FA</b>'
+  ).catch(() => {}); // Não bloqueia se Telegram falhar
 
-  // Tenta receber via API (painel Admin) e via Telegram em paralelo
-  let code: string = '';
-  try {
-    const { waitFor2FACode } = await import('./server.js' as any);
-    console.log('  📡 Aguardando código 2FA via painel Admin (5 min)...');
-    const apiCode = await Promise.race([
-      waitFor2FACode(300000),
-      waitForTelegramReply(300000, 'código 2FA'),
-    ]);
-    code = apiCode ?? '';
-  } catch {
-    // Fallback para Telegram apenas
-    const telegramCode = await waitForTelegramReply(300000, 'código 2FA');
-    code = telegramCode ?? '';
-  }
+  // Aguarda 2FA via arquivo compartilhado (painel Admin) ou terminal (local)
+  const code = (await waitFor2FACode(300000, 'código 2FA')) ?? '';
 
   if (!code) {
     console.log('  ⚠️  Nenhum código recebido. Tentando continuar sem 2FA...');

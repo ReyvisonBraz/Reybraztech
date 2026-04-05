@@ -14,19 +14,24 @@ interface ClientData {
   expiration_date: string | null;
 }
 
-const connectionString = process.env.DATABASE_URL;
+// ── Conexão lazy: só conecta quando updateDatabase() é chamada ──────────────
+// Isso permite que --search funcione localmente sem DATABASE_URL
+let _sql: ReturnType<typeof postgres> | null = null;
 
-if (!connectionString) {
-  console.error('❌ DATABASE_URL não definido no .env');
-  process.exit(1);
+function getDb() {
+  if (_sql) return _sql;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('❌ DATABASE_URL não definido no .env (necessário para --sync)');
+  }
+  _sql = postgres(connectionString, {
+    ssl: 'require',
+    max: 10,
+    idle_timeout: 20,
+    prepare: false,
+  });
+  return _sql;
 }
-
-const sql = postgres(connectionString, {
-  ssl: 'require',
-  max: 10,
-  idle_timeout: 20,
-  prepare: false,
-});
 
 function normalizeName(name: string): { firstName: string; lastName: string } {
   if (!name || name.trim() === '') {
@@ -69,7 +74,7 @@ export async function updateDatabase(clients: ClientData[]) {
 
       // 1º: Buscar pelo starhome_account (se já vinculado anteriormente)
       if (client.account) {
-        const [byStarhome] = await sql`
+        const [byStarhome] = await getDb()`
           SELECT id FROM clients WHERE starhome_account = ${client.account}
           LIMIT 1
         `;
@@ -81,7 +86,7 @@ export async function updateDatabase(clients: ClientData[]) {
 
       // 2º: Buscar pelo nome completo (primeiro + último nome)
       if (!existingId && firstName && lastName) {
-        const [byName] = await sql`
+        const [byName] = await getDb()`
           SELECT id FROM clients 
           WHERE name ILIKE ${`%${firstName}%`}
             AND name ILIKE ${`%${lastName}%`}
@@ -95,7 +100,7 @@ export async function updateDatabase(clients: ClientData[]) {
 
       // 3º: Buscar apenas pelo primeiro nome (se não encontrou ainda)
       if (!existingId && firstName) {
-        const [byFirstName] = await sql`
+        const [byFirstName] = await getDb()`
           SELECT id FROM clients 
           WHERE name ILIKE ${`%${firstName}%`}
           LIMIT 3
@@ -112,7 +117,7 @@ export async function updateDatabase(clients: ClientData[]) {
         const phoneMatch = client.buyer_name.match(/\d{10,11}/);
         if (phoneMatch) {
           const phone = phoneMatch[0];
-          const [byPhone] = await sql`
+          const [byPhone] = await getDb()`
             SELECT id FROM clients 
             WHERE whatsapp LIKE ${`%${phone}%`}
             LIMIT 1
@@ -126,7 +131,7 @@ export async function updateDatabase(clients: ClientData[]) {
 
       if (existingId) {
         // Atualiza TODOS os campos do StarHome
-        await sql`
+        await getDb()`
           UPDATE clients SET
             starhome_account = ${client.account},
             starhome_password_hash = ${passwordHash},

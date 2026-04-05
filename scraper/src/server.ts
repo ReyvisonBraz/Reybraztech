@@ -222,28 +222,29 @@ app.get('/jobs', authenticate, (_req, res) => {
 });
 
 // ─── 2FA via API ──────────────────────────────────────────────────────────────
-let pending2FAResolve: ((code: string) => void) | null = null;
+// O scraper (filho) sinaliza que precisa de 2FA escrevendo output/2fa_waiting.flag
+// O admin envia o código via POST /2fa → servidor escreve output/2fa_code.txt
+// O filho faz polling do arquivo e continua o fluxo
+import { deliver2FACode, is2FAWaiting } from './twofa.js';
 
-export function waitFor2FACode(timeoutMs = 300000): Promise<string | null> {
-  return new Promise(resolve => {
-    pending2FAResolve = resolve;
-    setTimeout(() => {
-      if (pending2FAResolve) { pending2FAResolve = null; resolve(null); }
-    }, timeoutMs);
-  });
-}
+app.get('/2fa-status', authenticate, (_req, res) => {
+  res.json({ waiting: is2FAWaiting() });
+});
 
 app.post('/2fa', authenticate, (req, res) => {
   const { code } = req.body as { code?: string };
-  if (!code) { res.status(400).json({ error: 'Código 2FA é obrigatório' }); return; }
-  if (pending2FAResolve) {
-    pending2FAResolve(code.trim());
-    pending2FAResolve = null;
+  if (!code || typeof code !== 'string') {
+    res.status(400).json({ error: 'Código 2FA é obrigatório' }); return;
+  }
+  const ok = deliver2FACode(code.trim());
+  if (ok) {
+    console.log(`🔐 Código 2FA entregue ao scraper: ${code}`);
     res.json({ ok: true, message: 'Código 2FA recebido. Scraper retomando...' });
   } else {
-    res.status(409).json({ error: 'Nenhuma sessão 2FA aguardando.' });
+    res.status(409).json({ error: 'Nenhuma sessão 2FA aguardando código no momento.' });
   }
 });
+
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {

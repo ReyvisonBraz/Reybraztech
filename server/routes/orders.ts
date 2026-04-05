@@ -182,6 +182,15 @@ router.get('/:id', async (req: Request, res: Response) => {
       return;
     }
 
+    // Auto-aprovar TRIAL após 3 segundos (para simular a confirmação automática)
+    if (order.plan === 'trial' && order.status === 'pending') {
+      const createdTime = new Date(order.created_at).getTime();
+      if (Date.now() - createdTime > 3000) {
+        await sql`UPDATE pending_orders SET status = 'paid', paid_at = NOW() WHERE id = ${id}`;
+        order.status = 'paid';
+      }
+    }
+
     res.json(order);
   } catch (error) {
     logger.error('Erro ao buscar pedido:', error);

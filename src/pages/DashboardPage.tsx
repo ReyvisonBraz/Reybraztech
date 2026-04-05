@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff } from 'lucide-react';
 import { API_URL } from '../config/api';
+import { InstallationGuideModal } from '../components/InstallationGuideModal';
 
 interface UserData {
   name: string;
@@ -28,6 +29,7 @@ export const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [copiedField, setCopiedField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -105,6 +107,8 @@ export const DashboardPage = () => {
     setSearchParams({});
     // Limpar o state da navegação
     window.history.replaceState({}, '');
+    // Abrir o guia de instalação em seguida
+    setShowGuide(true);
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -150,6 +154,7 @@ export const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-transparent pt-24 pb-12 px-4 md:pt-32 md:pb-20">
+      <InstallationGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
       {/* ─── Modal de Boas-vindas ─── */}
       <AnimatePresence>
         {showWelcome && welcomeData && (

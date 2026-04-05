@@ -3,9 +3,6 @@ import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { verifyAdmin } from '../middleware/admin.js';
 import logger, { sendTelegramNotification } from '../utils/logger.js';
 import sql from '../database.js';
-import { spawn } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
 
 const router = Router();
 
@@ -13,134 +10,137 @@ router.use(verifyToken);
 router.use(verifyAdmin);
 
 // ============================================================
-// POST /api/admin/sync-starhome — Iniciar sincronização
+// POST /api/admin/sync-starhome — Disparar sincronização via Render
+// A Vercel é serverless e NÃO pode spawnar processos.
+// A chamada é feita via HTTP para o servidor do Render (reybraztech-scraper).
 // ============================================================
 router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
+    const rawUrl   = process.env.SCRAPER_URL     || 'https://reybraztech-scraper.onrender.com';
+    const apiKey   = process.env.SCRAPER_API_KEY || '';
+    const scraperUrl = rawUrl.replace(/\/+$/, '');
+
     try {
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
         });
 
-        res.write('message: 🔄 Iniciando sincronização com Starhome...\n\n');
+        const write = (msg: string) => res.write(`message: ${msg}\n\n`);
 
-        await sendTelegramNotification('🔄 *Sincronização Starhome iniciada!*');
+        write('🔄 Iniciando sincronização com StarHome...');
+        write(`📡 Chamando servidor Render: ${scraperUrl}`);
 
-        const scraperDir = path.join(process.cwd(), 'scraper', 'src');
+        await sendTelegramNotification('🔄 *Sincronização Starhome iniciada!*').catch(() => {});
 
-        res.write('message: 📂 Diretório do scraper: ' + scraperDir + '\n\n');
+        // 1 ── Acorda o servidor se estiver hibernando
+        write('⏳ Verificando se o Render está ativo (pode demorar ~30s)...');
+        try {
+            const health = await fetch(`${scraperUrl}/health`, { signal: AbortSignal.timeout(35000) });
+            if (!health.ok) {
+                write('⚠️  Render respondeu com status inesperado. Tentando continuar...');
+            } else {
+                write('✅ Servidor Render está ativo!');
+            }
+        } catch (err: any) {
+            write(`🚨 Servidor Render não respondeu ao health check: ${err.message}`);
+            write('Abortando sincronização — verifique os logs do Render.');
+            res.end();
+            return;
+        }
 
-        const child = spawn('npx', ['ts-node', 'index.ts'], {
-            cwd: scraperDir,
-            env: { ...process.env },
-            shell: true
-        });
+        // 2 ── Dispara a sincronização no Render
+        write('🤖 Disparando extração no StarHome (aguarde — pode levar vários minutos)...');
 
-        let stdout = '';
-        let stderr = '';
+        let syncResult: { success: boolean; clients?: number; stats?: any; error?: string };
 
-        child.stdout.on('data', (data: Buffer) => {
-            const text = data.toString();
-            stdout += text;
-            res.write(`message: ${text}\n\n`);
-        });
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 600000); // 10 minutos
 
-        child.stderr.on('data', (data: Buffer) => {
-            const text = data.toString();
-            stderr += text;
-            res.write(`message: ⚠️ ${text}\n\n`);
-        });
+            const runRes = await fetch(`${scraperUrl}/run`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                },
+                body: JSON.stringify({ action: 'sync' }),
+                signal: controller.signal,
+            });
 
-        child.on('close', async (code: number) => {
-            if (code !== 0) {
-                res.write(`message: 🚨 Erro ao executar scraper (código ${code})\n\n`);
-                res.write(`message: Detalhes: ${stderr.slice(-500)}\n\n`);
-                await sendTelegramNotification(`🚨 *Erro na sincronização!*\n\nCódigo: ${code}`);
+            clearTimeout(timeout);
+
+            if (!runRes.ok) {
+                const errText = await runRes.text();
+                write(`🚨 Render retornou erro ${runRes.status}: ${errText.slice(0, 200)}`);
                 res.end();
                 return;
             }
 
-            res.write('message: ✅ Scraping concluído! Verificando dados...\n\n');
-
-            try {
-                const jsonPath = path.join(process.cwd(), 'scraper', 'output', 'clients.json');
-
-                if (fs.existsSync(jsonPath)) {
-                    const fileContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-                    const clientsData = fileContent.clients || [];
-                    res.write(`message: 📊 Encontrados ${clientsData.length} clientes no arquivo.\n\n`);
-
-                    let updated = 0;
-                    let created = 0;
-
-                    for (const client of clientsData) {
-                        const [existing] = await sql`
-                            SELECT id FROM clients WHERE whatsapp = ${client.account}
-                        `;
-
-                        if (existing) {
-                            await sql`
-                                UPDATE clients 
-                                SET days_remaining = ${client.days_remaining},
-                                    status = ${client.in_use === 'Used' && client.expired !== 'Expired' ? 'Ativo' : 'Inativo'}
-                                WHERE whatsapp = ${client.account}
-                            `;
-                            updated++;
-                        } else {
-                            created++;
-                        }
-                    }
-
-                    res.write(`message: ✅ Sincronização concluída! ${updated} atualizados, ${created} novos.\n\n`);
-                    await sendTelegramNotification(`✅ *Sincronização concluída!*\n\n📊 ${updated} clientes atualizados\n🆔 ${created} novos`);
-                } else {
-                    res.write(`message: ⚠️ Arquivo não encontrado: ${jsonPath}\n\n`);
-                }
-            } catch (err: any) {
-                res.write(`message: 🚨 Erro ao processar dados: ${err}\n\n`);
-                await sendTelegramNotification(`🚨 *Erro ao processar dados!*\n\n${err}`);
+            syncResult = await runRes.json() as typeof syncResult;
+        } catch (err: any) {
+            if (err.name === 'AbortError') {
+                write('⏰ Timeout de 10 minutos atingido. A sincronização ainda pode estar rodando no Render.');
+            } else {
+                write(`🚨 Falha ao chamar o Render: ${err.message}`);
             }
-
             res.end();
-        });
+            return;
+        }
 
-        child.on('error', async (err: Error) => {
-            res.write(`message: 🚨 Erro ao iniciar scraper: ${err.message}\n\n`);
-            await sendTelegramNotification(`🚨 *Erro ao iniciar scraper!*\n\n${err.message}`);
+        if (!syncResult.success) {
+            write(`🚨 Scraper retornou erro: ${syncResult.error || 'Erro desconhecido'}`);
+            await sendTelegramNotification(`🚨 *Erro na sincronização!*\n\n${syncResult.error}`).catch(() => {});
             res.end();
-        });
+            return;
+        }
 
-    } catch (error) {
-        logger.error('Erro ao sincronizar Starhome:', error);
-        res.write(`message: Erro interno: ${error}\n\n`);
+        write(`✅ Extração concluída! ${syncResult.clients ?? 0} registros coletados.`);
+
+        // 3 ── (Opcional) Sincroniza com o banco local se o Render retornou stats apenas
+        //     O script do Render já faz UPDATE no banco via DATABASE_URL, então só precisamos confirmar.
+        if (syncResult.stats) {
+            const { active, inactive, expiring, expired } = syncResult.stats;
+            write(`📊 Ativos: ${active} | Inativos: ${inactive} | Expirando: ${expiring} | Expirados: ${expired}`);
+        }
+
+        // 4 ── Conta totais atualizados no banco
+        try {
+            const [totRow] = await sql`SELECT COUNT(*)::int as count FROM clients`;
+            const [actRow] = await sql`SELECT COUNT(*)::int as count FROM clients WHERE status = 'Ativo'`;
+            write(`🗄️  Banco atualizado: ${actRow?.count ?? '?'} ativos de ${totRow?.count ?? '?'} no total.`);
+        } catch { /* ignora */ }
+
+        write('🎉 Sincronização finalizada com sucesso!');
+
+        await sendTelegramNotification(
+            `✅ *Sincronização concluída!*\n\n📊 ${syncResult.clients ?? 0} clientes processados`
+        ).catch(() => {});
+
         res.end();
+
+    } catch (error: any) {
+        logger.error('Erro crítico ao sincronizar Starhome:', error);
+        try { res.write(`message: 🚨 Erro interno: ${error.message}\n\n`); res.end(); } catch { /* ignorar */ }
     }
 });
 
 // ============================================================
-// GET /api/admin/sync-status — Verificar status
+// GET /api/admin/sync-status — Status geral do banco
 // ============================================================
-router.get('/sync-status', async (req: AuthRequest, res: Response) => {
+router.get('/sync-status', async (_req: AuthRequest, res: Response) => {
     try {
         const [result] = await sql`
-            SELECT MAX(created_at) as last_sync, COUNT(*) as total_clients
-            FROM clients
+            SELECT MAX(created_at) as last_sync, COUNT(*)::int as total_clients FROM clients
         `;
-
-        const clientsAtivos = await sql`
-            SELECT COUNT(*) as count FROM clients WHERE status = 'Ativo'
-        `;
-
-        const clientsInativos = await sql`
-            SELECT COUNT(*) as count FROM clients WHERE status = 'Inativo'
-        `;
+        const [ativos]  = await sql`SELECT COUNT(*)::int as count FROM clients WHERE status = 'Ativo'`;
+        const [inativos]= await sql`SELECT COUNT(*)::int as count FROM clients WHERE status = 'Inativo'`;
 
         res.json({
-            last_sync: result.last_sync,
-            total_clients: parseInt(result.total_clients || 0),
-            clients_ativos: parseInt(clientsAtivos[0]?.count || 0),
-            clients_inativos: parseInt(clientsInativos[0]?.count || 0),
+            last_sync:        result?.last_sync,
+            total_clients:    result?.total_clients ?? 0,
+            clients_ativos:   ativos?.count ?? 0,
+            clients_inativos: inativos?.count ?? 0,
         });
     } catch (error) {
         logger.error('Erro ao buscar status:', error);
@@ -152,11 +152,12 @@ router.get('/sync-status', async (req: AuthRequest, res: Response) => {
 // GET /api/admin/scraper-health — Proxy para verificar saúde do Extrator (evita CORS)
 // ============================================================
 router.get('/scraper-health', async (_req: AuthRequest, res: Response) => {
-    const scraperUrl = process.env.SCRAPER_URL || 'https://reybraztech-scraper.onrender.com';
+    const rawUrl = process.env.SCRAPER_URL || 'https://reybraztech-scraper.onrender.com';
+    const scraperUrl = rawUrl.replace(/\/+$/, '');
     const start = Date.now();
     try {
         const response = await fetch(`${scraperUrl}/health`, {
-            signal: AbortSignal.timeout(8000),
+            signal: AbortSignal.timeout(10000),
         });
         const latency = Date.now() - start;
         const data = await response.json() as { status?: string };

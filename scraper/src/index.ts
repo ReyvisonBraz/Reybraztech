@@ -1,4 +1,5 @@
 import * as path from 'path';
+import 'dotenv/config'; // Adicionado para desenvolvimento local, será ignorado inofensivamente no Render caso falhe (embora o ideal seja garantir que não trave se não achar o arquivo)
 import { loginToPanel } from './login';
 import { scrapeClients, searchAndExtractClient } from './scrape';
 import { exportAll } from './export';

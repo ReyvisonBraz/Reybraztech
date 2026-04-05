@@ -135,25 +135,32 @@ async function handle2FA(page: Page): Promise<boolean> {
   }
 
   // PASSO 2: Envia alerta para o Telegram pedindo o código SMS
-  const telegramSent = await sendTelegramMessage(
+  await sendTelegramMessage(
     '🔐 <b>Código 2FA necessário!</b>\n\n' +
     'O painel StarHome detectou um novo dispositivo.\n' +
     '📱 O SMS/e-mail já foi disparado pelo painel.\n\n' +
-    '<b>Responda com o código recebido.</b>'
+    '<b>Acesse o painel Admin → Console e use o campo 2FA</b>\n' +
+    '<i>ou responda aqui com o código recebido.</i>'
   );
 
-  let code: string;
-
-  if (telegramSent) {
-    // Aguarda resposta no Telegram (5 minutos)
+  // Tenta receber via API (painel Admin) e via Telegram em paralelo
+  let code: string = '';
+  try {
+    const { waitFor2FACode } = await import('./server.js' as any);
+    console.log('  📡 Aguardando código 2FA via painel Admin (5 min)...');
+    const apiCode = await Promise.race([
+      waitFor2FACode(300000),
+      waitForTelegramReply(300000, 'código 2FA'),
+    ]);
+    code = apiCode ?? '';
+  } catch {
+    // Fallback para Telegram apenas
     const telegramCode = await waitForTelegramReply(300000, 'código 2FA');
-    code = telegramCode || '';
-  } else {
-    // Fallback: terminal
-    console.log('  💬 Telegram não disponível. Insira o código no terminal.');
-    const readline = await import('readline');
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    code = await new Promise<string>(resolve => rl.question('\n  🖐  Código 2FA: ', ans => { rl.close(); resolve(ans.trim()); }));
+    code = telegramCode ?? '';
+  }
+
+  if (!code) {
+    console.log('  ⚠️  Nenhum código recebido. Tentando continuar sem 2FA...');
   }
 
   // Encontra o campo de input do código e preenche

@@ -227,6 +227,39 @@ app.post('/run', authenticate, async (req, res) => {
   res.status(400).json({ error: 'Ação inválida' });
 });
 
+// ─── 2FA via API (substitui o Telegram para enviar código) ───────────────
+// O scraper vai aguardar este endpoint quando detectar 2FA.
+// O painel Admin chama POST /2fa com { code: "123456" } para desbloquear.
+let pending2FAResolve: ((code: string) => void) | null = null;
+
+export function waitFor2FACode(timeoutMs = 300000): Promise<string | null> {
+  return new Promise(resolve => {
+    pending2FAResolve = resolve;
+    setTimeout(() => {
+      if (pending2FAResolve) {
+        pending2FAResolve = null;
+        resolve(null); // timeout
+      }
+    }, timeoutMs);
+  });
+}
+
+app.post('/2fa', authenticate, (req, res) => {
+  const { code } = req.body as { code?: string };
+  if (!code || typeof code !== 'string') {
+    res.status(400).json({ error: 'Código 2FA é obrigatório' });
+    return;
+  }
+  if (pending2FAResolve) {
+    pending2FAResolve(code.trim());
+    pending2FAResolve = null;
+    console.log(`🔐 Código 2FA recebido via API: ${code}`);
+    res.json({ ok: true, message: 'Código 2FA recebido. Scraper retomando...' });
+  } else {
+    res.status(409).json({ error: 'Nenhuma sessão 2FA aguardando código no momento.' });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -236,4 +269,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Scraper Server rodando na porta ${PORT}`);
 });
 
-export default app;
+export default app;

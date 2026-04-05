@@ -205,8 +205,9 @@ app.post('/run', authenticate, async (req, res) => {
         `✅ <b>Sincronização Concluída!</b>\n\n📊 ${result.clients} clientes encontrados.`
       );
     } else {
+      const safeError = (result.error || 'Erro desconhecido').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       await sendTelegram(
-        `🚨 <b>Erro na Sincronização!</b>\n\n<pre>${result.error || 'Erro desconhecido'}</pre>`
+        `🚨 <b>Erro na Sincronização!</b>\n\n<pre>${safeError}</pre>`
       );
     }
 

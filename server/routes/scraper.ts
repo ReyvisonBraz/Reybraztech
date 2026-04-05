@@ -148,4 +148,24 @@ router.get('/sync-status', async (req: AuthRequest, res: Response) => {
     }
 });
 
+// ============================================================
+// GET /api/admin/scraper-health — Proxy para verificar saúde do Extrator (evita CORS)
+// ============================================================
+router.get('/scraper-health', async (_req: AuthRequest, res: Response) => {
+    const scraperUrl = process.env.SCRAPER_URL || 'https://reybraztech-scraper.onrender.com';
+    const start = Date.now();
+    try {
+        const response = await fetch(`${scraperUrl}/health`, {
+            signal: AbortSignal.timeout(8000),
+        });
+        const latency = Date.now() - start;
+        const data = await response.json() as { status?: string };
+        res.json({ online: response.ok, latencyMs: latency, status: data?.status || 'ok' });
+    } catch (err: any) {
+        const latency = Date.now() - start;
+        const isSleep = latency > 5000;
+        res.json({ online: false, sleeping: isSleep, latencyMs: latency, error: err.message });
+    }
+});
+
 export default router;

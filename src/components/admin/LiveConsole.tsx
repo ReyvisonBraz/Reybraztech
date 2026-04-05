@@ -85,28 +85,36 @@ export const LiveConsole = () => {
 
       if (cmd === 'ping') {
         addLog('info', 'Verificando saúde dos serviços...');
-        const res = await fetch(`${API_URL}/api/health`);
-        const data = await res.json();
-        addLog('success', `API Principal: ${data.message}`);
-        const t = Date.now();
+        const t1 = Date.now();
         try {
-          const scraperUrl = import.meta.env.VITE_SCRAPER_URL || 'https://reybraztech-scraper.onrender.com';
-          await fetch(`${scraperUrl}/health`, { signal: AbortSignal.timeout(8000) });
-          addLog('success', `Extrator (Render): Online [${Date.now() - t}ms]`);
+          const res = await fetch(`${API_URL}/api/health`);
+          const data = await res.json();
+          addLog('success', `API Principal: ${data.message} [${Date.now() - t1}ms]`);
         } catch {
-          addLog('warn', `Extrator (Render): Offline ou Hibernando`);
+          addLog('error', 'API Principal: Offline ou inacessível');
+        }
+        try {
+          const t2 = Date.now();
+          const res = await fetch(`${API_URL}/api/admin/scraper-health`, { headers });
+          const d = await res.json() as { online: boolean; sleeping?: boolean; latencyMs: number };
+          if (d.online) addLog('success', `Extrator (Render): Online [${d.latencyMs}ms]`);
+          else if (d.sleeping) addLog('warn', `Extrator (Render): Hibernando [${d.latencyMs}ms]`);
+          else addLog('error', `Extrator (Render): Offline`);
+          void t2;
+        } catch {
+          addLog('warn', 'Extrator (Render): Não respondeu');
         }
         setRunning(false);
         return;
       }
 
       if (cmd === 'wake scraper') {
-        addLog('info', 'Acordando o servidor Render (pode demorar 30s)...');
-        const scraperUrl = import.meta.env.VITE_SCRAPER_URL || 'https://reybraztech-scraper.onrender.com';
-        const t = Date.now();
+        addLog('info', 'Acordando o servidor Render via proxy (pode demorar 30s)...');
         try {
-          await fetch(`${scraperUrl}/health`, { signal: AbortSignal.timeout(40000) });
-          addLog('success', `Servidor Render acordou! [${Date.now() - t}ms]`);
+          const res = await fetch(`${API_URL}/api/admin/scraper-health`, { headers, signal: AbortSignal.timeout(40000) });
+          const d = await res.json() as { online: boolean; latencyMs: number };
+          if (d.online) addLog('success', `Servidor Render acordou! [${d.latencyMs}ms]`);
+          else addLog('warn', 'Servidor não respondeu em tempo hábil.');
         } catch {
           addLog('error', 'Servidor não respondeu dentro de 40 segundos.');
         }

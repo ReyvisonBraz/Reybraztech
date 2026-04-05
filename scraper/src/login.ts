@@ -223,23 +223,28 @@ export async function loginToPanel(config: {
 }): Promise<{ browser: Browser; page: Page }> {
   console.log('\n🚀 Iniciando login no painel StarHome...\n');
 
+  const isLinux = process.platform === 'linux';
+
   const browser = await puppeteer.launch({
     headless: config.headless,
     defaultViewport: { width: 1280, height: 900 },
-    timeout: 60000, // Aumentado para 60s (Render pode ser lento no cold start)
+    timeout: 60000,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',     // Critico em containers com /dev/shm limitado
-      '--no-zygote',                 // Critico para Render/Docker
-      '--single-process',            // Necessário em ambientes sem fork
+      '--disable-dev-shm-usage',
       '--disable-gpu',
       '--disable-extensions',
-      '--disable-software-rasterizer',
-      '--disable-background-networking',
-      '--disable-default-apps',
       '--no-first-run',
       '--window-size=1280,900',
+      // Flags críticas para containers Linux (Render/Docker) — NÃO usar no Windows
+      ...(isLinux ? [
+        '--no-zygote',
+        '--single-process',
+        '--disable-software-rasterizer',
+        '--disable-background-networking',
+        '--disable-default-apps',
+      ] : []),
     ],
   });
 

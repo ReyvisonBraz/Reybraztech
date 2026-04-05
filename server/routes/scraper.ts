@@ -37,23 +37,41 @@ router.post('/sync-starhome', async (req: AuthRequest, res: Response) => {
 
         // 2 ── Dispara o job em background (responde imediatamente com jobId)
         write('🤖 Enviando comando de sincronização...');
-        let jobId: string;
+        let jobId: string | null = null;
         try {
             const startRes = await fetch(`${scraperUrl}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
                 body: JSON.stringify({ action: 'sync' }),
-                signal: AbortSignal.timeout(15000),
+                signal: AbortSignal.timeout(90000), // 90s: suporta código novo (~1s) e antigo (sync)
             });
-            const startData = await startRes.json() as { jobId?: string; error?: string };
-            if (!startRes.ok || !startData.jobId) {
-                write(`🚨 Falha ao iniciar job: ${startData.error || startRes.status}`);
+            const startData = await startRes.json() as { jobId?: string; success?: boolean; clients?: number; stats?: any; error?: string };
+
+            if (!startRes.ok) {
+                write(`🚨 Falha ao iniciar: ${startData.error || startRes.status}`);
                 res.end(); return;
             }
-            jobId = startData.jobId;
-            write(`🆔 Job iniciado: ${jobId}. Scraper rodando em background...`);
+            // Novo código async: retornou jobId
+            if (startData.jobId) {
+                jobId = startData.jobId;
+                write(`🆔 Job iniciado: ${jobId}. Fazendo polling de status...`);
+            }
+            // Código antigo sync: retornou resultado direto
+            else if (typeof startData.success === 'boolean') {
+                if (startData.success) {
+                    write(`✅ Concluído! ${startData.clients ?? 0} clientes.`);
+                    if (startData.stats) write(`📊 Ativos: ${startData.stats.active} | Inativos: ${startData.stats.inactive}`);
+                } else {
+                    write(`🚨 Erro: ${startData.error || 'Erro desconhecido'}`);
+                }
+                res.end(); return;
+            } else {
+                write('⚠️  Resposta inesperada. Verifique os logs do Render.');
+                res.end(); return;
+            }
         } catch (err: any) {
-            write(`🚨 Erro ao disparar: ${err.message}`);
+            write(`🚨 Timeout/Erro ao chamar scraper: ${err.message}`);
+            write('💡 O Render pode estar processando — aguarde e verifique https://dashboard.render.com');
             res.end(); return;
         }
 

@@ -103,7 +103,7 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
             `;
 
         const countResult = search
-            ? await sql`SELECT COUNT(*)::int as total FROM clients WHERE name ILIKE ${'%' + search + '%'} OR whatsapp ILIKE ${'%' + search + '%'}`
+            ? await sql`SELECT COUNT(*)::int as total FROM clients WHERE name ILIKE ${'%' + search + '%'} OR whatsapp ILIKE ${'%' + search + '%'} OR starhome_account ILIKE ${'%' + search + '%'}`
             : await sql`SELECT COUNT(*)::int as total FROM clients`;
 
         const total = countResult[0]?.total ?? 0;

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity } from 'lucide-react';
+import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
 import { SystemMonitor } from '../components/admin/SystemMonitor';
@@ -23,6 +23,7 @@ export const AdminPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [showModal, setShowModal] = useState(false);
@@ -142,7 +143,7 @@ export const AdminPage = () => {
         }
     };
 
-    const fetchClients = async (pageNum: number) => {
+    const fetchClients = async (pageNum: number, searchStr: string = searchQuery) => {
         const token = localStorage.getItem('reyb_token');
         if (!token) {
             navigate('/login');
@@ -151,7 +152,7 @@ export const AdminPage = () => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/admin/clients?page=${pageNum}&limit=20`, {
+            const response = await fetch(`${API_URL}/api/admin/clients?page=${pageNum}&limit=20&search=${encodeURIComponent(searchStr)}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -504,6 +505,26 @@ export const AdminPage = () => {
                 <SystemMonitor />
             ) : (
                 <div className="glass rounded-3xl overflow-hidden">
+                    <div className="p-4 border-b border-white/5 flex gap-4 items-center bg-white/5">
+                        <div className="flex-1 relative">
+                            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar por Nome, WhatsApp ou Account..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && fetchClients(1, searchQuery)}
+                                className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-slate-100 mb-0 focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500"
+                            />
+                        </div>
+                        <button
+                            onClick={() => fetchClients(1, searchQuery)}
+                            className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30 font-bold py-3 px-6 rounded-xl transition-all"
+                        >
+                            Buscar
+                        </button>
+                    </div>
+
                     <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-white/5 text-slate-300 border-b border-white/5">

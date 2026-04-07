@@ -112,32 +112,90 @@ export const AdminPage = () => {
         }
 
         setSyncing(true);
-        setSyncLog([]);
+        setSyncLog(['Iniciando sincronização com StarHome...']);
         setShowSyncModal(true);
 
         try {
             const response = await fetch(`${API_URL}/api/admin/sync-starhome`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
                 }
             });
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
+            if (!response.ok) {
+                const err = await response.text();
+                setSyncLog(prev => [...prev, `Erro ao iniciar: ${response.status} — ${err.slice(0, 200)}`]);
+                return;
+            }
 
-            if (reader) {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const text = decoder.decode(value);
-                    setSyncLog(prev => [...prev, text]);
+            const data = await response.json() as { jobId?: string; mode?: string; success?: boolean; error?: string };
+
+            if (data.mode === 'sync' && data.success) {
+                setSyncLog(prev => [...prev, 'Sincronização concluída com sucesso!']);
+                fetchClients(page);
+                return;
+            }
+
+            if (data.mode === 'sync' && !data.success) {
+                setSyncLog(prev => [...prev, `Falha: ${data.error || 'Erro desconhecido'}`]);
+                return;
+            }
+
+            const jobId = data.jobId;
+            if (!jobId) {
+                setSyncLog(prev => [...prev, 'Resposta inesperada do servidor.']);
+                return;
+            }
+
+            setSyncLog(prev => [...prev, `Job iniciado: ${jobId}. Aguardando...`]);
+
+            let pollCount = 0;
+            const maxPolls = 150;
+            let finished = false;
+
+            while (pollCount < maxPolls && !finished) {
+                await new Promise(r => setTimeout(r, 4000));
+                pollCount++;
+
+                try {
+                    const r = await fetch(`${API_URL}/api/admin/sync-poll/${jobId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        signal: AbortSignal.timeout(8000),
+                    });
+                    if (!r.ok) {
+                        setSyncLog(prev => [...prev, `Job não encontrado (Render pode ter reiniciado).`]);
+                        break;
+                    }
+                    const jobData = await r.json() as { status: string; logs?: string[]; result?: { success: boolean; clients?: number; error?: string }; dbStats?: { total?: number; active?: number } };
+
+                    if (jobData.logs && jobData.logs.length > 0) {
+                        const newLogs = jobData.logs.slice(-5);
+                        setSyncLog(prev => [...prev, ...newLogs]);
+                    }
+
+                    if (jobData.status === 'done') {
+                        finished = true;
+                        setSyncLog(prev => [...prev, `✅ Sincronização concluída! ${jobData.result?.clients || 0} clientes.`]);
+                        if (jobData.dbStats) {
+                            setSyncLog(prev => [...prev, `Banco: ${jobData.dbStats.total} total | ${jobData.dbStats.active} ativos`]);
+                        }
+                        fetchClients(page);
+                    } else if (jobData.status === 'error') {
+                        finished = true;
+                        setSyncLog(prev => [...prev, `❌ Falha: ${jobData.result?.error || 'Erro desconhecido'}`]);
+                    }
+                } catch (err: any) {
+                    setSyncLog(prev => [...prev, `Timeout ao consultar job (tentativa ${pollCount})`]);
                 }
             }
 
-            fetchClients(page);
-        } catch (err) {
-            setSyncLog(prev => [...prev, `Erro: ${err}`]);
+            if (!finished) {
+                setSyncLog(prev => [...prev, '⏱️ Timeout de polling. Verifique via Telegram.']);
+            }
+        } catch (err: any) {
+            setSyncLog(prev => [...prev, `Erro: ${err.message}`]);
         } finally {
             setSyncing(false);
         }

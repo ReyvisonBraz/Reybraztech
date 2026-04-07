@@ -342,11 +342,56 @@ export async function searchAndExtractClient(
   }
 
   if (searchBy === 'buyer_name' || searchBy === 'phone') {
-    console.log(`  🔍 Busca por nome/telefone - configurando 100 por página...`);
-    await setItemsPerPage(page, 100);
-    await delay(2000);
-    console.log(`  🔍 Busca por nome/telefone - fazendo busca manual na tabela...`);
-    return searchManuallyInTable(page, query, searchBy);
+    console.log(`  🔍 Busca por ${searchBy} - alterando o filtro nativo da página...`);
+    let filterChanged = false;
+    try {
+      const clickedBox = await page.evaluate(() => {
+        const selects = document.querySelectorAll('.ant-select-selector, .el-input__inner');
+        for (let i = 0; i < selects.length; i++) {
+          const s = selects[i];
+          if (!s.closest('.ant-pagination') && !s.closest('.el-pagination')) {
+            (s as HTMLElement).click();
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (clickedBox) {
+        console.log(`  🎯 Filtro dropdown acessado (primeiro elemento não-paginação)`);
+        await delay(1000);
+      }
+
+      if (clickedBox) {
+        const optSelectors = ['li.el-select-dropdown__item span', 'li.el-select-dropdown__item', '.ant-select-item-option-content'];
+        const target = searchBy === 'buyer_name' ? 'name' : 'phone';
+        for (const optSel of optSelectors) {
+          const opts = await page.$$(optSel);
+          for (const opt of opts) {
+            const txt = await opt.evaluate((el: Element) => el.textContent?.trim().toLowerCase() || '');
+            if (txt.includes(target) || (searchBy === 'buyer_name' && txt.includes('nome'))) {
+              await opt.click();
+              console.log(`  🎯 Filtro nativo alterado para: ${txt.trim()}`);
+              filterChanged = true;
+              await delay(1000); // aguarda a página repintar o input do placeholder novo
+              break;
+            }
+          }
+          if (filterChanged) break;
+        }
+      }
+    } catch(e) {
+      console.log(`  ⚠️ Erro ao tentar alterar o filtro nativo: ${e}`);
+    }
+
+    if (!filterChanged) {
+      console.log(`  ⚠️ Filtro nativo não encontrado, fazendo fallback para busca manual em 100 itens...`);
+      console.log(`  🔍 Busca por nome/telefone - configurando 100 por página...`);
+      await setItemsPerPage(page, 100);
+      await delay(2000);
+      console.log(`  🔍 Busca por nome/telefone - fazendo busca manual na tabela...`);
+      return searchManuallyInTable(page, query, searchBy);
+    }
   }
 
   console.log(`  🔎 Localizando barra de pesquisa...`);

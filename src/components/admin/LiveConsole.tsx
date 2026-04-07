@@ -202,42 +202,107 @@ export const LiveConsole = () => {
         addLog('system', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         const syncStart = Date.now();
-        let dotCount = 0;
 
-        // Inicia a sincronização em background
-        const syncPromise = fetch(`${API_URL}/api/admin/sync-starhome`, { method: 'POST', headers })
-          .then(async r => {
-            const text = await r.text();
-            return { ok: r.ok, text };
-          })
-          .catch(err => ({ ok: false, text: err.message }));
+        // Step 1: Start the sync job
+        const startRes = await fetch(`${API_URL}/api/admin/sync-starhome`, { method: 'POST', headers });
+        if (!startRes.ok) {
+          const errText = await startRes.text();
+          addLog('error', `Falha ao iniciar sincronização: ${startRes.status} — ${errText.slice(0, 200)}`);
+          setRunning(false); return;
+        }
 
-        // Polling de logs de progresso a cada 4s
-        const pollInterval = setInterval(() => {
-          dotCount++;
-          const elapsed = Math.round((Date.now() - syncStart) / 1000);
-          addLog('info', `Progresso [${'●'.repeat(dotCount % 5 + 1)}${'○'.repeat(4 - dotCount % 5)}] ${elapsed}s corridos... (se demorar muito pode ser 2FA pendente)`);
-          if (elapsed > 30 && elapsed % 30 === 0) {
-            addLog('warn', `⚠️ ${elapsed}s — Se o scraper pediu 2FA, aparecerá o campo abaixo!`);
-            setTwoFA(p => ({ ...p, visible: true }));
+        const startData = await startRes.json() as { jobId?: string; mode?: string; success?: boolean; error?: string; clients?: number };
+
+        // Legacy sync mode (immediate result)
+        if (startData.mode === 'sync') {
+          if (startData.success) {
+            addLog('success', `Sincronização concluída! ${startData.clients || 0} clientes processados.`);
+          } else {
+            addLog('error', `Falha: ${startData.error || 'Erro desconhecido'}`);
           }
-        }, 4000);
-
-        const result = await syncPromise;
-        clearInterval(pollInterval);
-
-        const duration = Math.round((Date.now() - syncStart) / 1000);
-        if (result.ok) {
-          addLog('success', `━━ Sincronização concluída em ${duration}s! ━━`);
-          // Mostra as métricas atualizadas
           try {
             const r = await fetch(`${API_URL}/api/admin/system-stats`, { headers });
             const d = await r.json();
             addLog('success', `Clientes: ${d.total} total | ${d.active} ativos | ${d.inactive} inativos`);
           } catch { /* silent */ }
-        } else {
-          addLog('error', `Falha na sincronização (${duration}s): ${result.text.slice(0, 200)}`);
+          setRunning(false); return;
         }
+
+        // Async mode — poll for job completion
+        const jobId = startData.jobId;
+        if (!jobId) {
+          addLog('error', 'Resposta inesperada do servidor — jobId não retornado.');
+          setRunning(false); return;
+        }
+
+        addLog('info', `Job iniciado: ${jobId}. Aguardando conclusão...`);
+
+        let pollCount = 0;
+        const maxPolls = 150; // 10 min at 4s interval
+        let finished = false;
+
+        while (pollCount < maxPolls && !finished) {
+          await new Promise(r => setTimeout(r, 4000));
+          pollCount++;
+
+          try {
+            const r = await fetch(`${API_URL}/api/admin/sync-poll/${jobId}`, { headers, signal: AbortSignal.timeout(8000) });
+            if (!r.ok) {
+              addLog('warn', `Job ${jobId} não encontrado (pode ter sido perdido pelo Render sleep)`);
+              break;
+            }
+            const data = await r.json() as { status: string; logs?: string[]; result?: { success: boolean; clients?: number; error?: string }; dbStats?: { total?: number; active?: number } };
+
+            // Show new logs from the job
+            if (data.logs && data.logs.length > 0) {
+              const newLogs = data.logs.slice(-5);
+              for (const logLine of newLogs) {
+                if (logLine.includes('✅') || logLine.includes('Concluído')) {
+                  addLog('success', logLine);
+                } else if (logLine.includes('❌') || logLine.includes('Erro') || logLine.includes('Falha')) {
+                  addLog('error', logLine);
+                } else if (logLine.includes('⚠️') || logLine.includes('Aguardando')) {
+                  addLog('warn', logLine);
+                } else {
+                  addLog('info', logLine);
+                }
+              }
+            }
+
+            if (data.status === 'done') {
+              finished = true;
+              const duration = Math.round((Date.now() - syncStart) / 1000);
+              addLog('success', `━━ Sincronização concluída em ${duration}s! ━━`);
+              if (data.result?.clients != null) {
+                addLog('info', `${data.result.clients} clientes extraídos do StarHome.`);
+              }
+              if (data.dbStats) {
+                addLog('success', `Banco atualizado: ${data.dbStats.total} total | ${data.dbStats.active} ativos`);
+              }
+            } else if (data.status === 'error') {
+              finished = true;
+              const duration = Math.round((Date.now() - syncStart) / 1000);
+              addLog('error', `━━ Sincronização falhou após ${duration}s ━━`);
+              if (data.result?.error) {
+                addLog('error', `Erro: ${data.result.error.slice(0, 300)}`);
+              }
+            } else {
+              const elapsed = Math.round((Date.now() - syncStart) / 1000);
+              addLog('info', `⏳ Em execução... ${elapsed}s (${pollCount}/${maxPolls} polls)`);
+              if (elapsed > 60 && elapsed % 60 === 0) {
+                addLog('warn', `⚠️ ${elapsed}s rodando — Se pediu 2FA, use o campo abaixo!`);
+                setTwoFA(p => ({ ...p, visible: true }));
+              }
+            }
+          } catch (err: any) {
+            addLog('warn', `Timeout ao consultar job (tentativa ${pollCount}): ${err.message}`);
+          }
+        }
+
+        if (!finished) {
+          addLog('warn', '⏱️ Timeout de polling (10 min). Verifique o status via "stats" ou Telegram.');
+        }
+
         setRunning(false); return;
       }
 

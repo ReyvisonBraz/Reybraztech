@@ -20,7 +20,7 @@ function scraperKey() {
 // POST /api/admin/sync-start — Inicia o job no Render e retorna jobId
 // Rápido (<40s): health check + POST /run → devolve jobId imediatamente
 // ============================================================
-router.post('/sync-start', async (_req: AuthRequest, res: Response) => {
+async function handleSyncStart(_req: AuthRequest, res: Response) {
     const url = scraperUrl();
     const key = scraperKey();
 
@@ -58,7 +58,14 @@ router.post('/sync-start', async (_req: AuthRequest, res: Response) => {
     } catch (err: any) {
         res.status(504).json({ error: `Timeout ao chamar /run: ${err.message}` });
     }
-});
+}
+
+router.post('/sync-start', handleSyncStart);
+
+// ============================================================
+// POST /api/admin/sync-starhome — Alias for /sync-start (used by frontend)
+// ============================================================
+router.post('/sync-starhome', handleSyncStart);
 
 // ============================================================
 // GET /api/admin/sync-poll/:jobId — Polling de status (chamada rápida, <2s cada)

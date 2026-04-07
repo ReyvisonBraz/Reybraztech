@@ -21,7 +21,7 @@ function parseArgs() {
       if (match) config.search = match[1].trim();
     } else if (arg.startsWith('--by=')) {
       const by = arg.replace('--by=', '').trim().toLowerCase();
-      if (by === 'nome' || by === 'name') config.searchBy = 'buyer_name';
+      if (by === 'nome' || by === 'name' || by === 'buyer_name') config.searchBy = 'buyer_name';
       else if (by === 'telefone' || by === 'phone') config.searchBy = 'phone';
       else config.searchBy = 'account';
     } else if (arg === '--sync') {

@@ -18,27 +18,27 @@ function scraperKey() {
 
 // ============================================================
 // POST /api/admin/sync-start — Inicia o job no Render e retorna jobId
-// Rápido (<40s): health check + POST /run → devolve jobId imediatamente
+// O Render free tier pode demorar até 50s para acordar — timeout aumentado
 // ============================================================
 async function handleSyncStart(_req: AuthRequest, res: Response) {
     const url = scraperUrl();
     const key = scraperKey();
 
-    // 1 — Acorda o Render se necessário
+    // 1 — Acorda o Render se necessário (timeout de 60s para Render dormir)
     try {
-        await fetch(`${url}/health`, { signal: AbortSignal.timeout(35000) });
+        await fetch(`${url}/health`, { signal: AbortSignal.timeout(60000) });
     } catch (err: any) {
-        res.status(503).json({ error: `Render não respondeu: ${err.message}` });
-        return;
+        // Se o health falhar por timeout, tenta direto o /run (ele também acorda)
+        console.warn('Health check timeout, trying /run anyway...');
     }
 
-    // 2 — Dispara o job (deve retornar imediatamente com jobId)
+    // 2 — Dispara o job (timeout de 90s para Render acordar + iniciar)
     try {
         const r = await fetch(`${url}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': key },
             body: JSON.stringify({ action: 'sync' }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(90000),
         });
         const data = await r.json() as { jobId?: string; success?: boolean; clients?: number; stats?: any; error?: string };
 

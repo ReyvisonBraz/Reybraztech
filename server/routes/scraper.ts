@@ -17,46 +17,47 @@ function scraperKey() {
 }
 
 // ============================================================
-// POST /api/admin/sync-start — Inicia o job no Render e retorna jobId
-// O Render free tier pode demorar até 50s para acordar — timeout aumentado
+// POST /api/admin/sync-start — Dispara sync no Render
+// NÃO faz health check — isso causava timeout na Vercel
+// O scraper acorda sozinho quando /run é chamado
 // ============================================================
 async function handleSyncStart(_req: AuthRequest, res: Response) {
     const url = scraperUrl();
     const key = scraperKey();
 
-    // 1 — Acorda o Render se necessário (timeout de 60s para Render dormir)
     try {
-        await fetch(`${url}/health`, { signal: AbortSignal.timeout(60000) });
-    } catch (err: any) {
-        // Se o health falhar por timeout, tenta direto o /run (ele também acorda)
-        console.warn('Health check timeout, trying /run anyway...');
-    }
-
-    // 2 — Dispara o job (timeout de 90s para Render acordar + iniciar)
-    try {
+        // Timeout curto (8s) — se o scraper estiver acordado, responde rápido
+        // Se estiver dormindo, o /run vai acordá-lo mas pode timeout aqui
         const r = await fetch(`${url}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': key },
             body: JSON.stringify({ action: 'sync' }),
-            signal: AbortSignal.timeout(90000),
+            signal: AbortSignal.timeout(8000),
         });
         const data = await r.json() as { jobId?: string; success?: boolean; clients?: number; stats?: any; error?: string };
 
         if (!r.ok) { res.status(r.status).json({ error: data.error || 'Falha no Render' }); return; }
 
-        // Novo código async: jobId
         if (data.jobId) {
             res.json({ jobId: data.jobId, mode: 'async' });
             return;
         }
-        // Código legado sync: resultado direto (não tem jobId)
         if (typeof data.success === 'boolean') {
             res.json({ mode: 'sync', done: true, success: data.success, clients: data.clients, stats: data.stats, error: data.error });
             return;
         }
         res.status(502).json({ error: 'Resposta inesperada do Render' });
     } catch (err: any) {
-        res.status(504).json({ error: `Timeout ao chamar /run: ${err.message}` });
+        // Timeout significa que o scraper estava dormindo — está acordando agora
+        if (err.name === 'AbortError' || err.message.includes('timeout')) {
+            res.status(202).json({
+                mode: 'async',
+                waking: true,
+                message: 'Scraper está acordando. Aguarde ~30s e tente novamente para ver o jobId.'
+            });
+        } else {
+            res.status(504).json({ error: `Erro ao chamar scraper: ${err.message}` });
+        }
     }
 }
 

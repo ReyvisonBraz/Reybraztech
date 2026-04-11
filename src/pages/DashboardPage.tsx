@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff, Download } from 'lucide-react';
+import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff, Download, BookOpen, Rocket } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { InstallationGuideModal } from '../components/InstallationGuideModal';
 
@@ -29,6 +29,7 @@ export const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showExperienceQuestion, setShowExperienceQuestion] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [copiedField, setCopiedField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -107,8 +108,15 @@ export const DashboardPage = () => {
     setSearchParams({});
     // Limpar o state da navegação
     window.history.replaceState({}, '');
-    // Abrir o guia de instalação em seguida
-    setShowGuide(true);
+    // Mostrar pergunta sobre experiência
+    setShowExperienceQuestion(true);
+  };
+
+  const handleExperienceAnswer = (isNewbie: boolean) => {
+    setShowExperienceQuestion(false);
+    if (isNewbie) {
+      setShowGuide(true);
+    }
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -284,6 +292,66 @@ export const DashboardPage = () => {
                 Entendi, ir para o painel
                 <CheckCircle2 className="w-5 h-5" />
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Modal: Primeira vez ou Experiente? ─── */}
+      <AnimatePresence>
+        {showExperienceQuestion && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glass border-cyan-500/20 p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] border-2 max-w-md w-full relative"
+            >
+              <button
+                onClick={() => handleExperienceAnswer(false)}
+                className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="w-8 h-8 text-cyan-400" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white mb-2">
+                  Primeira vez aqui?
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Você é novo na Reybraz Tech e quer aprender como configurar seu dispositivo?
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleExperienceAnswer(true)}
+                  className="w-full p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/50 text-emerald-400 font-bold flex items-center justify-center gap-3 hover:bg-emerald-500/20 transition-all"
+                >
+                  <BookOpen className="w-5 h-5" />
+                  Sim, me ajude com a instalação
+                </button>
+                <button
+                  onClick={() => handleExperienceAnswer(false)}
+                  className="w-full p-4 rounded-2xl bg-white/5 border-2 border-white/10 text-slate-300 font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all"
+                >
+                  <Rocket className="w-5 h-5" />
+                  Já sou experiente, pular tutorial
+                </button>
+              </div>
+
+              <p className="text-center text-slate-500 text-xs mt-6">
+                Você pode acessar o tutorial a qualquer momento pelo menu do painel.
+              </p>
             </motion.div>
           </motion.div>
         )}

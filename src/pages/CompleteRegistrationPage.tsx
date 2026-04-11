@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowLeft, User, Phone, Monitor, Mail, Lock, Loader2, CheckCircle2, Clock, MessageCircle } from 'lucide-react';
+import { ArrowLeft, User, Phone, Monitor, Mail, Lock, Loader2, CheckCircle2, Clock, MessageCircle, Eye, EyeOff, ShieldCheck, Sparkles } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 const DEVICE_OPTIONS = [
@@ -21,6 +21,56 @@ type OrderData = {
   device?: string;
 };
 
+const STRONG_PASSWORDS = [
+  'Rey@2024#Braz!',
+  'Tech#Rey9@Secure',
+  'Braz!Tech$2024Rey',
+  'ReyBraz@2024#Tech',
+  'Secure$Rey9@Braz',
+];
+
+function getPasswordStrength(password: string): { score: number; label: string; color: string; bgColor: string } {
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 2) return { score, label: 'Fraca', color: 'text-red-400', bgColor: 'bg-red-500' };
+  if (score <= 4) return { score, label: 'Média', color: 'text-yellow-400', bgColor: 'bg-yellow-500' };
+  if (score <= 6) return { score, label: 'Forte', color: 'text-emerald-400', bgColor: 'bg-emerald-500' };
+  return { score, label: 'Excelente', color: 'text-cyan-400', bgColor: 'bg-cyan-500' };
+}
+
+function PasswordRequirements({ password }: { password: string }) {
+  const reqs = [
+    { label: 'Mínimo 6 caracteres', met: password.length >= 6 },
+    { label: 'Letra maiúscula', met: /[A-Z]/.test(password) },
+    { label: 'Letra minúscula', met: /[a-z]/.test(password) },
+    { label: 'Número', met: /[0-9]/.test(password) },
+    { label: 'Caractere especial (!@#$%)', met: /[^A-Za-z0-9]/.test(password) },
+  ];
+
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-[0.7rem] text-slate-500 font-bold uppercase tracking-widest mb-2">Requisitos da senha:</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        {reqs.map((req, i) => (
+          <div key={i} className={`flex items-center gap-2 text-xs ${req.met ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${req.met ? 'bg-emerald-500/20' : 'bg-white/5'}`}>
+              {req.met ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-1.5 h-1.5 rounded-full bg-current" />}
+            </div>
+            {req.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const CompleteRegistrationPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -35,8 +85,11 @@ export const CompleteRegistrationPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [showPasswordTips, setShowPasswordTips] = useState(false);
 
   // Pre-fill device from order (trial sends device)
   useEffect(() => {
@@ -339,16 +392,71 @@ export const CompleteRegistrationPage = () => {
             </div>
 
             {/* Senha */}
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                required
-                type="password"
-                placeholder="Crie uma senha (min. 6 caracteres)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
-              />
+            <div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  required
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Crie uma senha forte"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setShowPasswordTips(true)}
+                  className="w-full p-4 pl-12 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+
+              {/* Strength indicator */}
+              {password.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[0.7rem] text-slate-500 font-bold uppercase tracking-widest">Força da senha</span>
+                    <span className={`text-xs font-bold ${getPasswordStrength(password).color}`}>
+                      {getPasswordStrength(password).label}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(getPasswordStrength(password).score / 7) * 100}%` }}
+                      className={`h-full ${getPasswordStrength(password).bgColor} rounded-full transition-all`}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Requirements & Examples */}
+              {showPasswordTips && <PasswordRequirements password={password} />}
+
+              {/* Strong password examples */}
+              {password.length === 0 && (
+                <div className="mt-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">Senhas fortes exemplos</span>
+                  </div>
+                  <div className="space-y-1">
+                    {STRONG_PASSWORDS.slice(0, 3).map((ex, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setPassword(ex); setConfirmPassword(ex); }}
+                        className="block w-full text-left font-mono text-xs text-slate-400 hover:text-cyan-400 transition-colors"
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[0.65rem] text-slate-500 mt-2">Clique para usar ou crie a sua</p>
+                </div>
+              )}
             </div>
 
             {/* Confirmar senha */}
@@ -356,12 +464,33 @@ export const CompleteRegistrationPage = () => {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <input
                 required
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="Confirme sua senha"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                className={`w-full p-4 pl-12 pr-12 bg-white/5 rounded-2xl text-white outline-none transition-all ${
+                  confirmPassword && password !== confirmPassword
+                    ? 'border-red-500/50 focus:border-red-500'
+                    : 'border-white/10 focus:border-cyan-500'
+                }`}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+              {confirmPassword && password === confirmPassword && (
+                <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                </div>
+              )}
+              {confirmPassword && password !== confirmPassword && (
+                <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                  <span className="text-xs text-red-400 font-bold">Diferente</span>
+                </div>
+              )}
             </div>
 
             {/* Erro */}

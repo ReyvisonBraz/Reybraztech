@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { InstallPrompt } from './components/InstallPrompt';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -76,6 +77,7 @@ export default function App() {
           </Suspense>
         </main>
         <Footer />
+        <InstallPrompt />
       </div>
     </BrowserRouter>
   );

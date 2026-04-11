@@ -3,6 +3,8 @@ import { useEffect, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
+import { PromoProvider } from './components/PromoProvider';
+import { ReyBrazPromoModal } from './components/AppPromoModal';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -59,26 +61,29 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-transparent text-slate-900 dark:text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-500">
-        <ScrollToTop />
-        <Navbar />
-        <main>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/trial" element={<TrialPage />} />
-              <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-              <Route path="/admlogin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-            </Routes>
-          </Suspense>
-        </main>
-        <Footer />
-        <InstallPrompt />
-      </div>
+      <PromoProvider>
+        <div className="min-h-screen bg-transparent text-slate-900 dark:text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200 transition-colors duration-500">
+          <ScrollToTop />
+          <Navbar />
+          <main>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/trial" element={<TrialPage />} />
+                <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                <Route path="/admlogin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+              </Routes>
+            </Suspense>
+          </main>
+          <Footer />
+          <InstallPrompt />
+          <ReyBrazPromoModal />
+        </div>
+      </PromoProvider>
     </BrowserRouter>
   );
 }

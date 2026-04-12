@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-do
 import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff, Download, BookOpen, Rocket } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { InstallationGuideModal } from '../components/InstallationGuideModal';
+import { UnitvPromoModal } from '../components/UnitvPromoModal';
 
 interface UserData {
   name: string;
@@ -31,6 +32,7 @@ export const DashboardPage = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showExperienceQuestion, setShowExperienceQuestion] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showUnitvPromo, setShowUnitvPromo] = useState(false);
   const [copiedField, setCopiedField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -116,6 +118,10 @@ export const DashboardPage = () => {
     setShowExperienceQuestion(false);
     if (isNewbie) {
       setShowGuide(true);
+    }
+    // Mostrar promo do UNITV após resposta da experiência (só para novos cadastros)
+    if (welcomeData) {
+      setTimeout(() => setShowUnitvPromo(true), 500);
     }
   };
 
@@ -357,6 +363,12 @@ export const DashboardPage = () => {
         )}
       </AnimatePresence>
 
+      {/* ─── Modal: UNITV App Promo ─── */}
+      <UnitvPromoModal
+        isOpen={showUnitvPromo}
+        onClose={() => setShowUnitvPromo(false)}
+      />
+
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div>
@@ -402,21 +414,35 @@ export const DashboardPage = () => {
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Acesso Rápido</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setShowGuide(true)}
-                  className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)] text-emerald-400 font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-all text-sm md:text-base"
+              <div className="grid grid-cols-1 md:grid-cols-4 sm:grid-cols-2 gap-4">
+                <a
+                  href="http://mkdw.qrdldunitvss.com/download"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-4 rounded-2xl bg-orange-500/10 border-2 border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)] text-orange-400 font-bold flex items-center justify-center gap-2 hover:bg-orange-500/20 transition-all text-sm"
                 >
                   <Download className="w-5 h-5" />
-                  Tutorial de Instalação
+                  Baixar UNITV
+                </a>
+                <button
+                  onClick={() => setShowGuide(true)}
+                  className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)] text-emerald-400 font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-all text-sm"
+                >
+                  <Download className="w-5 h-5" />
+                  Tutorial
                 </button>
-                <button className="p-4 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.2)] text-cyan-400 font-bold flex items-center justify-center gap-2 hover:bg-cyan-500/20 transition-all text-sm md:text-base">
+                <a
+                  href="https://www.uvweboficial.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-4 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/50 shadow-[0_0_15px_rgba(34,211,238,0.2)] text-cyan-400 font-bold flex items-center justify-center gap-2 hover:bg-cyan-500/20 transition-all text-sm"
+                >
                   <PlayCircle className="w-5 h-5" />
-                  Abrir Web Player
-                </button>
-                <button className="p-4 rounded-2xl bg-purple-500/10 border-2 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)] text-purple-400 font-bold flex items-center justify-center gap-2 hover:bg-purple-500/20 transition-all text-sm md:text-base md:col-span-1 sm:col-span-2">
+                  Web Player
+                </a>
+                <button className="p-4 rounded-2xl bg-purple-500/10 border-2 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)] text-purple-400 font-bold flex items-center justify-center gap-2 hover:bg-purple-500/20 transition-all text-sm">
                   <Shield className="w-5 h-5" />
-                  Suporte Técnico
+                  Suporte
                 </button>
               </div>
             </div>

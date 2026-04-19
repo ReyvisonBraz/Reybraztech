@@ -3,8 +3,17 @@ import { createHmac } from 'crypto';
 import { createPaymentPreference, getPaymentDetails } from '../services/mercadopago.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { sendPaymentConfirmation } from '../services/whatsapp.js';
+import { sendTelegramMessage } from '../services/telegram.js';
 import sql from '../database.js';
 import logger from '../utils/logger.js';
+
+const PLAN_DAYS: Record<string, number> = {
+  mensal: 31,
+  trimestral: 93,
+  semestral: 186,
+  anual: 365,
+  trial: 3,
+};
 
 /**
  * Valida a assinatura do webhook enviada pelo Mercado Pago.
@@ -148,6 +157,90 @@ router.post('/webhook', async (req, res) => {
         `;
 
         logger.info(`✅ Pedido ${orderId} marcado como pago! ${order.name} | ${order.plan} | R$${order.amount}`);
+
+        // Calcular dias conforme o plano
+        const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+
+        // Buscar cliente pelo whatsapp da order
+        const [client] = await sql`
+          SELECT id, days_remaining FROM clients WHERE whatsapp = ${order.whatsapp}
+        `;
+
+        if (client) {
+          // Buscar login disponível no pool (FOR UPDATE evita race condition)
+          const [poolEntry] = await sql`
+            SELECT id, app_account, app_password
+            FROM login_pool
+            WHERE status = 'disponivel'
+            ORDER BY created_at ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+          `;
+
+          if (poolEntry) {
+            // Atribuir login e ativar conta
+            await sql`
+              UPDATE login_pool
+              SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
+              WHERE id = ${poolEntry.id}
+            `;
+
+            await sql`
+              UPDATE clients
+              SET status = 'Ativo',
+                  days_remaining = ${daysToAdd},
+                  app_account = ${poolEntry.app_account},
+                  app_password = ${poolEntry.app_password},
+                  plan = ${order.plan}
+              WHERE id = ${client.id}
+            `;
+
+            logger.info(`🔑 Login ${poolEntry.app_account} atribuído ao cliente ${client.id}`);
+
+            await sendTelegramMessage(
+              `✅ <b>Pagamento Confirmado</b>\n` +
+              `👤 ${order.name}\n` +
+              `📱 ${order.whatsapp}\n` +
+              `📦 Plano: ${order.plan} (${daysToAdd} dias)\n` +
+              `💰 R$${order.amount}\n` +
+              `🔑 Login: <code>${poolEntry.app_account}</code>\n` +
+              `🔐 Senha: <code>${poolEntry.app_password}</code>\n` +
+              `🆔 Pedido: ${orderId}`
+            );
+          } else {
+            // Pool vazio — ativa a conta sem login, alerta no Telegram
+            await sql`
+              UPDATE clients
+              SET status = 'Ativo',
+                  days_remaining = ${daysToAdd},
+                  plan = ${order.plan}
+              WHERE id = ${client.id}
+            `;
+
+            logger.warn(`⚠️ Pool vazio! Cliente ${client.id} ativado sem login atribuído.`);
+
+            await sendTelegramMessage(
+              `✅ <b>Pagamento Confirmado</b> — ⚠️ <b>POOL VAZIO!</b>\n` +
+              `👤 ${order.name}\n` +
+              `📱 ${order.whatsapp}\n` +
+              `📦 Plano: ${order.plan} (${daysToAdd} dias)\n` +
+              `💰 R$${order.amount}\n` +
+              `🔑 Nenhum login disponível no pool!\n` +
+              `👉 Adicione logins no painel admin imediatamente.\n` +
+              `🆔 Pedido: ${orderId}`
+            );
+          }
+        } else {
+          // Cliente não encontrado — alerta apenas (não bloqueia o webhook)
+          logger.warn(`⚠️ Pagamento ${orderId} aprovado mas cliente não encontrado (whatsapp: ${order.whatsapp})`);
+          await sendTelegramMessage(
+            `⚠️ <b>Pagamento sem cadastro</b>\n` +
+            `👤 ${order.name} | 📱 ${order.whatsapp}\n` +
+            `📦 ${order.plan} | 💰 R$${order.amount}\n` +
+            `🆔 Pedido: ${orderId}\n` +
+            `👉 Cliente pagou mas não tem conta. Verifique!`
+          );
+        }
 
         // Enviar WhatsApp com dados do pagamento (abre janela 24h)
         await sendPaymentConfirmation(

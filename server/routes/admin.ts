@@ -161,4 +161,109 @@ router.patch('/clients/:id/starhome', async (req: AuthRequest, res: Response) =>
     }
 });
 
+// ============================================================
+// GET /api/admin/login-pool — Listar todos os logins do pool
+// ============================================================
+router.get('/login-pool', async (_req: AuthRequest, res: Response) => {
+    try {
+        const entries = await sql`
+            SELECT lp.id, lp.app_account, lp.app_password, lp.status,
+                   lp.client_id, lp.assigned_at, lp.created_at,
+                   c.name as client_name
+            FROM login_pool lp
+            LEFT JOIN clients c ON c.id = lp.client_id
+            ORDER BY lp.status ASC, lp.created_at DESC
+        `;
+        res.json({ entries });
+    } catch (error) {
+        logger.error('Erro ao buscar login pool:', error);
+        res.status(500).json({ error: 'Erro ao buscar pool de logins.' });
+    }
+});
+
+// ============================================================
+// GET /api/admin/login-pool/stats — Estatísticas do pool
+// ============================================================
+router.get('/login-pool/stats', async (_req: AuthRequest, res: Response) => {
+    try {
+        const [row] = await sql`
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'disponivel')::int as disponivel,
+                COUNT(*) FILTER (WHERE status = 'em_uso')::int as em_uso,
+                COUNT(*)::int as total
+            FROM login_pool
+        `;
+        res.json(row ?? { disponivel: 0, em_uso: 0, total: 0 });
+    } catch (error) {
+        logger.error('Erro ao buscar stats do pool:', error);
+        res.status(500).json({ error: 'Erro ao buscar estatísticas do pool.' });
+    }
+});
+
+// ============================================================
+// POST /api/admin/login-pool — Adicionar logins em bulk
+// ============================================================
+router.post('/login-pool', async (req: AuthRequest, res: Response) => {
+    try {
+        const { logins } = req.body as { logins: { app_account: string; app_password: string }[] };
+
+        if (!Array.isArray(logins) || logins.length === 0) {
+            res.status(400).json({ error: 'Envie um array de logins.' });
+            return;
+        }
+
+        let added = 0;
+        const errors: string[] = [];
+
+        for (const login of logins) {
+            if (!login.app_account?.trim() || !login.app_password?.trim()) {
+                errors.push(`Login inválido: ${JSON.stringify(login)}`);
+                continue;
+            }
+            try {
+                await sql`
+                    INSERT INTO login_pool (app_account, app_password, status)
+                    VALUES (${login.app_account.trim()}, ${login.app_password.trim()}, 'disponivel')
+                    ON CONFLICT (app_account) DO NOTHING
+                `;
+                added++;
+            } catch (err: any) {
+                errors.push(`Erro ao inserir ${login.app_account}: ${err.message}`);
+            }
+        }
+
+        logger.info(`🔑 Pool: ${added} login(s) adicionado(s) pelo admin`);
+        res.status(201).json({ added, errors });
+    } catch (error) {
+        logger.error('Erro ao adicionar logins ao pool:', error);
+        res.status(500).json({ error: 'Erro ao adicionar logins.' });
+    }
+});
+
+// ============================================================
+// DELETE /api/admin/login-pool/:id — Remover login disponível
+// ============================================================
+router.delete('/login-pool/:id', async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const [entry] = await sql`SELECT status FROM login_pool WHERE id = ${id}`;
+        if (!entry) {
+            res.status(404).json({ error: 'Login não encontrado.' });
+            return;
+        }
+        if (entry.status === 'em_uso') {
+            res.status(400).json({ error: 'Não é possível remover um login em uso por um cliente.' });
+            return;
+        }
+
+        await sql`DELETE FROM login_pool WHERE id = ${id}`;
+        logger.info(`🗑️ Login pool ID ${id} removido pelo admin`);
+        res.json({ message: 'Login removido com sucesso.' });
+    } catch (error) {
+        logger.error('Erro ao remover login do pool:', error);
+        res.status(500).json({ error: 'Erro ao remover login.' });
+    }
+});
+
 export default router;

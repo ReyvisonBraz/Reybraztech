@@ -75,8 +75,8 @@ router.post('/register', async (req: Request, res: Response) => {
 
         // Salvar no banco (email pode ser null)
         const [newClient] = await sql`
-          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status)
-          VALUES (${name}, ${whatsapp}, ${device}, ${email || null}, ${passwordHash}, 'mensal', 'Ativo')
+          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status, days_remaining)
+          VALUES (${name}, ${whatsapp}, ${device}, ${email || null}, ${passwordHash}, 'mensal', 'Inativo', 0)
           RETURNING id, name, email, plan, status
         `;
 

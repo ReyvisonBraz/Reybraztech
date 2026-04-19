@@ -1,7 +1,7 @@
 import { useState, FormEvent, useRef, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink, ShieldCheck, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink, ShieldCheck, RefreshCw, Sparkles, CreditCard, Zap } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 const WHATSAPP_BOT_NUMBER = '559191715764';
@@ -9,6 +9,8 @@ const WHATSAPP_ACTIVATION_MESSAGE = 'Olá! Quero solicitar meu código de verifi
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const planFromUrl = searchParams.get('plan') || 'mensal';
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -207,14 +209,8 @@ export const RegisterPage = () => {
         localStorage.setItem('reyb_token', data.token);
         localStorage.setItem('reyb_user', JSON.stringify(data.user));
 
-        // Redirecionar para o dashboard com dados de boas-vindas via navigate state
-        navigate('/dashboard?welcome=true', {
-          state: {
-            welcomePassword: formData.password,
-            welcomeWhatsapp: formData.countryCode + formData.whatsapp,
-            welcomeEmail: formData.email || '',
-          }
-        });
+        // Ir para step 5 — tela de sucesso antes do checkout
+        setStep(5);
 
       } catch {
         clearTimeout(awakeTimer);
@@ -231,15 +227,17 @@ export const RegisterPage = () => {
   return (
     <div className="min-h-screen bg-transparent pt-32 pb-20 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        {step > 1 ? (
-          <button 
-            type="button" 
-            onClick={() => setStep(step - 1)} 
+        {step > 1 && step < 5 ? (
+          <button
+            type="button"
+            onClick={() => setStep(step - 1)}
             className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors group px-4 py-2 rounded-full glass-light hover:bg-white/10 text-sm font-bold"
           >
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
             Voltar etapa
           </button>
+        ) : step === 5 ? (
+          <div className="mb-8" />
         ) : (
           <Link to="/login" className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 text-sm font-bold">
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
@@ -255,17 +253,20 @@ export const RegisterPage = () => {
 
 
           <div className="text-center mb-8 mt-2">
-            <h2 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Criar <span className="text-gradient">Conta</span></h2>
+            <h2 className="text-4xl font-black text-slate-900 dark:text-white mb-4">
+              {step === 5 ? <span className="text-gradient">Conta Criada! 🎉</span> : <>Criar <span className="text-gradient">Conta</span></>}
+            </h2>
             <p className="text-slate-400">
               {step === 1 && 'Junte-se à Reybraz Tech hoje.'}
               {step === 2 && 'Ative seu WhatsApp para receber códigos.'}
               {step === 3 && 'Digite o código recebido no WhatsApp.'}
               {step === 4 && 'Quase lá! Crie sua senha.'}
+              {step === 5 && 'Agora é só ativar seu plano e começar a assistir!'}
             </p>
           </div>
 
-          {/* Indicadores de passo numéricos */}
-          <div className="mb-10 sm:mb-12 px-2 pb-6">
+          {/* Indicadores de passo numéricos — ocultos no step 5 */}
+          {step < 5 && <div className="mb-10 sm:mb-12 px-2 pb-6">
             <div className="flex items-center justify-between relative">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800/80 rounded-full -z-10"></div>
               <div 
@@ -297,9 +298,111 @@ export const RegisterPage = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </div>}
 
           <form onSubmit={handleNext} className="space-y-6">
+            {/* ─── PASSO 5: Sucesso — Ir para Checkout ─── */}
+            {step === 5 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-6 text-center"
+              >
+                {/* Ícone animado de sucesso */}
+                <div className="flex justify-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                    className="relative"
+                  >
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border-2 border-emerald-500/50 flex items-center justify-center">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+                    </div>
+                    {/* Partículas decorativas */}
+                    {[...Array(6)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
+                        animate={{
+                          opacity: [0, 1, 0],
+                          scale: [0, 1, 0],
+                          x: Math.cos((i * Math.PI * 2) / 6) * 50,
+                          y: Math.sin((i * Math.PI * 2) / 6) * 50,
+                        }}
+                        transition={{ duration: 0.8, delay: 0.2 + i * 0.05 }}
+                        className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full"
+                        style={{ background: i % 2 === 0 ? '#22d3ee' : '#a855f7' }}
+                      />
+                    ))}
+                  </motion.div>
+                </div>
+
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <h3 className="text-2xl font-black text-white mb-2">Sua conta foi criada!</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed px-4">
+                    Agora escolha seu plano para liberar o acesso. É rápido e você começa a assistir em minutos.
+                  </p>
+                </motion.div>
+
+                {/* Cards de planos rápidos */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="grid grid-cols-2 gap-3"
+                >
+                  {[
+                    { plan: 'mensal', label: 'Mensal', price: 'R$35', days: '31 dias', color: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/40 text-cyan-400' },
+                    { plan: 'trimestral', label: 'Trimestral', price: 'R$90', days: '93 dias', color: 'from-purple-500/20 to-purple-600/10 border-purple-500/40 text-purple-400' },
+                    { plan: 'semestral', label: 'Semestral', price: 'R$169', days: '186 dias', color: 'from-blue-500/20 to-blue-600/10 border-blue-500/40 text-blue-400' },
+                    { plan: 'anual', label: 'Anual', price: 'R$299', days: '365 dias', color: 'from-orange-500/20 to-orange-600/10 border-orange-500/40 text-orange-400' },
+                  ].map((p) => (
+                    <button
+                      key={p.plan}
+                      type="button"
+                      onClick={() => navigate(`/checkout?plan=${p.plan}`)}
+                      className={`bg-gradient-to-br ${p.color} border rounded-2xl p-4 text-left transition-all hover:scale-105 active:scale-95`}
+                    >
+                      <div className="font-black text-sm uppercase tracking-wide mb-1">{p.label}</div>
+                      <div className="text-white font-black text-xl">{p.price}</div>
+                      <div className="text-slate-400 text-xs mt-0.5">{p.days}</div>
+                    </button>
+                  ))}
+                </motion.div>
+
+                {/* Botão principal */}
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  onClick={() => navigate(`/checkout?plan=${planFromUrl}`)}
+                  className="btn-shimmer w-full py-5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(14,165,233,0.4)] border-none text-lg"
+                >
+                  <Zap className="w-6 h-6" />
+                  Ativar Meu Plano Agora
+                  <CreditCard className="w-5 h-5" />
+                </motion.button>
+
+                {/* Link para ir ao dashboard sem pagar */}
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="text-center"
+                >
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard')}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline"
+                  >
+                    Entrar no painel sem ativar por agora
+                  </button>
+                </motion.p>
+              </motion.div>
+            )}
+
             {/* ─── PASSO 1: Nome, Dispositivo e WhatsApp ─── */}
             {step === 1 && (
               <motion.div

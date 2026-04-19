@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff, Download, BookOpen, Rocket } from 'lucide-react';
+import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loader2, Copy, AlertTriangle, X, Eye, EyeOff, Download, BookOpen, Rocket, Lock, MessageCircle } from 'lucide-react';
 import { API_URL } from '../config/api';
 import { InstallationGuideModal } from '../components/InstallationGuideModal';
 import { UnitvPromoModal } from '../components/UnitvPromoModal';
@@ -122,6 +122,26 @@ export const DashboardPage = () => {
     // Mostrar promo do UNITV após resposta da experiência (só para novos cadastros)
     if (welcomeData) {
       setTimeout(() => setShowUnitvPromo(true), 500);
+    }
+  };
+
+  const [requestingAccess, setRequestingAccess] = useState(false);
+  const [accessRequested, setAccessRequested] = useState(false);
+
+  const handleRequestAccess = async () => {
+    setRequestingAccess(true);
+    const token = localStorage.getItem('reyb_token');
+    try {
+      await fetch(`${API_URL}/api/clients/request-access`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAccessRequested(true);
+    } catch {
+      // silencioso — notificação pode falhar mas não bloqueia o usuário
+      setAccessRequested(true);
+    } finally {
+      setRequestingAccess(false);
     }
   };
 
@@ -370,6 +390,32 @@ export const DashboardPage = () => {
       />
 
       <div className="max-w-6xl mx-auto">
+        {/* ─── Banner: Conta Inativa ─── */}
+        {user.status === 'Inativo' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 rounded-3xl overflow-hidden border-2 border-orange-500/50"
+          >
+            <div className="bg-gradient-to-r from-orange-500/20 via-amber-500/15 to-orange-500/20 p-5 md:p-6 flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="text-white font-black text-lg">Sua conta está inativa</h3>
+                <p className="text-orange-200/70 text-sm">Ative um plano para liberar seu acesso ao IPTV e ver suas credenciais.</p>
+              </div>
+              <Link
+                to="/checkout"
+                className="btn-shimmer shrink-0 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-black rounded-2xl border-none shadow-[0_0_20px_rgba(249,115,22,0.4)] whitespace-nowrap flex items-center gap-2"
+              >
+                <Zap className="w-5 h-5" />
+                ATIVAR AGORA
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div>
             <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2">Olá, <span className="text-gradient">{user.name.split(' ')[0]}</span></h1>
@@ -450,75 +496,114 @@ export const DashboardPage = () => {
             {/* Dados de Acesso ao App */}
             <div className="mt-8 pt-8 border-t border-slate-200 dark:border-white/5">
               <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Dados de Acesso ao App</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-cyan-400" /> Dias Restantes
-                  </p>
-                  <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-cyan-400">
-                    {user.days_remaining} <span className="text-sm font-bold text-slate-500">Dias</span>
-                  </p>
-                  <div className="mt-3 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-300 ${
-                        user.days_remaining > 10 ? 'bg-emerald-500' :
-                        user.days_remaining > 3 ? 'bg-yellow-500' :
-                        'bg-red-500'
-                      }`}
-                      style={{ width: `${Math.min((user.days_remaining / 30) * 100, 100)}%` }}
-                    />
+
+              {/* Estado: Inativo — mostra cadeado */}
+              {user.status === 'Inativo' ? (
+                <div className="p-6 rounded-2xl bg-white/3 border border-orange-500/20 flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
+                    <Lock className="w-6 h-6 text-orange-400" />
                   </div>
-                </div>
-                <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Usuário / Conta</p>
-                  <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">
-                    {user.app_account || 'Pendente'}
-                  </p>
-                </div>
-                <div
-                  onClick={() => user.app_password && !showPassword && setShowPassword(true)}
-                  className={`p-4 md:p-5 rounded-2xl border transition-all duration-200 ${
-                    !user.app_password
-                      ? 'bg-slate-100/50 dark:bg-white/5 border-slate-200 dark:border-white/10'
-                      : showPassword
-                        ? 'bg-slate-100/50 dark:bg-white/5 border-slate-200 dark:border-white/10'
-                        : 'bg-slate-100/50 dark:bg-white/5 border-cyan-500/30 cursor-pointer hover:border-cyan-400 hover:bg-cyan-500/5'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest">Senha</p>
-                    {user.app_password && showPassword && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); copyToClipboard(user.app_password!, 'app_password'); }}
-                          className="text-slate-400 hover:text-cyan-400 transition-colors"
-                          title="Copiar senha"
-                        >
-                          {copiedField === 'app_password' ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setShowPassword(false); }}
-                          className="text-slate-400 hover:text-cyan-400 transition-colors"
-                          title="Ocultar senha"
-                        >
-                          <EyeOff className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+                  <div>
+                    <p className="text-white font-bold mb-1">Disponível após ativação</p>
+                    <p className="text-slate-500 text-sm">Ative seu plano para ver suas credenciais de acesso ao IPTV.</p>
                   </div>
-                  {!user.app_password ? (
-                    <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">Pendente</p>
-                  ) : showPassword ? (
-                    <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">{user.app_password}</p>
+                  <Link to="/checkout" className="mt-1 px-5 py-2 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-bold text-sm hover:bg-orange-500/30 transition-all flex items-center gap-2">
+                    <Zap className="w-4 h-4" /> Ativar Plano
+                  </Link>
+                </div>
+
+              /* Estado: Ativo mas sem login atribuído (pool vazio) */
+              ) : user.status !== 'Inativo' && !user.app_account ? (
+                <div className="p-6 rounded-2xl bg-cyan-500/5 border border-cyan-500/20 flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-white font-bold mb-1">Seu acesso está sendo preparado ⏳</p>
+                    <p className="text-slate-500 text-sm">Estamos configurando suas credenciais. Normalmente leva alguns minutos.</p>
+                  </div>
+                  {!accessRequested ? (
+                    <button
+                      onClick={handleRequestAccess}
+                      disabled={requestingAccess}
+                      className="mt-1 px-5 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 font-bold text-sm hover:bg-cyan-500/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {requestingAccess ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                      {requestingAccess ? 'Enviando...' : 'Solicitar Acesso'}
+                    </button>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg md:text-xl font-bold text-slate-500 dark:text-slate-400">••••••</p>
-                      <Eye className="w-4 h-4 text-cyan-400 animate-pulse" />
-                      <span className="text-[0.65rem] text-cyan-400 font-medium">Clique para ver</span>
+                    <div className="mt-1 px-5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-sm flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" /> Solicitação enviada! Em breve te avisamos.
                     </div>
                   )}
                 </div>
-              </div>
+
+              /* Estado normal: tem login atribuído */
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-cyan-400" /> Dias Restantes
+                    </p>
+                    <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-cyan-400">
+                      {user.days_remaining} <span className="text-sm font-bold text-slate-500">Dias</span>
+                    </p>
+                    <div className="mt-3 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          user.days_remaining > 10 ? 'bg-emerald-500' :
+                          user.days_remaining > 3 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min((user.days_remaining / 30) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="p-4 md:p-5 rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Usuário / Conta</p>
+                    <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">
+                      {user.app_account}
+                    </p>
+                  </div>
+                  <div
+                    onClick={() => user.app_password && !showPassword && setShowPassword(true)}
+                    className={`p-4 md:p-5 rounded-2xl border transition-all duration-200 ${
+                      showPassword
+                        ? 'bg-slate-100/50 dark:bg-white/5 border-slate-200 dark:border-white/10'
+                        : 'bg-slate-100/50 dark:bg-white/5 border-cyan-500/30 cursor-pointer hover:border-cyan-400 hover:bg-cyan-500/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[0.65rem] md:text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest">Senha</p>
+                      {user.app_password && showPassword && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(user.app_password!, 'app_password'); }}
+                            className="text-slate-400 hover:text-cyan-400 transition-colors"
+                          >
+                            {copiedField === 'app_password' ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowPassword(false); }}
+                            className="text-slate-400 hover:text-cyan-400 transition-colors"
+                          >
+                            <EyeOff className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {showPassword ? (
+                      <p className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">{user.app_password}</p>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-lg md:text-xl font-bold text-slate-500 dark:text-slate-400">••••••</p>
+                        <Eye className="w-4 h-4 text-cyan-400 animate-pulse" />
+                        <span className="text-[0.65rem] text-cyan-400 font-medium">Clique para ver</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
 

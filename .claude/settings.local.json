@@ -25,7 +25,8 @@
       "WebFetch(domain:21st.dev)",
       "Bash(npx vite:*)",
       "WebFetch(domain:cdn.pulse.is)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node scripts/generate-icons.cjs)"
     ]
   }
 }

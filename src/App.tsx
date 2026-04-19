@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, useState } from 'react';
+import { SplashScreen } from './components/SplashScreen';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { InstallPrompt } from './components/InstallPrompt';
@@ -46,7 +47,13 @@ const PageLoader = () => (
 import { API_URL } from './config/api';
 import { restoreSendPulseChat } from './utils/openSendPulseChat';
 
+// Splash só mostra quando o app está instalado como PWA
+const isInstalledPWA = window.matchMedia('(display-mode: standalone)').matches
+  || (window.navigator as any).standalone === true;
+
 export default function App() {
+  const [showSplash, setShowSplash] = useState(isInstalledPWA);
+
   // Wake Up Server Strategy (Render Free Tier)
   useEffect(() => {
     fetch(`${API_URL}/api/health`, { method: 'GET' })
@@ -58,6 +65,10 @@ export default function App() {
   useEffect(() => {
     restoreSendPulseChat();
   }, []);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   return (
     <BrowserRouter>

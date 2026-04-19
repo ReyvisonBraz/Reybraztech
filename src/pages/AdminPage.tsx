@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
-import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity, Search } from 'lucide-react';
+import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity, Search, KeyRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
 import { SystemMonitor } from '../components/admin/SystemMonitor';
+import { LoginPool } from '../components/admin/LoginPool';
 
 interface Client {
     id: number;
@@ -42,7 +43,7 @@ export const AdminPage = () => {
     const [linkClient, setLinkClient] = useState<Client | null>(null);
     const [starhomeCode, setStarhomeCode] = useState('');
     const [linking, setLinking] = useState(false);
-    const [activeTab, setActiveTab] = useState<'clients' | 'monitor'>('clients');
+    const [activeTab, setActiveTab] = useState<'clients' | 'monitor' | 'pool'>('clients');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -556,11 +557,24 @@ export const AdminPage = () => {
                     {activeTab === 'monitor' && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
                     Monitor do Sistema
                 </button>
+                <button
+                    onClick={() => setActiveTab('pool')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'pool'
+                            ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 border border-purple-500/30'
+                            : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                    <KeyRound className="w-4 h-4" />
+                    Pool de Logins
+                </button>
             </div>
 
             {/* Tab Content */}
             {activeTab === 'monitor' ? (
                 <SystemMonitor />
+            ) : activeTab === 'pool' ? (
+                <LoginPool />
             ) : (
                 <div className="glass rounded-3xl overflow-hidden">
                     <div className="p-4 border-b border-white/5 flex gap-4 items-center bg-white/5">

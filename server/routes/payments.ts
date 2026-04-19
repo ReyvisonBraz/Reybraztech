@@ -1,9 +1,42 @@
 import { Router } from 'express';
+import { createHmac } from 'crypto';
 import { createPaymentPreference, getPaymentDetails } from '../services/mercadopago.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { sendPaymentConfirmation } from '../services/whatsapp.js';
 import sql from '../database.js';
 import logger from '../utils/logger.js';
+
+/**
+ * Valida a assinatura do webhook enviada pelo Mercado Pago.
+ * Documentação: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
+ */
+function validateMercadoPagoSignature(req: import('express').Request, secret: string): boolean {
+  const xSignature = req.headers['x-signature'] as string | undefined;
+  const xRequestId = req.headers['x-request-id'] as string | undefined;
+
+  if (!xSignature || !xRequestId) return false;
+
+  // Extrair ts e v1 do header x-signature (formato: "ts=...,v1=...")
+  const parts = xSignature.split(',');
+  let ts = '';
+  let v1 = '';
+  for (const part of parts) {
+    const [key, value] = part.split('=');
+    if (key === 'ts') ts = value;
+    if (key === 'v1') v1 = value;
+  }
+
+  if (!ts || !v1) return false;
+
+  // Extrair dataId da query ou body
+  const dataId = (req.query.id || req.body?.data?.id || '') as string;
+
+  // Montar o manifest conforme documentação do MP
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+  const hmac = createHmac('sha256', secret).update(manifest).digest('hex');
+
+  return hmac === v1;
+}
 
 const router = Router();
 
@@ -46,6 +79,17 @@ router.post('/webhook', async (req, res) => {
   const topic = query.topic || query.type || body.type || body.action?.split('.')[0];
 
   logger.info('📬 Webhook recebido:', { topic, query, body });
+
+  // Validar assinatura do Mercado Pago (se secret estiver configurado)
+  const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const isValid = validateMercadoPagoSignature(req as any, webhookSecret);
+    if (!isValid) {
+      logger.warn('⚠️ Webhook com assinatura inválida — ignorado');
+      res.sendStatus(200);
+      return;
+    }
+  }
 
   try {
     // Mercado Pago envia notificações com topic 'payment' ou type 'payment'

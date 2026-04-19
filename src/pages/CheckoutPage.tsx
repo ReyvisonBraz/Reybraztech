@@ -1,5 +1,6 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 import { motion } from 'motion/react';
 import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
 import { API_URL } from '../config/api';
@@ -15,16 +16,46 @@ const MP_FALLBACK_LINKS: Record<string, string> = {
 // Numero de Suporte WhatsApp
 const WHATSAPP_SUPPORT = '5591986450659';
 
+function getLoggedInToken(): string | null {
+  const token = localStorage.getItem('reyb_token');
+  if (!token) return null;
+  try {
+    const decoded = jwtDecode<{ exp: number }>(token);
+    return decoded.exp * 1000 > Date.now() ? token : null;
+  } catch {
+    return null;
+  }
+}
+
 export const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
   const plan = searchParams.get('plan') || 'mensal';
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [name, setName] = useState('');
   const [countryCode] = useState('55');
   const [phone, setPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Detectar login e pré-preencher dados do usuário
+  useEffect(() => {
+    const token = getLoggedInToken();
+    if (!token) return;
+
+    const stored = localStorage.getItem('reyb_user');
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        setIsLoggedIn(true);
+        if (user.name) setName(user.name);
+        if (user.whatsapp) setPhone(user.whatsapp.replace(/^55/, ''));
+      } catch {
+        // ignora JSON inválido
+      }
+    }
+  }, []);
 
   const planDetails: Record<string, { price: string; duration: string; color: string; border: string }> = {
     mensal: { price: '35,00', duration: '31 dias', color: 'text-cyan-400', border: 'border-cyan-500/30' },
@@ -40,20 +71,34 @@ export const CheckoutPage = () => {
     setError('');
     setSubmitting(true);
 
-    const whatsapp = `${countryCode}${phone.replace(/\D/g, '')}`;
-
-    if (whatsapp.length < 12) {
-      setError('Numero de WhatsApp invalido. Inclua o DDD.');
-      setSubmitting(false);
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_URL}/api/orders/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, whatsapp, plan }),
-      });
+      let response: Response;
+
+      if (isLoggedIn) {
+        // Usuário logado: usa rota de renovação com JWT (sem pedir dados)
+        const token = getLoggedInToken();
+        response = await fetch(`${API_URL}/api/orders/renew`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ plan }),
+        });
+      } else {
+        // Usuário não logado: valida whatsapp e cria pedido normal
+        const whatsapp = `${countryCode}${phone.replace(/\D/g, '')}`;
+        if (whatsapp.length < 12) {
+          setError('Numero de WhatsApp invalido. Inclua o DDD.');
+          setSubmitting(false);
+          return;
+        }
+        response = await fetch(`${API_URL}/api/orders/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, whatsapp, plan }),
+        });
+      }
 
       const data = await response.json();
 
@@ -63,10 +108,8 @@ export const CheckoutPage = () => {
         return;
       }
 
-      // Salvar orderId para recuperacao
       localStorage.setItem('reyb_pending_order', data.orderId);
 
-      // Redirecionar para Mercado Pago
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
@@ -74,7 +117,6 @@ export const CheckoutPage = () => {
       }
     } catch (err) {
       console.error('Erro ao processar pagamento:', err);
-      // Fallback para link estatico
       const fallbackLink = MP_FALLBACK_LINKS[plan];
       if (fallbackLink && fallbackLink !== '#') {
         window.open(fallbackLink, '_blank');
@@ -171,35 +213,44 @@ export const CheckoutPage = () => {
                   Informe seus dados para identificarmos seu pagamento e liberarmos seu acesso.
                 </p>
 
+                {isLoggedIn && (
+                  <div className="mb-4 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-sm font-bold text-center">
+                    Renovando com sua conta atual
+                  </div>
+                )}
+
                 <form onSubmit={handleProceed} className="space-y-4">
                   <div className="space-y-4 mb-6">
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <input
-                        required
+                        required={!isLoggedIn}
                         type="text"
                         placeholder="Seu nome completo"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                        onChange={(e) => !isLoggedIn && setName(e.target.value)}
+                        readOnly={isLoggedIn}
+                        className={`w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white outline-none transition-all ${isLoggedIn ? 'text-slate-400 cursor-not-allowed' : 'focus:border-cyan-500'}`}
                       />
                     </div>
-                    <div className="flex gap-2">
-                      <div className="flex items-center gap-1 px-4 bg-white/5 border border-white/10 rounded-2xl text-slate-400 text-sm font-mono min-w-[72px] justify-center">
-                        +{countryCode}
+                    {!isLoggedIn && (
+                      <div className="flex gap-2">
+                        <div className="flex items-center gap-1 px-4 bg-white/5 border border-white/10 rounded-2xl text-slate-400 text-sm font-mono min-w-[72px] justify-center">
+                          +{countryCode}
+                        </div>
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                          <input
+                            required
+                            type="tel"
+                            placeholder="WhatsApp (com DDD)"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
+                          />
+                        </div>
                       </div>
-                      <div className="relative flex-1">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                        <input
-                          required
-                          type="tel"
-                          placeholder="WhatsApp (com DDD)"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-white focus:border-cyan-500 outline-none transition-all"
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="pt-6 border-t border-white/5 flex justify-between items-center mb-6">

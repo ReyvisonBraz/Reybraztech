@@ -1,16 +1,20 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import logger from '../utils/logger.js';
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || ''
-});
+function getClient(): MercadoPagoConfig {
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurado. Adicione às variáveis do Vercel.');
+  }
+  return new MercadoPagoConfig({ accessToken });
+}
 
 export const createPaymentPreference = async (
   items: { id: string; title: string; unit_price: number; quantity: number; currency_id?: string }[],
   externalReference: string,
   backUrls?: { success: string; failure: string; pending: string }
 ) => {
-  const preference = new Preference(client);
+  const preference = new Preference(getClient());
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
   const body = {
@@ -39,7 +43,7 @@ export const createPaymentPreference = async (
  * Usado no webhook para confirmar status.
  */
 export const getPaymentDetails = async (paymentId: string) => {
-  const payment = new Payment(client);
+  const payment = new Payment(getClient());
   try {
     const response = await payment.get({ id: paymentId });
     return response;

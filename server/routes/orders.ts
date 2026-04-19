@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import sql from '../database.js';
 import logger from '../utils/logger.js';
 import { createPaymentPreference } from '../services/mercadopago.js';
+import { verifyToken, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -52,10 +53,40 @@ router.post('/create', async (req: Request, res: Response) => {
       LIMIT 1
     `;
 
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    // Criar preferência no Mercado Pago
+    const items = [{
+      id: plan,
+      title: planInfo.title,
+      unit_price: planInfo.amount,
+      quantity: 1,
+      currency_id: 'BRL',
+    }];
+
     if (recentOrder) {
-      // Retornar o pedido existente em vez de criar duplicata
+      // Reutilizar pedido existente — apenas gera nova preferência (a anterior pode ter expirado)
       logger.info(`♻️ Pedido recente encontrado para ${whatsapp}, reutilizando ${recentOrder.id}`);
-      // Criar nova preferência pois a anterior pode ter expirado
+
+      const backUrls = {
+        success: `${frontendUrl}/complete-registration?order=${recentOrder.id}`,
+        failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
+        pending: `${frontendUrl}/complete-registration?order=${recentOrder.id}`,
+      };
+
+      const preference = await createPaymentPreference(items, recentOrder.id, backUrls);
+
+      await sql`
+        UPDATE pending_orders
+        SET mp_preference_id = ${preference.id}
+        WHERE id = ${recentOrder.id}
+      `;
+
+      res.status(200).json({
+        orderId: recentOrder.id,
+        init_point: preference.init_point,
+      });
+      return;
     }
 
     // Gerar ID numérico grande (timestamp + random) - converter para string
@@ -67,17 +98,6 @@ router.post('/create', async (req: Request, res: Response) => {
       VALUES (${orderId}, ${name}, ${whatsapp}, ${plan}, ${planInfo.amount}, 'pending')
       RETURNING id
     `;
-
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-
-    // Criar preferência no Mercado Pago
-    const items = [{
-      id: plan,
-      title: planInfo.title,
-      unit_price: planInfo.amount,
-      quantity: 1,
-      currency_id: 'BRL',
-    }];
 
     const backUrls = {
       success: `${frontendUrl}/complete-registration?order=${order.id}`,
@@ -195,6 +215,78 @@ router.get('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Erro ao buscar pedido:', error);
     res.status(500).json({ error: 'Erro ao buscar pedido.' });
+  }
+});
+
+// ============================================================
+// POST /api/orders/renew — Renovação para usuário já logado
+// ============================================================
+const renewSchema = z.object({
+  plan: z.enum(['mensal', 'trimestral', 'semestral', 'anual']),
+});
+
+router.post('/renew', verifyToken, async (req: AuthRequest, res: Response) => {
+  const result = renewSchema.safeParse(req.body);
+  if (!result.success) {
+    res.status(400).json({ error: result.error.issues[0].message });
+    return;
+  }
+
+  const { plan } = result.data;
+  const planInfo = PLAN_PRICES[plan];
+  const clientId = req.clientId;
+
+  try {
+    const [client] = await sql`
+      SELECT name, whatsapp FROM clients WHERE id = ${clientId}
+    `;
+
+    if (!client) {
+      res.status(404).json({ error: 'Cliente não encontrado.' });
+      return;
+    }
+
+    const { name, whatsapp } = client;
+
+    const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
+
+    const [order] = await sql`
+      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status)
+      VALUES (${orderId}, ${name}, ${whatsapp}, ${plan}, ${planInfo.amount}, 'pending')
+      RETURNING id
+    `;
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    const items = [{
+      id: plan,
+      title: planInfo.title,
+      unit_price: planInfo.amount,
+      quantity: 1,
+      currency_id: 'BRL',
+    }];
+
+    const backUrls = {
+      success: `${frontendUrl}/dashboard?payment=success`,
+      failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
+      pending: `${frontendUrl}/dashboard?payment=pending`,
+    };
+
+    const preference = await createPaymentPreference(items, order.id, backUrls);
+
+    await sql`
+      UPDATE pending_orders SET mp_preference_id = ${preference.id} WHERE id = ${order.id}
+    `;
+
+    logger.info(`🔄 Renovação criada: ${order.id} | ${name} | ${plan} | R$${planInfo.amount}`);
+
+    res.status(201).json({
+      orderId: order.id,
+      init_point: preference.init_point,
+    });
+  } catch (error) {
+    logger.error('Erro ao criar renovação:', error);
+    res.status(500).json({ error: 'Erro ao processar renovação. Tente novamente.' });
   }
 });
 

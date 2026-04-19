@@ -1,11 +1,22 @@
+import { useState } from 'react';
 import { MessageSquare, MessageCircle, Send, Instagram } from 'lucide-react';
 import { openSendPulseChat } from '../utils/openSendPulseChat';
+import { LegalModal } from './LegalModal';
 
 const LOGO_URL = "/logo/logo.avif";
 const LOGO_FALLBACK = "https://lh3.googleusercontent.com/aida-public/AB6AXuB_xDT_PyoMkB59P3OzTV_FbTxjdvtzFgyoxemqDJwBcszLBk9vonzWpUiC2ZVcrQvOmbqY0zjk7FdF0CSKQP2t7wS1k61vO5FQUS-5qpoyzrsYbPRE0sJvWqqkjPTTG-RVStF2gd78ThnlxpXPO4He6FboapYSBvaZ3RPBRm3USRYgxtIK3ggMuLX8nwsgytGrMmzDCFhAipovqbRi-S3ahXOqlUnnDKyJLrsIyOMUU_iAsruVUNJkCByYeE9GmQcYhNLjMlQWQxue";
 
 export const Footer = () => {
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalTab, setLegalTab] = useState<'faq' | 'termos' | 'privacidade'>('faq');
+
+    const openLegal = (tab: 'faq' | 'termos' | 'privacidade') => {
+        setLegalTab(tab);
+        setLegalModalOpen(true);
+    };
+
     return (
+        <>
         <footer className="border-t border-white/5 pt-20 pb-10 bg-[#020617]">
             <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12 mb-16">
@@ -55,13 +66,21 @@ export const Footer = () => {
                     <div>
                         <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-6">Suporte</h3>
                         <ul className="space-y-3">
-                            {['FAQ', 'Termos de Uso', 'Privacidade'].map(item => (
-                                <li key={item}>
-                                    <a href="#" className="text-slate-400 hover:text-white transition-colors text-base">
-                                        {item}
-                                    </a>
-                                </li>
-                            ))}
+                            <li>
+                                <button onClick={() => openLegal('faq')} className="text-slate-400 hover:text-white transition-colors text-base text-left">
+                                    FAQ
+                                </button>
+                            </li>
+                            <li>
+                                <button onClick={() => openLegal('termos')} className="text-slate-400 hover:text-white transition-colors text-base text-left">
+                                    Termos de Uso
+                                </button>
+                            </li>
+                            <li>
+                                <button onClick={() => openLegal('privacidade')} className="text-slate-400 hover:text-white transition-colors text-base text-left">
+                                    Privacidade
+                                </button>
+                            </li>
                         </ul>
                     </div>
 
@@ -108,5 +127,12 @@ export const Footer = () => {
                 </div>
             </div>
         </footer>
+
+        <LegalModal
+            isOpen={legalModalOpen}
+            onClose={() => setLegalModalOpen(false)}
+            initialTab={legalTab}
+        />
+        </>
     );
 };

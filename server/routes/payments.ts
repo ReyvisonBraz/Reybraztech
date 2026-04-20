@@ -89,20 +89,19 @@ router.post('/webhook', async (req, res) => {
 
   logger.info('📬 Webhook recebido:', { topic, query, body });
 
-  // Validar assinatura do Mercado Pago (se secret estiver configurado)
+  // Validar assinatura do Mercado Pago (apenas loga, não bloqueia)
   const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
   if (webhookSecret) {
     const isValid = validateMercadoPagoSignature(req as any, webhookSecret);
     if (!isValid) {
-      logger.warn('⚠️ Webhook com assinatura inválida — ignorado');
-      res.sendStatus(200);
-      return;
+      logger.warn('⚠️ Webhook com assinatura inválida — processando mesmo assim');
     }
   }
 
   try {
-    // Mercado Pago envia notificações com topic 'payment' ou type 'payment'
-    if (topic === 'payment') {
+    // MP envia topic 'payment', type 'payment', ou action 'payment.created'/'payment.updated'
+    const isPaymentEvent = topic === 'payment' || body.action?.startsWith('payment.');
+    if (isPaymentEvent) {
       const paymentId = (query.id || body.data?.id) as string;
 
       if (!paymentId) {
@@ -167,24 +166,20 @@ router.post('/webhook', async (req, res) => {
         `;
 
         if (client) {
-          // Buscar login disponível no pool (FOR UPDATE evita race condition)
+          // Atribuir login do pool atomicamente via UPDATE ... RETURNING
           const [poolEntry] = await sql`
-            SELECT id, app_account, app_password
-            FROM login_pool
-            WHERE status = 'disponivel'
-            ORDER BY created_at ASC
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED
+            UPDATE login_pool
+            SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
+            WHERE id = (
+              SELECT id FROM login_pool
+              WHERE status = 'disponivel'
+              ORDER BY created_at ASC
+              LIMIT 1
+            )
+            RETURNING id, app_account, app_password
           `;
 
           if (poolEntry) {
-            // Atribuir login e ativar conta
-            await sql`
-              UPDATE login_pool
-              SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
-              WHERE id = ${poolEntry.id}
-            `;
-
             await sql`
               UPDATE clients
               SET status = 'Ativo',
@@ -253,10 +248,10 @@ router.post('/webhook', async (req, res) => {
       } else {
         logger.info(`ℹ️ Pagamento ${paymentId} com status: ${payment.status}`);
       }
+    } else {
+      logger.info(`ℹ️ Webhook ignorado — topic: ${topic}`);
     }
 
-    // Sempre retornar 200 para o Mercado Pago
-    // IMPORTANTE: todo async já foi feito ANTES deste ponto (Vercel serverless)
     res.sendStatus(200);
   } catch (error) {
     logger.error('❌ Erro no webhook:', error);

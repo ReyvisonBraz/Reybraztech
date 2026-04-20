@@ -27,6 +27,11 @@ export const createPaymentPreference = async (
       pending: `${frontendUrl}/dashboard?payment=pending`,
     },
     auto_return: 'approved' as const,
+    payment_methods: {
+      excluded_payment_types: [] as { id: string }[],
+      installments: 12,
+    },
+    expires: false,
   };
 
   try {

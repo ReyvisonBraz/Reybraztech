@@ -21,14 +21,22 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             return;
         }
 
-        // Buscar histórico de pagamentos
+        // Buscar histórico de pagamentos via pending_orders
         const payments = await sql`
-          SELECT plan, value, status, paid_at as date
-          FROM payments
-          WHERE client_id = ${req.clientId!}
+          SELECT plan, amount, status, paid_at, created_at
+          FROM pending_orders
+          WHERE whatsapp = ${client.whatsapp}
+            AND status IN ('paid', 'registered')
           ORDER BY paid_at DESC
           LIMIT 10
         `;
+
+        const paymentHistory = payments.map((p: any) => ({
+            date: new Date(p.paid_at || p.created_at).toLocaleDateString('pt-BR'),
+            plan: p.plan,
+            value: `R$ ${Number(p.amount).toFixed(2).replace('.', ',')}`,
+            status: 'Pago',
+        }));
 
         res.json({
             name: client.name,
@@ -41,7 +49,7 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             app_account: client.app_account,
             app_password: client.app_password,
             createdAt: client.created_at,
-            paymentHistory: payments,
+            paymentHistory,
         });
     } catch (error) {
         logger.error('Erro no dashboard:', error);

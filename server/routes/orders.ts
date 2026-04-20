@@ -69,9 +69,9 @@ router.post('/create', async (req: Request, res: Response) => {
       logger.info(`♻️ Pedido recente encontrado para ${whatsapp}, reutilizando ${recentOrder.id}`);
 
       const backUrls = {
-        success: `${frontendUrl}/complete-registration?order=${recentOrder.id}`,
+        success: `${frontendUrl}/dashboard?payment=success`,
         failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
-        pending: `${frontendUrl}/complete-registration?order=${recentOrder.id}`,
+        pending: `${frontendUrl}/dashboard?payment=pending`,
       };
 
       const preference = await createPaymentPreference(items, recentOrder.id, backUrls);
@@ -100,9 +100,9 @@ router.post('/create', async (req: Request, res: Response) => {
     `;
 
     const backUrls = {
-      success: `${frontendUrl}/complete-registration?order=${order.id}`,
+      success: `${frontendUrl}/dashboard?payment=success`,
       failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
-      pending: `${frontendUrl}/complete-registration?order=${order.id}`,
+      pending: `${frontendUrl}/dashboard?payment=pending`,
     };
 
     const preference = await createPaymentPreference(items, order.id, backUrls);
@@ -284,7 +284,7 @@ router.post('/renew', verifyToken, async (req: AuthRequest, res: Response) => {
       orderId: order.id,
       init_point: preference.init_point,
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Erro ao criar renovação:', error);
     res.status(500).json({ error: 'Erro ao processar renovação. Tente novamente.' });
   }

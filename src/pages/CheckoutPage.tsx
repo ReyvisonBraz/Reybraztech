@@ -29,7 +29,7 @@ function getLoggedInToken(): string | null {
 
 export const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
-  const plan = searchParams.get('plan') || 'mensal';
+  const [plan, setPlan] = useState(searchParams.get('plan') || 'mensal');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [name, setName] = useState('');
@@ -214,8 +214,29 @@ export const CheckoutPage = () => {
                 </p>
 
                 {isLoggedIn && (
-                  <div className="mb-4 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-sm font-bold text-center">
-                    Renovando com sua conta atual
+                  <div className="mb-6">
+                    <div className="mb-3 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-sm font-bold text-center">
+                      Renovando com sua conta atual
+                    </div>
+                    <p className="text-slate-400 text-xs uppercase font-bold tracking-widest mb-3">Escolha seu plano:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(planDetails).map(([key, details]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setPlan(key)}
+                          className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                            plan === key
+                              ? `border-current bg-white/10 ${details.color}`
+                              : 'border-white/10 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <p className={`font-black capitalize text-sm ${plan === key ? details.color : ''}`}>{key}</p>
+                          <p className="text-white font-bold text-lg">R${details.price}</p>
+                          <p className="text-slate-500 text-xs">{details.duration}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

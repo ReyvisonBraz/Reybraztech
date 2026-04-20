@@ -79,6 +79,7 @@ app.use('/api/orders', limiter);
 // ─── Rotas ──────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/clients', dashboardRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', scraperRoutes);

@@ -57,4 +57,55 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
     }
 });
 
+// ============================================================
+// POST /api/clients/request-access — Solicitar acesso (pool vazio)
+// ============================================================
+router.post('/request-access', verifyToken, async (req: AuthRequest, res: Response) => {
+    try {
+        const [client] = await sql`
+            SELECT name, whatsapp, plan FROM clients WHERE id = ${req.clientId!}
+        `;
+        if (!client) { res.status(404).json({ error: 'Cliente não encontrado.' }); return; }
+
+        const { sendTelegramMessage } = await import('../services/telegram.js');
+        await sendTelegramMessage(
+            `🆘 <b>Solicitação de Acesso</b>\n` +
+            `👤 ${client.name}\n` +
+            `📱 ${client.whatsapp}\n` +
+            `📦 Plano: ${client.plan}\n` +
+            `👉 Cliente pagou mas não tem login atribuído. Atribua manualmente no painel admin!`
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Erro ao solicitar acesso:', error);
+        res.status(500).json({ error: 'Erro ao enviar solicitação.' });
+    }
+});
+
+// ============================================================
+// POST /api/clients/trial-feedback — Feedback do trial
+// ============================================================
+router.post('/trial-feedback', verifyToken, async (req: AuthRequest, res: Response) => {
+    try {
+        const { worked } = req.body as { worked: boolean };
+        const [client] = await sql`
+            SELECT name, whatsapp, device FROM clients WHERE id = ${req.clientId!}
+        `;
+        if (!client) { res.status(404).json({ error: 'Cliente não encontrado.' }); return; }
+
+        const { sendTelegramMessage } = await import('../services/telegram.js');
+        await sendTelegramMessage(
+            worked
+                ? `✅ <b>Trial funcionou!</b>\n👤 ${client.name} | 📱 ${client.whatsapp}\n🖥️ ${client.device || 'N/A'}\n💬 Cliente conseguiu acessar o app.`
+                : `❌ <b>Trial com problema!</b>\n👤 ${client.name} | 📱 ${client.whatsapp}\n🖥️ ${client.device || 'N/A'}\n💬 Cliente não conseguiu acessar o app. Entre em contato!`
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Erro ao salvar feedback trial:', error);
+        res.status(500).json({ error: 'Erro ao enviar feedback.' });
+    }
+});
+
 export default router;

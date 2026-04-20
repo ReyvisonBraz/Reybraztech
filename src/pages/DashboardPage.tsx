@@ -127,6 +127,25 @@ export const DashboardPage = () => {
 
   const [requestingAccess, setRequestingAccess] = useState(false);
   const [accessRequested, setAccessRequested] = useState(false);
+  const [trialFeedback, setTrialFeedback] = useState<'yes' | 'no' | null>(null);
+  const [sendingFeedback, setSendingFeedback] = useState(false);
+
+  const handleTrialFeedback = async (worked: boolean) => {
+    setSendingFeedback(true);
+    const token = localStorage.getItem('reyb_token');
+    try {
+      await fetch(`${API_URL}/api/clients/trial-feedback`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ worked }),
+      });
+      setTrialFeedback(worked ? 'yes' : 'no');
+    } catch {
+      setTrialFeedback(worked ? 'yes' : 'no');
+    } finally {
+      setSendingFeedback(false);
+    }
+  };
 
   const handleRequestAccess = async () => {
     setRequestingAccess(true);
@@ -412,6 +431,67 @@ export const DashboardPage = () => {
                 <Zap className="w-5 h-5" />
                 ATIVAR AGORA
               </Link>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── Banner: Trial — Feedback ─── */}
+        {user.plan === 'trial' && user.status === 'Ativo' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 rounded-3xl overflow-hidden border-2 border-emerald-500/40"
+          >
+            <div className="bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-emerald-500/15 p-5 md:p-6">
+              {!trialFeedback ? (
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                    <span className="text-2xl">📱</span>
+                  </div>
+                  <div className="flex-1 text-center sm:text-left">
+                    <h3 className="text-white font-black text-lg">Conseguiu acessar o App?</h3>
+                    <p className="text-emerald-200/70 text-sm">Seu teste está ativo por 3 dias. Conta o que achou!</p>
+                  </div>
+                  <div className="flex gap-3 shrink-0">
+                    <button
+                      onClick={() => handleTrialFeedback(true)}
+                      disabled={sendingFeedback}
+                      className="px-5 py-3 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 text-emerald-400 font-black hover:bg-emerald-500/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      ✅ Sim, funcionou!
+                    </button>
+                    <a
+                      href={`https://wa.me/5591986450659?text=${encodeURIComponent(`Olá! Sou ${user.name} e estou no teste gratuito do app mas não consegui acessar. Pode me ajudar?`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => handleTrialFeedback(false)}
+                      className="px-5 py-3 rounded-2xl bg-red-500/20 border-2 border-red-500/50 text-red-400 font-black hover:bg-red-500/30 transition-all flex items-center gap-2"
+                    >
+                      ❌ Não consegui
+                    </a>
+                  </div>
+                </div>
+              ) : trialFeedback === 'yes' ? (
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex-1 text-center sm:text-left">
+                    <h3 className="text-white font-black text-lg">Que ótimo! 🎉</h3>
+                    <p className="text-emerald-200/70 text-sm">Aproveite os 3 dias de teste. Quando quiser continuar, assine um plano!</p>
+                  </div>
+                  <Link
+                    to="/checkout"
+                    className="btn-shimmer shrink-0 px-6 py-3 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-black rounded-2xl border-none whitespace-nowrap"
+                  >
+                    Quero assinar um plano
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <h3 className="text-white font-black text-lg">Vamos te ajudar! 💬</h3>
+                    <p className="text-slate-400 text-sm">Nossa equipe recebeu seu aviso e vai entrar em contato em breve.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

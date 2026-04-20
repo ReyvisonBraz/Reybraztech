@@ -48,64 +48,61 @@ const FAQ_CONTENT = [
 const TERMOS_CONTENT = `
 **TERMOS DE USO - REYBRAZ TECH**
 
-Última atualização: Janeiro 2024
+Última atualização: Abril 2025
 
 **1. Aceitação dos Termos**
 
-Ao acessar e utilizar os serviços da Reybraz Tech, você concorda com estes termos de uso. Se você não concorda com algum dos termos, não utilize nossos serviços.
+Ao acessar e utilizar os serviços da Reybraz Tech, você concorda com estes Termos de Uso. Caso não concorde com qualquer disposição aqui contida, não utilize nossos serviços.
 
-**2. Descrição do Serviço**
+**2. Natureza do Serviço**
 
-A Reybraz Tech oferece acesso a conteúdo de entretenimento via IPTV. Nosso serviço inclui:
-- Acesso a listagem de canais
-- Suporte técnico via WhatsApp ou chat
-- Painel de controle do cliente
-- Teste gratuito de 3 dias
+A Reybraz Tech é uma plataforma de intermediação tecnológica que comercializa credenciais de acesso ao aplicativo UNITV, desenvolvido e mantido por terceiros independentes. A Reybraz Tech não produz, hospeda, armazena, transmite nem distribui qualquer conteúdo audiovisual. Todo o conteúdo exibido pelo aplicativo UNITV é de exclusiva responsabilidade dos respectivos desenvolvedores e das fontes de origem disponibilizadas publicamente na internet. Nosso papel se limita a: gerenciar contas de usuário, processar pagamentos e fornecer suporte técnico de acesso.
 
-**3. Elegibilidade**
+**3. Isenção de Responsabilidade sobre Conteúdo**
+
+A Reybraz Tech não é titular, licenciada, produtora nem distribuidora de qualquer conteúdo audiovisual acessível pelo aplicativo. O conteúdo exibido é proveniente de streams e fontes públicas disponíveis na internet, sendo de responsabilidade exclusiva dos provedores dessas fontes. O usuário reconhece que a Reybraz Tech atua exclusivamente como intermediadora de acesso a um aplicativo de terceiros, sem qualquer controle editorial sobre o conteúdo disponibilizado.
+
+**4. Elegibilidade**
 
 Para utilizar nossos serviços, você deve:
 - Ter pelo menos 18 anos de idade
 - Ter capacidade legal para celebrar contratos
-- Fornecer informações verdadeiras no cadastro
+- Fornecer informações verídicas no cadastro
 
-**4. Planos e Pagamentos**
+**5. Planos e Pagamentos**
 
-- Os preços dos planos estão disponíveis no site
-- Pagamentos são processados via Mercado Pago
-- A assinatura renova automaticamente ao final do período, a menos que cancelada
-- Não há reembolso para períodos já utilizados
+- Os valores dos planos estão disponíveis no site
+- Pagamentos são processados com segurança via Mercado Pago
+- A assinatura se renova automaticamente ao término do período contratado, salvo cancelamento prévio
+- Não são realizados reembolsos por períodos já utilizados
 
-**5. Uso Aceitável**
+**6. Uso Aceitável**
 
-Você se compromete a:
-- Não compartilhar suas credenciais com terceiros
-- Não revender ou redistribuir nosso conteúdo
-- Não usar para fins ilegais
-- Respeitar todos os direitos de propriedade intelectual
-
-**6. Isenção de Responsabilidade**
-
-O serviço é fornecido "como está". Não garantimos disponibilidade 100% dos canais, pois dependemos de fontes externas.
+O usuário se compromete a:
+- Não compartilhar suas credenciais de acesso com terceiros
+- Não revender, redistribuir ou comercializar as credenciais fornecidas
+- Não utilizar o serviço para fins que violem a legislação brasileira vigente
+- Utilizar o serviço exclusivamente para uso pessoal e privado
 
 **7. Limitação de Responsabilidade**
 
 A Reybraz Tech não se responsabiliza por:
-- Interrupções de serviço por causas externas
-- Perdas decorrentes do uso do serviço
-- Conteúdo de terceiros
+- Disponibilidade, qualidade ou conteúdo do aplicativo UNITV ou de suas fontes
+- Interrupções decorrentes de fatores externos ou de terceiros
+- Quaisquer perdas ou danos relacionados ao uso do aplicativo
+- Conteúdo de propriedade ou responsabilidade de terceiros
 
 **8. Cancelamento**
 
-Você pode cancelar sua assinatura a qualquer momento através do painel ou entrando em contato com suporte.
+Você pode cancelar sua assinatura a qualquer momento pelo painel de controle ou pelo suporte.
 
 **9. Alterações dos Termos**
 
-Reservamos o direito de alterar estes termos a qualquer momento. Alterações significativas serão comunicadas por e-mail ou pelo site.
+Reservamo-nos o direito de atualizar estes termos. Mudanças relevantes serão comunicadas via e-mail ou pelo site.
 
 **10. Lei Aplicável**
 
-Estes termos são regidos pelas leis brasileiras. Qualquer dispute será resolvida nos tribunais brasileiros.
+Estes termos são regidos pela legislação brasileira. Eventuais disputas serão submetidas ao foro da comarca competente no Brasil.
 
 **Contato:**
 WhatsApp: 5591986450659
@@ -115,74 +112,83 @@ E-mail: suporte@reybraztech.com
 const PRIVACIDADE_CONTENT = `
 **POLÍTICA DE PRIVACIDADE - REYBRAZ TECH**
 
-Última atualização: Janeiro 2024
+Última atualização: Abril 2025
 
 **1. Introdução**
 
-A Reybraz Tech valoriza sua privacidade. Esta política explica como coletamos, usamos e protegemos suas informações pessoais.
+A Reybraz Tech está comprometida com a proteção dos seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018). Esta política descreve quais dados coletamos, como os utilizamos e como os protegemos.
 
-**2. Informações que Coletamos**
+**2. Dados que Coletamos**
 
-Coletamos as seguintes informações:
+Coletamos apenas os dados estritamente necessários para a prestação do serviço:
 - Nome completo
-- Número de WhatsApp
-- E-mail (opcional)
-- Informações de pagamento (processadas pelo Mercado Pago)
-- Dados de uso do serviço
+- Número de WhatsApp (utilizado para autenticação via OTP)
+- E-mail (opcional, para comunicações)
+- Dados de pagamento (processados integralmente pelo Mercado Pago — não armazenamos dados de cartão)
+- Logs técnicos de acesso ao painel (endereço IP, data/hora)
 
-**3. Como Usamos suas Informações**
+**3. Finalidade do Tratamento**
 
-Utilizamos suas informações para:
-- Criar e gerenciar sua conta
-- Processar pagamentos
-- Enviar notificações sobre sua assinatura
+Seus dados são utilizados exclusivamente para:
+- Criar e gerenciar sua conta de acesso
+- Autenticar sua identidade com segurança
+- Processar e registrar pagamentos
+- Enviar comunicações sobre sua assinatura
 - Fornecer suporte técnico
-- Melhorar nossos serviços
+- Cumprir obrigações legais e regulatórias
 
-**4. Compartilhamento de Dados**
+**4. Base Legal (LGPD)**
 
-Não vendemos seus dados pessoais. Compartilhamos informações apenas:
-- Com processadores de pagamento (Mercado Pago)
-- Quando exigido por lei
-- Para proteção de nossos direitos
+O tratamento de dados realizado pela Reybraz Tech é fundamentado em:
+- Execução de contrato (Art. 7º, V da LGPD): para viabilizar o acesso ao serviço contratado
+- Legítimo interesse (Art. 7º, IX da LGPD): para comunicações relacionadas à assinatura
+- Cumprimento de obrigação legal (Art. 7º, II da LGPD): quando exigido por autoridade competente
 
-**5. Armazenamento de Dados**
+**5. Compartilhamento de Dados**
 
-Seus dados são armazenados em servidores seguros. Mantemos:
-- Dados de conta: enquanto sua conta estiver ativa
-- Logs de acesso: por 12 meses
-- Dados de pagamento: conforme exigência legal
+Não vendemos, alugamos nem compartilhamos seus dados pessoais com terceiros para fins comerciais. Compartilhamos dados apenas:
+- Com o Mercado Pago, para processamento seguro de pagamentos
+- Mediante ordem judicial ou requisição de autoridade competente
+- Para exercício regular de direitos em processos judiciais ou administrativos
 
-**6. Seus Direitos**
+**6. Armazenamento e Segurança**
 
-Você tem direito a:
+Seus dados são armazenados em servidores com acesso restrito e protegidos por criptografia. Os prazos de retenção são:
+- Dados de conta: enquanto a conta estiver ativa ou até solicitação de exclusão
+- Logs de acesso: por até 12 meses
+- Registros financeiros: conforme exigência da legislação fiscal e tributária
+
+**7. Seus Direitos como Titular (LGPD)**
+
+Conforme a LGPD, você tem direito a:
+- Confirmar a existência de tratamento dos seus dados
 - Acessar seus dados pessoais
-- Corrigir dados incorretos
-- Solicitar exclusão de sua conta
-- Exportar seus dados
+- Corrigir dados incompletos, inexatos ou desatualizados
+- Solicitar a anonimização, bloqueio ou eliminação de dados desnecessários
+- Solicitar a portabilidade dos seus dados
+- Revogar o consentimento a qualquer momento
+- Solicitar a exclusão completa da sua conta e dados associados
 
-**7. Segurança**
+**8. Cookies e Tecnologias de Rastreamento**
 
-Implementamos medidas de segurança técnicas e organizacionais para proteger seus dados contra acesso não autorizado.
+Utilizamos cookies essenciais para:
+- Manter sua sessão autenticada
+- Garantir a segurança do acesso
+- Lembrar preferências básicas de navegação
 
-**8. Cookies**
+Não utilizamos cookies de rastreamento publicitário ou de terceiros.
 
-Utilizamos cookies para:
-- Manter sua sessão ativa
-- Lembrar suas preferências
-- Analisar uso do site
+**9. Menores de Idade**
 
-**9. Crianças**
+Nosso serviço é destinado exclusivamente a maiores de 18 anos. Não coletamos intencionalmente dados de menores. Caso identifiquemos tal situação, os dados serão imediatamente excluídos.
 
-Nosso serviço não é direcionado a menores de 18 anos. Não coletamos intencionalmente informações de crianças.
+**10. Alterações desta Política**
 
-**10. Alterações**
+Esta política pode ser atualizada periodicamente. Mudanças relevantes serão comunicadas pelo site ou por e-mail com antecedência razoável.
 
-Podemos atualizar esta política periodicamente. Notificaremos sobre mudanças significativas.
+**11. Encarregado de Dados (DPO) e Contato**
 
-**11. Contato**
-
-Para questões sobre privacidade:
+Para exercer seus direitos ou esclarecer dúvidas sobre privacidade:
 WhatsApp: 5591986450659
 E-mail: suporte@reybraztech.com
 `;

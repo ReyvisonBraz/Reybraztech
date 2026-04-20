@@ -573,7 +573,8 @@ export const DashboardPage = () => {
               </div>
             </div>
 
-            {/* Dados de Acesso ao App */}
+            {/* Dados de Acesso ao App — oculto para trial (app é gratuito, sem credenciais) */}
+            {user.plan !== 'trial' && (
             <div className="mt-8 pt-8 border-t border-slate-200 dark:border-white/5">
               <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Dados de Acesso ao App</h3>
 
@@ -685,6 +686,8 @@ export const DashboardPage = () => {
                 </div>
               )}
             </div>
+            )}
+
           </motion.div>
 
           {/* Renewal Card */}

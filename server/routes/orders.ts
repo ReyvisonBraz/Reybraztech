@@ -22,11 +22,6 @@ const createOrderSchema = z.object({
   plan: z.enum(['mensal', 'trimestral', 'semestral', 'anual']),
 });
 
-const trialSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  whatsapp: z.string().min(10, 'WhatsApp inválido'),
-  device: z.string().min(1, 'Informe o dispositivo').optional().or(z.literal('')),
-});
 
 // ============================================================
 // POST /api/orders/create — Criar pedido + preferência MP
@@ -142,30 +137,12 @@ router.post('/trial/activate', verifyToken, async (req: AuthRequest, res: Respon
       return;
     }
 
-    // Buscar login disponível no pool
-    const [poolEntry] = await sql`
-      UPDATE login_pool
-      SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
-      WHERE id = (
-        SELECT id FROM login_pool WHERE status = 'disponivel' ORDER BY created_at ASC LIMIT 1
-      )
-      RETURNING id, app_account, app_password
+    // Trial não usa pool de logins — o app é gratuito, só baixar e abrir
+    await sql`
+      UPDATE clients
+      SET status = 'Ativo', plan = 'trial', days_remaining = 3
+      WHERE id = ${client.id}
     `;
-
-    if (poolEntry) {
-      // Ativar com login do pool
-      await sql`
-        UPDATE clients
-        SET status = 'Ativo', plan = 'trial', days_remaining = 3,
-            app_account = ${poolEntry.app_account}, app_password = ${poolEntry.app_password}
-        WHERE id = ${client.id}
-      `;
-    } else {
-      // Pool vazio — ativa sem login, notifica Telegram
-      await sql`
-        UPDATE clients SET status = 'Ativo', plan = 'trial', days_remaining = 3 WHERE id = ${client.id}
-      `;
-    }
 
     // Registrar pedido de trial
     const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
@@ -176,150 +153,20 @@ router.post('/trial/activate', verifyToken, async (req: AuthRequest, res: Respon
     `;
 
     const { sendTelegramMessage } = await import('../services/telegram.js');
-    if (poolEntry) {
-      await sendTelegramMessage(
-        `🎁 <b>Trial Ativado!</b>\n` +
-        `👤 ${client.name}\n📱 ${client.whatsapp}\n🖥️ ${client.device || 'Não informado'}\n` +
-        `🔑 Login: <code>${poolEntry.app_account}</code>\n🔐 Senha: <code>${poolEntry.app_password}</code>\n⏰ 3 dias`
-      );
-    } else {
-      await sendTelegramMessage(
-        `⚠️ <b>Trial ativado mas POOL VAZIO!</b>\n` +
-        `👤 ${client.name} | 📱 ${client.whatsapp}\n` +
-        `👉 Adicione logins no painel admin!`
-      );
-    }
+    await sendTelegramMessage(
+      `🎁 <b>Trial Ativado!</b>\n` +
+      `👤 ${client.name}\n📱 ${client.whatsapp}\n🖥️ ${client.device || 'Não informado'}\n⏰ 3 dias de teste`
+    );
 
-    logger.info(`🎁 Trial ativado: ${client.id} | ${client.name} | pool: ${poolEntry?.app_account || 'vazio'}`);
+    logger.info(`🎁 Trial ativado: ${client.id} | ${client.name} | ${client.whatsapp}`);
 
-    res.json({ success: true, has_login: !!poolEntry });
+    res.json({ success: true });
   } catch (error) {
     logger.error('Erro ao ativar trial:', error);
     res.status(500).json({ error: 'Erro ao ativar teste gratuito. Tente novamente.' });
   }
 });
 
-// ============================================================
-// POST /api/orders/trial — Ativar teste gratuito automaticamente
-// ============================================================
-router.post('/trial', async (req: Request, res: Response) => {
-  const result = trialSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ error: result.error.issues[0].message });
-    return;
-  }
-
-  const { name, whatsapp, device } = result.data;
-
-  try {
-    // Verificar se já tem trial ou conta
-    const [existingTrial] = await sql`
-      SELECT id FROM pending_orders WHERE whatsapp = ${whatsapp} AND plan = 'trial'
-    `;
-    if (existingTrial) {
-      res.status(409).json({ error: 'Você já solicitou um teste gratuito.' });
-      return;
-    }
-
-    const [existingClient] = await sql`
-      SELECT id FROM clients WHERE whatsapp = ${whatsapp}
-    `;
-    if (existingClient) {
-      res.status(409).json({ error: 'Você já possui uma conta. Faça login para acessar.' });
-      return;
-    }
-
-    // Buscar login disponível no pool
-    const [poolEntry] = await sql`
-      UPDATE login_pool
-      SET status = 'em_uso', assigned_at = NOW()
-      WHERE id = (
-        SELECT id FROM login_pool
-        WHERE status = 'disponivel'
-        ORDER BY created_at ASC
-        LIMIT 1
-      )
-      RETURNING id, app_account, app_password
-    `;
-
-    if (!poolEntry) {
-      // Pool vazio — notifica Telegram e retorna erro amigável
-      const { sendTelegramMessage } = await import('../services/telegram.js');
-      await sendTelegramMessage(
-        `⚠️ <b>Trial solicitado mas pool VAZIO!</b>\n` +
-        `👤 ${name} | 📱 ${whatsapp}\n` +
-        `🖥️ Dispositivo: ${device || 'Não informado'}\n` +
-        `👉 Adicione logins no painel admin!`
-      );
-      res.status(503).json({ error: 'Nosso sistema está com alta demanda. Tente novamente em alguns minutos ou entre em contato via WhatsApp.' });
-      return;
-    }
-
-    // Criar cliente com trial ativo
-    const bcrypt = await import('bcryptjs');
-    const jwt = await import('jsonwebtoken');
-    const tempPassword = Math.random().toString(36).slice(-8);
-    const passwordHash = await bcrypt.default.hash(tempPassword, 10);
-
-    const [newClient] = await sql`
-      INSERT INTO clients (name, whatsapp, device, password_hash, plan, status, days_remaining, app_account, app_password)
-      VALUES (${name}, ${whatsapp}, ${device || null}, ${passwordHash}, 'trial', 'Ativo', 3, ${poolEntry.app_account}, ${poolEntry.app_password})
-      RETURNING id
-    `;
-
-    // Vincular login do pool ao cliente
-    await sql`
-      UPDATE login_pool SET client_id = ${newClient.id} WHERE id = ${poolEntry.id}
-    `;
-
-    // Registrar pedido de trial como pago
-    const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
-    await sql`
-      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status, device, paid_at)
-      VALUES (${orderId}, ${name}, ${whatsapp}, 'trial', 0, 'paid', ${device || null}, NOW())
-    `;
-
-    // Gerar JWT para auto-login
-    const JWT_SECRET = process.env.JWT_SECRET!;
-    const token = jwt.default.sign(
-      { id: newClient.id, email: whatsapp },
-      JWT_SECRET,
-      { expiresIn: '8h' }
-    );
-
-    // Notificar Telegram
-    const { sendTelegramMessage } = await import('../services/telegram.js');
-    await sendTelegramMessage(
-      `🎁 <b>Novo Trial Ativado!</b>\n` +
-      `👤 ${name}\n` +
-      `📱 ${whatsapp}\n` +
-      `🖥️ Dispositivo: ${device || 'Não informado'}\n` +
-      `🔑 Login: <code>${poolEntry.app_account}</code>\n` +
-      `🔐 Senha: <code>${poolEntry.app_password}</code>\n` +
-      `⏰ 3 dias de acesso`
-    );
-
-    logger.info(`🎁 Trial ativado: ${newClient.id} | ${name} | ${whatsapp} | login: ${poolEntry.app_account}`);
-
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        name,
-        plan: 'trial',
-        status: 'Ativo',
-        whatsapp,
-        days_remaining: 3,
-        app_account: poolEntry.app_account,
-        app_password: poolEntry.app_password,
-      },
-      tempPassword,
-    });
-  } catch (error) {
-    logger.error('Erro ao criar trial:', error);
-    res.status(500).json({ error: 'Erro ao processar teste gratuito. Tente novamente.' });
-  }
-});
 
 // ============================================================
 // GET /api/orders/:id — Consultar status do pedido

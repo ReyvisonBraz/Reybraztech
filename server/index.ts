@@ -70,11 +70,32 @@ const limiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Rate limit dedicado para login — máx. 10 tentativas por 15min por IP
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Muitas tentativas de login. Aguarde 15 minutos e tente novamente.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true, // só conta tentativas que falharam
+});
+
+// Rate limit para webhook — isolado dos demais
+const webhookLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: { error: 'Muitas requisições.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', limiter);
 app.use('/api/dashboard', limiter);
 app.use('/api/otp', limiter);
 app.use('/api/admin', limiter);
 app.use('/api/orders', limiter);
+app.use('/api/payments/webhook', webhookLimiter);
 
 // ─── Rotas ──────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);

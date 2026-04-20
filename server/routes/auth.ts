@@ -99,7 +99,7 @@ router.post('/register', async (req: Request, res: Response) => {
         const token = jwt.sign(
             { id: newClient.id, email: email || whatsapp },
             JWT_SECRET,
-            { expiresIn: '8h' }
+            { algorithm: 'HS256', expiresIn: '8h' }
         );
 
         res.status(201).json({
@@ -183,7 +183,7 @@ router.post('/login', async (req: Request, res: Response) => {
         const token = jwt.sign(
             { id: client.id, email: client.email || client.whatsapp },
             JWT_SECRET,
-            { expiresIn: '8h' }
+            { algorithm: 'HS256', expiresIn: '8h' }
         );
         const jwtEnd = performance.now();
 
@@ -265,7 +265,7 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
             const token = jwt.sign(
                 { id: existingClient.id, email: order.whatsapp },
                 JWT_SECRET,
-                { expiresIn: '8h' }
+                { algorithm: 'HS256', expiresIn: '8h' }
             );
             res.json({ success: true, token, user: { name: order.name, whatsapp: order.whatsapp } });
             return;
@@ -303,7 +303,7 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
         const token = jwt.sign(
             { id: newClient.id, email: email || order.whatsapp },
             JWT_SECRET,
-            { expiresIn: '8h' }
+            { algorithm: 'HS256', expiresIn: '8h' }
         );
 
         const logMsg = [

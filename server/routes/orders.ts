@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Router, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import sql from '../database.js';
 import logger from '../utils/logger.js';
 import { createPaymentPreference } from '../services/mercadopago.js';
@@ -84,8 +85,7 @@ router.post('/create', async (req: Request, res: Response) => {
       return;
     }
 
-    // Gerar ID numérico grande (timestamp + random) - converter para string
-    const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
+    const orderId = randomUUID();
 
     // Inserir pedido
     const [order] = await sql`
@@ -145,10 +145,9 @@ router.post('/trial/activate', verifyToken, async (req: AuthRequest, res: Respon
     `;
 
     // Registrar pedido de trial
-    const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
     await sql`
       INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status, device, paid_at)
-      VALUES (${orderId}, ${client.name}, ${client.whatsapp}, 'trial', 0, 'paid', ${client.device || null}, NOW())
+      VALUES (${randomUUID()}, ${client.name}, ${client.whatsapp}, 'trial', 0, 'paid', ${client.device || null}, NOW())
       ON CONFLICT DO NOTHING
     `;
 
@@ -169,30 +168,24 @@ router.post('/trial/activate', verifyToken, async (req: AuthRequest, res: Respon
 
 
 // ============================================================
-// GET /api/orders/:id — Consultar status do pedido
+// GET /api/orders/:id — Consultar status do pedido (requer JWT)
 // ============================================================
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', verifyToken, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   try {
+    // Só retorna o pedido se pertencer ao cliente autenticado
     const [order] = await sql`
-      SELECT name, whatsapp, plan, status, amount, device, created_at
-      FROM pending_orders
-      WHERE id = ${id}
+      SELECT po.plan, po.status, po.amount, po.created_at
+      FROM pending_orders po
+      JOIN clients c ON c.whatsapp = po.whatsapp
+      WHERE po.id = ${id}
+        AND c.id = ${req.clientId!}
     `;
 
     if (!order) {
       res.status(404).json({ error: 'Pedido não encontrado.' });
       return;
-    }
-
-    // Auto-aprovar TRIAL após 3 segundos (para simular a confirmação automática)
-    if (order.plan === 'trial' && order.status === 'pending') {
-      const createdTime = new Date(order.created_at).getTime();
-      if (Date.now() - createdTime > 3000) {
-        await sql`UPDATE pending_orders SET status = 'paid', paid_at = NOW() WHERE id = ${id}`;
-        order.status = 'paid';
-      }
     }
 
     res.json(order);
@@ -232,7 +225,7 @@ router.post('/renew', verifyToken, async (req: AuthRequest, res: Response) => {
 
     const { name, whatsapp } = client;
 
-    const orderId = String(BigInt(Date.now()) * BigInt(1000) + BigInt(Math.floor(Math.random() * 1000)));
+    const orderId = randomUUID();
 
     const [order] = await sql`
       INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status)

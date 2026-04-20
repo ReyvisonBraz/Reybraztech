@@ -11,7 +11,7 @@ DROP TABLE IF EXISTS pending_orders;
 -- Armazena checkout e trials em andamento
 -- ============================================================
 CREATE TABLE IF NOT EXISTS pending_orders (
-  id BIGINT PRIMARY KEY DEFAULT (floor(random() * 9000000000000) + 1000000000000)::bigint,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name VARCHAR(255) NOT NULL,
   whatsapp VARCHAR(20) NOT NULL,
   plan VARCHAR(50) NOT NULL,

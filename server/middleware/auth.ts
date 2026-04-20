@@ -22,7 +22,7 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: number; email: string };
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { id: number; email: string };
         req.clientId = decoded.id;
         req.clientEmail = decoded.email;
         next();

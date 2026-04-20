@@ -112,7 +112,10 @@ export const CompleteRegistrationPage = () => {
 
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/orders/${orderId}`);
+        const token = localStorage.getItem('reyb_token');
+        const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!res.ok) {
           setError('Pedido nao encontrado.');
           setLoading(false);

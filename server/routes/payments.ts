@@ -89,12 +89,14 @@ router.post('/webhook', async (req, res) => {
 
   logger.info('📬 Webhook recebido:', { topic, query, body });
 
-  // Validar assinatura do Mercado Pago (apenas loga, não bloqueia)
+  // Validar assinatura do Mercado Pago — rejeita se secret configurado e assinatura inválida
   const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
   if (webhookSecret) {
     const isValid = validateMercadoPagoSignature(req as any, webhookSecret);
     if (!isValid) {
-      logger.warn('⚠️ Webhook com assinatura inválida — processando mesmo assim');
+      logger.warn('🚫 Webhook com assinatura inválida — rejeitado');
+      res.sendStatus(401);
+      return;
     }
   }
 

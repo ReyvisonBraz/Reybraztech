@@ -121,30 +121,22 @@ app.post('/api/whatsapp-webhook', webhookLimiter, async (req: express.Request, r
     const body = req.body;
 
     try {
-        // Log completo para diagnóstico — remover após confirmar estrutura do payload
-        logger.info(`📩 SendPulse webhook recebido: ${JSON.stringify(body)}`);
+        // SendPulse envia um array de eventos: [{info: {...}, contact: {...}, ...}]
+        const event = Array.isArray(body) ? body[0] : body;
 
-        // SendPulse pode enviar em vários formatos — tentamos todos
-        const phone: string =
-            body?.contact?.phone ||
-            body?.contact?.id ||
-            body?.phone ||
-            body?.from ||
-            body?.sender ||
-            '';
+        const phone: string = String(
+            event?.contact?.phone ||
+            event?.info?.message?.channel_data?.message?.from ||
+            ''
+        );
 
         const text: string =
-            body?.message?.text?.body ||
-            body?.message?.text ||
-            body?.message?.body ||
-            body?.text ||
-            body?.body ||
+            event?.info?.message?.channel_data?.message?.text?.body ||
+            event?.contact?.last_message ||
             '';
 
-        logger.info(`📩 phone extraído: "${phone}" | text extraído: "${text}"`);
-
         if (!phone || !text) {
-            res.status(200).json({ ok: true }); // Sempre 200 para o SendPulse não reenviar
+            res.status(200).json({ ok: true });
             return;
         }
 

@@ -89,7 +89,7 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
         const expiringOnly = req.query.expiring === 'true';
 
         const clients = await sql`
-            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
+            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account, app_account, app_password
             FROM clients
             WHERE (
                 ${search === '' ? sql`TRUE` : sql`(
@@ -177,6 +177,57 @@ router.post('/clients/:id/charge', async (req: AuthRequest, res: Response) => {
     } catch (error) {
         logger.error('Erro ao enviar cobrança:', error);
         res.status(500).json({ error: 'Erro ao enviar cobrança.' });
+    }
+});
+
+// ============================================================
+// POST /api/admin/clients/:id/send-credentials — Enviar credenciais via WhatsApp
+// ============================================================
+router.post('/clients/:id/send-credentials', async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const [client] = await sql`SELECT id, name, whatsapp, app_account, app_password FROM clients WHERE id = ${id}`;
+        if (!client) { res.status(404).json({ error: 'Cliente não encontrado.' }); return; }
+        if (!client.app_account || !client.app_password) {
+            res.status(400).json({ error: 'Este cliente não possui credenciais de acesso cadastradas.' }); return;
+        }
+
+        const tokenRes = await fetch('https://api.sendpulse.com/oauth/access_token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                grant_type: 'client_credentials',
+                client_id: process.env.SENDPULSE_CLIENT_ID,
+                client_secret: process.env.SENDPULSE_CLIENT_SECRET,
+            }),
+        });
+        if (!tokenRes.ok) { res.status(502).json({ error: 'Falha ao autenticar com SendPulse.' }); return; }
+        const { access_token } = await tokenRes.json() as { access_token: string };
+
+        const msg = `Olá ${client.name}! 👋\n\nSeguem suas credenciais de acesso:\n\n👤 *Usuário:* ${client.app_account}\n🔐 *Senha:* ${client.app_password}\n\nGuarde em local seguro e não compartilhe com ninguém. 🔒`;
+
+        const msgRes = await fetch('https://api.sendpulse.com/whatsapp/contacts/sendByPhone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${access_token}` },
+            body: JSON.stringify({
+                bot_id: process.env.SENDPULSE_BOT_ID,
+                phone: client.whatsapp,
+                message: { type: 'text', text: { body: msg } },
+            }),
+        });
+
+        if (!msgRes.ok) {
+            const errBody = await msgRes.text();
+            logger.error('SendPulse credentials error:', errBody);
+            res.status(502).json({ error: 'Falha ao enviar credenciais.' });
+            return;
+        }
+
+        logger.info(`🔑 Credenciais enviadas para cliente ${id} (${client.whatsapp})`);
+        res.json({ message: `Credenciais enviadas para ${client.name}.` });
+    } catch (error) {
+        logger.error('Erro ao enviar credenciais:', error);
+        res.status(500).json({ error: 'Erro ao enviar credenciais.' });
     }
 });
 

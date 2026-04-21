@@ -3,7 +3,7 @@ import {
     Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert,
     Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw,
     Link, Unlink, Activity, Search, KeyRound, RotateCcw, CheckCircle2,
-    XCircle, Bell, TrendingUp, Clock, Gift, BellRing,
+    XCircle, Bell, TrendingUp, Clock, Gift, BellRing, SendHorizonal,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
@@ -22,6 +22,8 @@ interface Client {
     created_at: string;
     days_remaining: number;
     starhome_account: string | null;
+    app_account: string | null;
+    app_password: string | null;
 }
 
 interface Stats {
@@ -70,6 +72,7 @@ export const AdminPage = () => {
     const [renewStatus, setRenewStatus] = useState<Record<number, 'idle' | 'running' | 'done' | 'error'>>({});
     const [renewModal, setRenewModal] = useState<{ clientId: number; clientName: string; logs: string[]; result: string } | null>(null);
     const [chargeStatus, setChargeStatus] = useState<Record<number, 'idle' | 'sending' | 'done' | 'error'>>({});
+    const [credStatus, setCredStatus] = useState<Record<number, 'idle' | 'sending' | 'done' | 'error'>>({});
     const renewPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const navigate = useNavigate();
 
@@ -394,6 +397,33 @@ export const AdminPage = () => {
         } catch {
             setChargeStatus(prev => ({ ...prev, [client.id]: 'error' }));
             setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
+        }
+    };
+
+    const handleSendCredentials = async (client: Client) => {
+        const token = localStorage.getItem('reyb_token');
+        if (!token) { navigate('/login'); return; }
+        if (!client.app_account) {
+            alert('Este cliente não possui credenciais cadastradas.');
+            return;
+        }
+        setCredStatus(prev => ({ ...prev, [client.id]: 'sending' }));
+        try {
+            const res = await fetch(`${API_URL}/api/admin/clients/${client.id}/send-credentials`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            });
+            const data = await res.json() as { message?: string; error?: string };
+            if (res.ok) {
+                setCredStatus(prev => ({ ...prev, [client.id]: 'done' }));
+            } else {
+                alert(data.error || 'Erro ao enviar credenciais.');
+                setCredStatus(prev => ({ ...prev, [client.id]: 'error' }));
+            }
+        } catch {
+            setCredStatus(prev => ({ ...prev, [client.id]: 'error' }));
+        } finally {
+            setTimeout(() => setCredStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
         }
     };
 
@@ -752,7 +782,143 @@ export const AdminPage = () => {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* Mobile: cards */}
+                        <div className="block md:hidden divide-y divide-white/5">
+                            {clients.length === 0 ? (
+                                <div className="px-6 py-12 text-center text-slate-500">
+                                    <AlertTriangle className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                                    Nenhum cliente encontrado.
+                                </div>
+                            ) : clients.map((client) => {
+                                const isExpiringSoon = client.days_remaining <= 3 && client.days_remaining >= 0 && client.status === 'Ativo';
+                                return (
+                                    <div key={client.id} className={`p-4 ${isExpiringSoon ? 'bg-yellow-500/5' : ''}`}>
+                                        {/* Header do card */}
+                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center border font-bold text-sm ${
+                                                    isExpiringSoon
+                                                        ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                                                        : 'bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-cyan-500/20 text-cyan-400'
+                                                }`}>
+                                                    {client.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-slate-200 font-semibold text-sm truncate">{client.name}</p>
+                                                    <p className="text-slate-500 text-xs">{client.whatsapp}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                                    client.status === 'Ativo'
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                }`}>{client.status}</span>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                                    client.days_remaining > 10
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        : client.days_remaining > 3
+                                                            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                                            : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                }`}>{client.days_remaining}d</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Info row */}
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{client.plan}</span>
+                                            {client.device && (
+                                                <span className="bg-white/5 text-slate-400 border border-white/10 px-2 py-0.5 rounded text-[10px] capitalize">{client.device}</span>
+                                            )}
+                                            {isExpiringSoon && (
+                                                <span className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                                                    <Bell className="w-2.5 h-2.5" /> Vence em breve
+                                                </span>
+                                            )}
+                                            {client.app_account && (
+                                                <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                                                    <KeyRound className="w-2.5 h-2.5" /> {client.app_account}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Ações */}
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <button
+                                                onClick={() => handleLinkStarhome(client)}
+                                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                                    client.starhome_account
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        : 'bg-white/5 text-slate-400 border-white/10'
+                                                }`}
+                                            >
+                                                {client.starhome_account ? <><Link className="w-3 h-3" />{client.starhome_account}</> : <><Unlink className="w-3 h-3" />Vincular</>}
+                                            </button>
+                                            <button
+                                                onClick={() => handleClientAction(client)}
+                                                disabled={updating}
+                                                className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                                                    client.status === 'Ativo' ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-400'
+                                                }`}
+                                                title={client.status === 'Ativo' ? 'Desativar' : 'Ativar'}
+                                            >
+                                                {client.status === 'Ativo' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleRenewClient(client)}
+                                                disabled={renewStatus[client.id] === 'running'}
+                                                className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                                                    renewStatus[client.id] === 'done' ? 'bg-emerald-500/10 text-emerald-400'
+                                                    : renewStatus[client.id] === 'error' ? 'bg-red-500/10 text-red-400'
+                                                    : 'bg-orange-500/10 text-orange-400'
+                                                }`}
+                                                title="Renovar"
+                                            >
+                                                {renewStatus[client.id] === 'running' ? <RotateCcw className="w-4 h-4 animate-spin" />
+                                                    : renewStatus[client.id] === 'done' ? <CheckCircle2 className="w-4 h-4" />
+                                                    : renewStatus[client.id] === 'error' ? <XCircle className="w-4 h-4" />
+                                                    : <RotateCcw className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleChargeClient(client)}
+                                                disabled={chargeStatus[client.id] === 'sending'}
+                                                className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                                                    chargeStatus[client.id] === 'done' ? 'bg-emerald-500/10 text-emerald-400'
+                                                    : chargeStatus[client.id] === 'error' ? 'bg-red-500/10 text-red-400'
+                                                    : isExpiringSoon ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/40'
+                                                    : 'bg-white/5 text-slate-400'
+                                                }`}
+                                                title="Cobrar via WhatsApp"
+                                            >
+                                                {chargeStatus[client.id] === 'sending' ? <Bell className="w-4 h-4 animate-pulse" />
+                                                    : chargeStatus[client.id] === 'done' ? <CheckCircle2 className="w-4 h-4" />
+                                                    : chargeStatus[client.id] === 'error' ? <XCircle className="w-4 h-4" />
+                                                    : <Bell className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleSendCredentials(client)}
+                                                disabled={credStatus[client.id] === 'sending' || !client.app_account}
+                                                className={`p-2 rounded-lg transition-all disabled:opacity-40 ${
+                                                    credStatus[client.id] === 'done' ? 'bg-emerald-500/10 text-emerald-400'
+                                                    : credStatus[client.id] === 'error' ? 'bg-red-500/10 text-red-400'
+                                                    : client.app_account ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
+                                                    : 'bg-white/5 text-slate-600'
+                                                }`}
+                                                title="Enviar credenciais via WhatsApp"
+                                            >
+                                                {credStatus[client.id] === 'sending' ? <SendHorizonal className="w-4 h-4 animate-pulse" />
+                                                    : credStatus[client.id] === 'done' ? <CheckCircle2 className="w-4 h-4" />
+                                                    : credStatus[client.id] === 'error' ? <XCircle className="w-4 h-4" />
+                                                    : <SendHorizonal className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop: tabela */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left text-sm whitespace-nowrap">
                                 <thead className="bg-white/5 text-slate-300 border-b border-white/5">
                                     <tr>
@@ -933,6 +1099,32 @@ export const AdminPage = () => {
                                                                     <XCircle className="w-4 h-4" />
                                                                 ) : (
                                                                     <Bell className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+
+                                                            {/* Enviar credenciais */}
+                                                            <button
+                                                                onClick={() => handleSendCredentials(client)}
+                                                                disabled={credStatus[client.id] === 'sending' || !client.app_account}
+                                                                className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-40 ${
+                                                                    credStatus[client.id] === 'done'
+                                                                        ? 'bg-emerald-500/10 text-emerald-400'
+                                                                        : credStatus[client.id] === 'error'
+                                                                            ? 'bg-red-500/10 text-red-400'
+                                                                            : client.app_account
+                                                                                ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400'
+                                                                                : 'bg-white/5 text-slate-600'
+                                                                }`}
+                                                                title={client.app_account ? 'Enviar credenciais via WhatsApp' : 'Sem credenciais cadastradas'}
+                                                            >
+                                                                {credStatus[client.id] === 'sending' ? (
+                                                                    <SendHorizonal className="w-4 h-4 animate-pulse" />
+                                                                ) : credStatus[client.id] === 'done' ? (
+                                                                    <CheckCircle2 className="w-4 h-4" />
+                                                                ) : credStatus[client.id] === 'error' ? (
+                                                                    <XCircle className="w-4 h-4" />
+                                                                ) : (
+                                                                    <SendHorizonal className="w-4 h-4" />
                                                                 )}
                                                             </button>
                                                         </div>

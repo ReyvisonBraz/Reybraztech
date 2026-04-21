@@ -127,7 +127,10 @@ export const DashboardPage = () => {
 
   const [requestingAccess, setRequestingAccess] = useState(false);
   const [accessRequested, setAccessRequested] = useState(false);
-  const [trialFeedback, setTrialFeedback] = useState<'yes' | 'no' | null>(null);
+  // Se o cliente já enviou feedback na TrialPage nesta sessão, não exibe o banner novamente
+  const [trialFeedback, setTrialFeedback] = useState<'yes' | 'no' | null>(
+    sessionStorage.getItem('trial_feedback_sent') ? 'yes' : null
+  );
   const [sendingFeedback, setSendingFeedback] = useState(false);
 
   const handleTrialFeedback = async (worked: boolean) => {

@@ -131,9 +131,9 @@ export const CheckoutPage = () => {
   return (
     <div className="pt-32 pb-20 min-h-screen bg-transparent">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group font-bold">
+        <Link to={isLoggedIn ? '/dashboard' : '/'} className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group font-bold">
           <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-          Voltar para o inicio
+          {isLoggedIn ? 'Voltar para o painel' : 'Voltar para o início'}
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">

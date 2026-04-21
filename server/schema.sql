@@ -41,6 +41,62 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS plan VARCHAR(50);
 -- ============================================================
 -- Verificar estrutura final
 -- ============================================================
--- SELECT column_name, data_type 
--- FROM information_schema.columns 
+-- SELECT column_name, data_type
+-- FROM information_schema.columns
 -- WHERE table_name = 'pending_orders';
+
+-- ============================================================
+-- Tabela de OTP Tokens (otp_tokens)
+-- Criada automaticamente pelo código mas definida aqui para referência
+-- ============================================================
+CREATE TABLE IF NOT EXISTS otp_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  whatsapp VARCHAR(20) NOT NULL,
+  token VARCHAR(6) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_whatsapp ON otp_tokens(whatsapp);
+CREATE INDEX IF NOT EXISTS idx_otp_tokens_expires_at ON otp_tokens(expires_at);
+
+-- ============================================================
+-- Tabela de Logs de Login (login_logs)
+-- Criada automaticamente pelo código mas definida aqui para referência
+-- ============================================================
+CREATE TABLE IF NOT EXISTS login_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  action VARCHAR(50) NOT NULL,
+  whatsapp VARCHAR(20),
+  email VARCHAR(255),
+  details TEXT,
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  success BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_login_logs_whatsapp ON login_logs(whatsapp);
+CREATE INDEX IF NOT EXISTS idx_login_logs_action ON login_logs(action);
+
+-- ============================================================
+-- SEGURANÇA: RLS (Row Level Security)
+-- Bloqueia acesso via PostgREST/Data API para essas tabelas.
+-- O backend usa service_role que bypassa RLS automaticamente.
+-- ============================================================
+ALTER TABLE public.otp_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.login_logs ENABLE ROW LEVEL SECURITY;
+
+-- Revogar acesso do role anon (usuários não autenticados via API)
+REVOKE ALL ON TABLE public.otp_tokens FROM anon;
+REVOKE ALL ON TABLE public.pending_orders FROM anon;
+REVOKE ALL ON TABLE public.login_logs FROM anon;
+
+-- Garantir que service_role mantém acesso total
+GRANT ALL ON TABLE public.otp_tokens TO service_role;
+GRANT ALL ON TABLE public.pending_orders TO service_role;
+GRANT ALL ON TABLE public.login_logs TO service_role;

@@ -1,7 +1,7 @@
-import { useState, FormEvent, useRef, useEffect } from 'react';
+import { useState, FormEvent, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink, ShieldCheck, RefreshCw, Sparkles, CreditCard, Zap } from 'lucide-react';
+import { ArrowLeft, User, Smartphone, MessageSquare, CheckCircle2, Mail, Lock, AlertCircle, ExternalLink, ShieldCheck, RefreshCw, Sparkles, CreditCard, Zap, Loader2 } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 const WHATSAPP_BOT_NUMBER = '559191715764';
@@ -20,7 +20,9 @@ export const RegisterPage = () => {
   const [otpVerified, setOtpVerified] = useState(false);
   const [skippedOtp, setSkippedOtp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [pollingOtp, setPollingOtp] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (localStorage.getItem('reyb_token')) {
@@ -95,6 +97,44 @@ export const RegisterPage = () => {
     }, 1000);
   };
 
+  // ── Polling: verifica a cada 3s se o OTP já foi gerado pelo webhook ──
+  const startOtpPolling = useCallback(() => {
+    const whatsapp = formData.countryCode + formData.whatsapp;
+    if (!whatsapp || pollingRef.current) return;
+
+    setPollingOtp(true);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/otp/status/${whatsapp}`);
+        const data = await res.json();
+        if (data.ready) {
+          clearInterval(pollingRef.current!);
+          pollingRef.current = null;
+          setPollingOtp(false);
+          setStep(3);
+        }
+      } catch {
+        // ignora erros de rede durante polling
+      }
+    }, 3000);
+
+    // Para o polling após 3 minutos para não ficar rodando para sempre
+    setTimeout(() => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+        setPollingOtp(false);
+      }
+    }, 3 * 60 * 1000);
+  }, [formData.countryCode, formData.whatsapp]);
+
+  // Para o polling ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
   // ── Verificar OTP ──
   const verifyOtp = async (): Promise<boolean> => {
     setLoading(true);
@@ -120,12 +160,10 @@ export const RegisterPage = () => {
     }
   };
 
-  // ── Handler do "Já enviei" ──
-  const handleWhatsappSentClick = async () => {
-    const sent = await sendOtp();
-    if (sent) {
-      setStep(3);
-    }
+  // ── Handler do clique no link WhatsApp: inicia polling ──
+  const handleWhatsappLinkClick = () => {
+    setWhatsappSent(true);
+    startOtpPolling();
   };
 
   // ── Handler do "Usar Email" ──
@@ -508,12 +546,12 @@ export const RegisterPage = () => {
                     </div>
                   </div>
 
-                  {/* Botão WhatsApp verde (Melhorado e Profissional) */}
+                  {/* Botão WhatsApp verde */}
                   <a
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => setWhatsappSent(true)}
+                    onClick={handleWhatsappLinkClick}
                     className="group relative w-full overflow-hidden bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl flex items-center gap-4 transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] p-4 border border-emerald-400/50 hover:border-emerald-400"
                   >
                     
@@ -531,43 +569,38 @@ export const RegisterPage = () => {
                   </a>
                 </div>
 
-                {/* Mensagem de erro */}
-                {errorMsg && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
-                  >
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    {errorMsg}
-                  </motion.div>
-                )}
-
-                {/* Botão "Já enviei" */}
-                <button
-                  type="button"
-                  onClick={handleWhatsappSentClick}
-                  disabled={!whatsappSent || otpSending}
-                  className={`btn-shimmer w-full py-4 font-black rounded-2xl flex items-center justify-center gap-2 border-2 transition-all ${whatsappSent && !otpSending
-                      ? 'bg-primary text-white shadow-[0_0_30px_rgba(14,165,233,0.5)] border-cyan-400'
-                      : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed'
-                    }`}
-                >
-                  {otpSending ? (
+                {/* Status de polling */}
+                <AnimatePresence>
+                  {whatsappSent && (
                     <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                      className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
-                    />
-                  ) : whatsappSent ? (
-                    <>
-                      Já enviei a mensagem
-                      <CheckCircle2 className="w-5 h-5" />
-                    </>
-                  ) : (
-                    <span className="text-sm">Clique no botão verde acima primeiro</span>
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20"
+                    >
+                      {pollingOtp ? (
+                        <>
+                          <Loader2 className="w-5 h-5 text-cyan-400 animate-spin shrink-0" />
+                          <div>
+                            <p className="text-cyan-400 font-bold text-sm">Aguardando sua mensagem...</p>
+                            <p className="text-slate-500 text-xs mt-0.5">O código será enviado automaticamente assim que você enviar a mensagem no WhatsApp.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                          <p className="text-emerald-400 font-bold text-sm">Mensagem enviada! Código a caminho...</p>
+                        </>
+                      )}
+                    </motion.div>
                   )}
-                </button>
+                </AnimatePresence>
+
+                {!whatsappSent && (
+                  <p className="text-center text-slate-500 text-sm py-2">
+                    Clique no botão verde acima para abrir o WhatsApp
+                  </p>
+                )}
 
                 {/* Link para pular */}
                 <p className="text-center">

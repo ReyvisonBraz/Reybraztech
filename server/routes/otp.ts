@@ -169,4 +169,30 @@ router.post('/reset-password', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/otp/status/:whatsapp
+ * Frontend faz polling para saber se o OTP já foi gerado pelo webhook do SendPulse.
+ * Retorna { ready: true } quando existe um token válido não-usado para aquele número.
+ */
+router.get('/status/:whatsapp', async (req: Request, res: Response) => {
+  const { whatsapp } = req.params;
+
+  try {
+    const [record] = await sql`
+      SELECT id FROM otp_tokens
+      WHERE whatsapp = ${whatsapp}
+        AND type = 'register'
+        AND used = FALSE
+        AND expires_at > NOW()
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    res.json({ ready: !!record });
+  } catch (error) {
+    logger.error('Erro ao checar status OTP:', error);
+    res.status(500).json({ ready: false });
+  }
+});
+
 export default router;

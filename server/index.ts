@@ -38,6 +38,8 @@ import paymentRoutes from './routes/payments.js';
 import orderRoutes from './routes/orders.js';
 import axios from 'axios';
 import { ensureTables } from './database.js';
+import { generateOTP, saveOTP } from './services/otp.js';
+import { sendOTPMessage } from './services/whatsapp.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -110,6 +112,49 @@ app.use('/api/orders', orderRoutes);
 // Telegram Bot (Webhook — funciona no Vercel)
 app.post('/api/telegram-webhook', handleTelegramWebhook);
 app.get('/api/telegram-setup', setupTelegramWebhook);
+
+// ─── SendPulse WhatsApp Webhook ──────────────────────────────
+// Quando o cliente manda a mensagem de ativação, o SendPulse chama este endpoint.
+// Geramos o OTP e respondemos diretamente — sem o usuário precisar voltar ao site.
+app.post('/api/whatsapp-webhook', webhookLimiter, async (req: express.Request, res: express.Response) => {
+    // SendPulse envia payload com o contato e o texto da mensagem
+    const body = req.body;
+
+    try {
+        // Estrutura do payload SendPulse: { contact: { phone }, message: { text } }
+        const phone: string = body?.contact?.phone || body?.phone || '';
+        const text: string = body?.message?.text || body?.text || '';
+
+        if (!phone || !text) {
+            res.status(200).json({ ok: true }); // Sempre 200 para o SendPulse não reenviar
+            return;
+        }
+
+        // Só age se for a mensagem de ativação
+        const ACTIVATION_KEYWORDS = ['código de verificação', 'verificação', 'ativação', 'token'];
+        const isActivation = ACTIVATION_KEYWORDS.some(k => text.toLowerCase().includes(k));
+
+        if (!isActivation) {
+            res.status(200).json({ ok: true });
+            return;
+        }
+
+        // Normalizar número (garantir prefixo 55)
+        const digits = phone.replace(/\D/g, '');
+        const whatsapp = digits.startsWith('55') ? digits : `55${digits}`;
+
+        // Gerar e salvar OTP
+        const otp = generateOTP();
+        await saveOTP(whatsapp, otp, 'register');
+        await sendOTPMessage(whatsapp, otp, 'register');
+
+        logger.info(`✅ OTP gerado via webhook SendPulse para ${whatsapp}`);
+        res.status(200).json({ ok: true });
+    } catch (error) {
+        logger.error('Erro no webhook SendPulse:', error);
+        res.status(200).json({ ok: true }); // Sempre 200 para evitar reenvio pelo SendPulse
+    }
+});
 
 // Health check
 app.get('/api/health', (_req, res) => {

@@ -76,41 +76,107 @@ router.get('/activity-log', async (req: AuthRequest, res: Response) => {
 });
 
 // ============================================================
-// GET /api/admin/clients — Listar clientes com paginação + busca
+// GET /api/admin/clients — Listar clientes com paginação + busca + filtros
 // ============================================================
 router.get('/clients', async (req: AuthRequest, res: Response) => {
     try {
-        const page   = parseInt(req.query.page as string) || 1;
-        const limit  = parseInt(req.query.limit as string) || 20;
-        const offset = (page - 1) * limit;
-        const search = (req.query.search as string)?.trim() ?? '';
+        const page        = parseInt(req.query.page as string) || 1;
+        const limit       = parseInt(req.query.limit as string) || 20;
+        const offset      = (page - 1) * limit;
+        const search      = (req.query.search as string)?.trim() ?? '';
+        const statusFilter = (req.query.status as string)?.trim() ?? '';
+        const planFilter   = (req.query.plan as string)?.trim() ?? '';
+        const expiringOnly = req.query.expiring === 'true';
 
-        const clients = search
-            ? await sql`
-                SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
-                FROM clients
-                WHERE name ILIKE ${'%' + search + '%'}
-                   OR whatsapp ILIKE ${'%' + search + '%'}
-                   OR starhome_account ILIKE ${'%' + search + '%'}
-                ORDER BY created_at DESC
-                LIMIT ${limit} OFFSET ${offset}
-            `
-            : await sql`
-                SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
-                FROM clients
-                ORDER BY created_at DESC
-                LIMIT ${limit} OFFSET ${offset}
-            `;
+        const clients = await sql`
+            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account
+            FROM clients
+            WHERE (
+                ${search === '' ? sql`TRUE` : sql`(
+                    name ILIKE ${'%' + search + '%'}
+                    OR whatsapp ILIKE ${'%' + search + '%'}
+                    OR starhome_account ILIKE ${'%' + search + '%'}
+                )`}
+            )
+            AND (${statusFilter === '' ? sql`TRUE` : sql`status = ${statusFilter}`})
+            AND (${planFilter === '' ? sql`TRUE` : sql`plan = ${planFilter}`})
+            AND (${!expiringOnly ? sql`TRUE` : sql`days_remaining <= 3 AND days_remaining >= 0 AND status = 'Ativo'`})
+            ORDER BY created_at DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `;
 
-        const countResult = search
-            ? await sql`SELECT COUNT(*)::int as total FROM clients WHERE name ILIKE ${'%' + search + '%'} OR whatsapp ILIKE ${'%' + search + '%'} OR starhome_account ILIKE ${'%' + search + '%'}`
-            : await sql`SELECT COUNT(*)::int as total FROM clients`;
+        const [countResult] = await sql`
+            SELECT COUNT(*)::int as total
+            FROM clients
+            WHERE (
+                ${search === '' ? sql`TRUE` : sql`(
+                    name ILIKE ${'%' + search + '%'}
+                    OR whatsapp ILIKE ${'%' + search + '%'}
+                    OR starhome_account ILIKE ${'%' + search + '%'}
+                )`}
+            )
+            AND (${statusFilter === '' ? sql`TRUE` : sql`status = ${statusFilter}`})
+            AND (${planFilter === '' ? sql`TRUE` : sql`plan = ${planFilter}`})
+            AND (${!expiringOnly ? sql`TRUE` : sql`days_remaining <= 3 AND days_remaining >= 0 AND status = 'Ativo'`})
+        `;
 
-        const total = countResult[0]?.total ?? 0;
+        const total = countResult?.total ?? 0;
         res.json({ clients, total, page, limit, totalPages: Math.ceil(total / limit) });
     } catch (error) {
         logger.error('Erro ao buscar clientes no admin:', error);
         res.status(500).json({ error: 'Erro ao buscar a lista de clientes.' });
+    }
+});
+
+// ============================================================
+// POST /api/admin/clients/:id/charge — Enviar cobrança via WhatsApp
+// ============================================================
+router.post('/clients/:id/charge', async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const [client] = await sql`SELECT id, name, whatsapp, days_remaining, plan FROM clients WHERE id = ${id}`;
+        if (!client) { res.status(404).json({ error: 'Cliente não encontrado.' }); return; }
+
+        const sendpulseUrl = `https://api.sendpulse.com/whatsapp/contacts/sendByPhone`;
+        const tokenRes = await fetch('https://api.sendpulse.com/oauth/access_token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                grant_type: 'client_credentials',
+                client_id: process.env.SENDPULSE_CLIENT_ID,
+                client_secret: process.env.SENDPULSE_CLIENT_SECRET,
+            }),
+        });
+        if (!tokenRes.ok) { res.status(502).json({ error: 'Falha ao autenticar com SendPulse.' }); return; }
+        const { access_token } = await tokenRes.json() as { access_token: string };
+
+        const days = client.days_remaining;
+        const msg = days <= 0
+            ? `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* expirou. Renove agora para continuar usando nossos serviços!\n\nFale comigo para renovar. 🚀`
+            : `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* vence em *${days} dia${days === 1 ? '' : 's'}*. Renove com antecedência e não perca o acesso!\n\nFale comigo para renovar. 🚀`;
+
+        const msgRes = await fetch(sendpulseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${access_token}` },
+            body: JSON.stringify({
+                bot_id: process.env.SENDPULSE_BOT_ID,
+                phone: client.whatsapp,
+                message: { type: 'text', text: { body: msg } },
+            }),
+        });
+
+        if (!msgRes.ok) {
+            const errBody = await msgRes.text();
+            logger.error('SendPulse charge error:', errBody);
+            res.status(502).json({ error: 'Falha ao enviar mensagem de cobrança.' });
+            return;
+        }
+
+        logger.info(`💰 Cobrança enviada para cliente ${id} (${client.whatsapp})`);
+        res.json({ message: `Cobrança enviada para ${client.name}.` });
+    } catch (error) {
+        logger.error('Erro ao enviar cobrança:', error);
+        res.status(500).json({ error: 'Erro ao enviar cobrança.' });
     }
 });
 

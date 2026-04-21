@@ -1,5 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity, Search, KeyRound, RotateCcw, CheckCircle2, XCircle } from 'lucide-react';
+import {
+    Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert,
+    Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw,
+    Link, Unlink, Activity, Search, KeyRound, RotateCcw, CheckCircle2,
+    XCircle, Bell, TrendingUp, Clock, Gift, BellRing,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
 import { SystemMonitor } from '../components/admin/SystemMonitor';
@@ -19,6 +24,17 @@ interface Client {
     starhome_account: string | null;
 }
 
+interface Stats {
+    total: number;
+    active: number;
+    inactive: number;
+    expiringSoon: number;
+    trials: number;
+    newLast24h: number;
+}
+
+const PLANS = ['mensal', 'trimestral', 'semestral', 'anual', 'trial'];
+
 export const AdminPage = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,6 +43,13 @@ export const AdminPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
+    const [stats, setStats] = useState<Stats | null>(null);
+
+    // Filtros
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterPlan, setFilterPlan] = useState('');
+    const [filterExpiring, setFilterExpiring] = useState(false);
+
     const [showModal, setShowModal] = useState(false);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [daysToGrant, setDaysToGrant] = useState(30);
@@ -44,39 +67,38 @@ export const AdminPage = () => {
     const [starhomeCode, setStarhomeCode] = useState('');
     const [linking, setLinking] = useState(false);
     const [activeTab, setActiveTab] = useState<'clients' | 'monitor' | 'pool'>('clients');
-    // Renovação por cliente: { [clientId]: 'idle' | 'running' | 'done' | 'error' }
     const [renewStatus, setRenewStatus] = useState<Record<number, 'idle' | 'running' | 'done' | 'error'>>({});
     const [renewModal, setRenewModal] = useState<{ clientId: number; clientName: string; logs: string[]; result: string } | null>(null);
+    const [chargeStatus, setChargeStatus] = useState<Record<number, 'idle' | 'sending' | 'done' | 'error'>>({});
     const renewPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         const verified = sessionStorage.getItem('admin_starhome_verified');
-        if (verified === 'true') {
-            setIsPasswordVerified(true);
-        }
+        if (verified === 'true') setIsPasswordVerified(true);
     }, []);
+
+    const fetchStats = async () => {
+        const token = localStorage.getItem('reyb_token');
+        try {
+            const res = await fetch(`${API_URL}/api/admin/system-stats`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) setStats(await res.json());
+        } catch { /* silent */ }
+    };
 
     const verifyPassword = async () => {
         const token = localStorage.getItem('reyb_token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-
+        if (!token) { navigate('/login'); return; }
         setVerifyingPassword(true);
         setPasswordError('');
-
         try {
             const response = await fetch(`${API_URL}/api/admin/verify-starhome`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ starhome_password: starhomePassword })
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ starhome_password: starhomePassword }),
             });
-
             if (response.ok) {
                 sessionStorage.setItem('admin_starhome_verified', 'true');
                 setIsPasswordVerified(true);
@@ -86,189 +108,151 @@ export const AdminPage = () => {
                 const data = await response.json();
                 setPasswordError(data.error || 'Senha incorreta');
             }
-        } catch (err) {
-            setPasswordError('Erro ao verificar senha');
-        } finally {
-            setVerifyingPassword(false);
-        }
+        } catch { setPasswordError('Erro ao verificar senha'); }
+        finally { setVerifyingPassword(false); }
     };
 
     const handleClientAction = (client: Client) => {
-        if (!isPasswordVerified) {
-            setShowPasswordModal(true);
-            return;
-        }
+        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         handleToggleStatus(client);
     };
 
     const handleSyncClick = () => {
-        if (!isPasswordVerified) {
-            setShowPasswordModal(true);
-            return;
-        }
+        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         handleSyncStarhome();
     };
 
     const handleSyncStarhome = async () => {
         const token = localStorage.getItem('reyb_token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-
+        if (!token) { navigate('/login'); return; }
         setSyncing(true);
         setSyncLog(['Iniciando sincronização com StarHome...']);
         setShowSyncModal(true);
-
         try {
             const response = await fetch(`${API_URL}/api/admin/sync-starhome`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                }
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             });
-
             if (!response.ok) {
                 const err = await response.text();
                 setSyncLog(prev => [...prev, `Erro ao iniciar: ${response.status} — ${err.slice(0, 200)}`]);
                 return;
             }
-
             const data = await response.json() as { jobId?: string; mode?: string; success?: boolean; error?: string };
-
             if (data.mode === 'sync' && data.success) {
                 setSyncLog(prev => [...prev, 'Sincronização concluída com sucesso!']);
                 fetchClients(page);
                 return;
             }
-
             if (data.mode === 'sync' && !data.success) {
                 setSyncLog(prev => [...prev, `Falha: ${data.error || 'Erro desconhecido'}`]);
                 return;
             }
-
             const jobId = data.jobId;
-            if (!jobId) {
-                setSyncLog(prev => [...prev, 'Resposta inesperada do servidor.']);
-                return;
-            }
-
+            if (!jobId) { setSyncLog(prev => [...prev, 'Resposta inesperada do servidor.']); return; }
             setSyncLog(prev => [...prev, `Job iniciado: ${jobId}. Aguardando...`]);
-
             let pollCount = 0;
             const maxPolls = 150;
             let finished = false;
-
             while (pollCount < maxPolls && !finished) {
                 await new Promise(r => setTimeout(r, 4000));
                 pollCount++;
-
                 try {
                     const r = await fetch(`${API_URL}/api/admin/sync-poll/${jobId}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
                         signal: AbortSignal.timeout(8000),
                     });
-                    if (!r.ok) {
-                        setSyncLog(prev => [...prev, `Job não encontrado (Render pode ter reiniciado).`]);
-                        break;
-                    }
+                    if (!r.ok) { setSyncLog(prev => [...prev, `Job não encontrado.`]); break; }
                     const jobData = await r.json() as { status: string; logs?: string[]; result?: { success: boolean; clients?: number; error?: string }; dbStats?: { total?: number; active?: number } };
-
-                    if (jobData.logs && jobData.logs.length > 0) {
-                        const newLogs = jobData.logs.slice(-5);
-                        setSyncLog(prev => [...prev, ...newLogs]);
-                    }
-
+                    if (jobData.logs && jobData.logs.length > 0) setSyncLog(prev => [...prev, ...jobData.logs.slice(-5)]);
                     if (jobData.status === 'done') {
                         finished = true;
                         setSyncLog(prev => [...prev, `✅ Sincronização concluída! ${jobData.result?.clients || 0} clientes.`]);
-                        if (jobData.dbStats) {
-                            setSyncLog(prev => [...prev, `Banco: ${jobData.dbStats.total} total | ${jobData.dbStats.active} ativos`]);
-                        }
+                        if (jobData.dbStats) setSyncLog(prev => [...prev, `Banco: ${jobData.dbStats!.total} total | ${jobData.dbStats!.active} ativos`]);
                         fetchClients(page);
+                        fetchStats();
                     } else if (jobData.status === 'error') {
                         finished = true;
                         setSyncLog(prev => [...prev, `❌ Falha: ${jobData.result?.error || 'Erro desconhecido'}`]);
                     }
-                } catch (err: any) {
-                    setSyncLog(prev => [...prev, `Timeout ao consultar job (tentativa ${pollCount})`]);
-                }
+                } catch { setSyncLog(prev => [...prev, `Timeout ao consultar job (tentativa ${pollCount})`]); }
             }
-
-            if (!finished) {
-                setSyncLog(prev => [...prev, '⏱️ Timeout de polling. Verifique via Telegram.']);
-            }
+            if (!finished) setSyncLog(prev => [...prev, '⏱️ Timeout de polling. Verifique via Telegram.']);
         } catch (err: any) {
             setSyncLog(prev => [...prev, `Erro: ${err.message}`]);
-        } finally {
-            setSyncing(false);
-        }
+        } finally { setSyncing(false); }
     };
 
-    const fetchClients = async (pageNum: number, searchStr: string = searchQuery) => {
-        const token = localStorage.getItem('reyb_token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
+    const buildQuery = (pageNum: number, searchStr: string, status: string, plan: string, expiring: boolean) => {
+        const params = new URLSearchParams({
+            page: String(pageNum),
+            limit: '20',
+            search: searchStr,
+        });
+        if (status) params.set('status', status);
+        if (plan) params.set('plan', plan);
+        if (expiring) params.set('expiring', 'true');
+        return params.toString();
+    };
 
+    const fetchClients = async (
+        pageNum: number,
+        searchStr: string = searchQuery,
+        status: string = filterStatus,
+        plan: string = filterPlan,
+        expiring: boolean = filterExpiring,
+    ) => {
+        const token = localStorage.getItem('reyb_token');
+        if (!token) { navigate('/login'); return; }
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/admin/clients?page=${pageNum}&limit=20&search=${encodeURIComponent(searchStr)}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const qs = buildQuery(pageNum, searchStr, status, plan, expiring);
+            const response = await fetch(`${API_URL}/api/admin/clients?${qs}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
             });
-
             if (response.status === 403 || response.status === 401) {
                 setError('Acesso negado. Você não tem permissões de administrador.');
                 setLoading(false);
                 return;
             }
-
-            if (!response.ok) {
-                throw new Error('Falha ao carregar clientes');
-            }
-
+            if (!response.ok) throw new Error('Falha ao carregar clientes');
             const data = await response.json();
             setClients(data.clients);
             setTotal(data.total);
             setTotalPages(data.totalPages);
             setPage(data.page);
         } catch (err: any) {
-            console.error(err);
             setError('Erro de conexão ao carregar dados do servidor.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     useEffect(() => {
         fetchClients(1);
+        fetchStats();
     }, [navigate]);
+
+    const applyFilter = (status: string, plan: string, expiring: boolean) => {
+        setFilterStatus(status);
+        setFilterPlan(plan);
+        setFilterExpiring(expiring);
+        fetchClients(1, searchQuery, status, plan, expiring);
+    };
 
     const handleToggleStatus = async (client: Client) => {
         const newStatus = client.status === 'Ativo' ? 'Inativo' : 'Ativo';
-        
         if (newStatus === 'Inativo') {
             const token = localStorage.getItem('reyb_token');
             setUpdating(true);
             try {
                 await fetch(`${API_URL}/api/admin/clients/${client.id}/status`, {
                     method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: 'Inativo', days_remaining: 0 })
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'Inativo', days_remaining: 0 }),
                 });
                 setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: 'Inativo', days_remaining: 0 } : c));
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setUpdating(false);
-            }
+                fetchStats();
+            } catch (err) { console.error(err); }
+            finally { setUpdating(false); }
         } else {
             setSelectedClient(client);
             setShowModal(true);
@@ -282,28 +266,20 @@ export const AdminPage = () => {
         try {
             await fetch(`${API_URL}/api/admin/clients/${selectedClient.id}/status`, {
                 method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: 'Ativo', days_remaining: daysToGrant })
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Ativo', days_remaining: daysToGrant }),
             });
             setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, status: 'Ativo', days_remaining: daysToGrant } : c));
             setShowModal(false);
             setSelectedClient(null);
             setDaysToGrant(30);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setUpdating(false);
-        }
+            fetchStats();
+        } catch (err) { console.error(err); }
+        finally { setUpdating(false); }
     };
 
     const handleLinkStarhome = (client: Client) => {
-        if (!isPasswordVerified) {
-            setShowPasswordModal(true);
-            return;
-        }
+        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         setLinkClient(client);
         setStarhomeCode(client.starhome_account || '');
         setShowLinkModal(true);
@@ -316,34 +292,25 @@ export const AdminPage = () => {
         try {
             const response = await fetch(`${API_URL}/api/admin/clients/${linkClient.id}/starhome`, {
                 method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ starhome_account: starhomeCode.trim() })
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ starhome_account: starhomeCode.trim() }),
             });
-            
             if (response.ok) {
                 setClients(prev => prev.map(c => c.id === linkClient.id ? { ...c, starhome_account: starhomeCode.trim() } : c));
                 setShowLinkModal(false);
                 setLinkClient(null);
                 setStarhomeCode('');
             }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLinking(false);
-        }
+        } catch (err) { console.error(err); }
+        finally { setLinking(false); }
     };
 
     const handleRenewClient = async (client: Client) => {
         if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         const token = localStorage.getItem('reyb_token');
         if (!token) { navigate('/login'); return; }
-
         setRenewStatus(prev => ({ ...prev, [client.id]: 'running' }));
         setRenewModal({ clientId: client.id, clientName: client.name, logs: ['Iniciando renovação...'], result: '' });
-
         try {
             const res = await fetch(`${API_URL}/api/admin/renew-client`, {
                 method: 'POST',
@@ -351,7 +318,6 @@ export const AdminPage = () => {
                 body: JSON.stringify({ clientName: client.name }),
             });
             const data = await res.json() as { jobId?: string; waking?: boolean; error?: string };
-
             if (data.waking) {
                 setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, '⏳ Scraper acordando, aguarde...'] } : prev);
                 setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
@@ -362,15 +328,11 @@ export const AdminPage = () => {
                 setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
                 return;
             }
-
             const jobId = data.jobId;
             setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, `Job ${jobId} criado. Aguardando...`] } : prev);
-
-            // Polling a cada 2s
             let polls = 0;
             const maxPolls = 60;
             if (renewPollRef.current) clearInterval(renewPollRef.current);
-
             renewPollRef.current = setInterval(async () => {
                 polls++;
                 if (polls > maxPolls) {
@@ -379,7 +341,6 @@ export const AdminPage = () => {
                     setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, '⏱️ Timeout. Verifique via Telegram.'], result: 'error' } : prev);
                     return;
                 }
-
                 try {
                     const pr = await fetch(`${API_URL}/api/admin/sync-poll/${jobId}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -387,12 +348,7 @@ export const AdminPage = () => {
                     });
                     if (!pr.ok) return;
                     const pd = await pr.json() as { status: string; logs?: string[]; result?: { success: boolean; account?: string; clientName?: string; error?: string } };
-
-                    if (pd.logs && pd.logs.length > 0) {
-                        const last = pd.logs.slice(-3);
-                        setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, ...last] } : prev);
-                    }
-
+                    if (pd.logs && pd.logs.length > 0) setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, ...pd.logs!.slice(-3)] } : prev);
                     if (pd.status === 'done') {
                         clearInterval(renewPollRef.current!);
                         const success = pd.result?.success;
@@ -402,7 +358,6 @@ export const AdminPage = () => {
                             : `❌ Falha: ${pd.result?.error || 'Erro desconhecido'}`;
                         setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, msg], result: success ? 'done' : 'error' } : prev);
                         if (success) fetchClients(page);
-                        // Resetar ícone após 5s
                         setTimeout(() => setRenewStatus(prev => ({ ...prev, [client.id]: 'idle' })), 5000);
                     } else if (pd.status === 'error') {
                         clearInterval(renewPollRef.current!);
@@ -412,14 +367,37 @@ export const AdminPage = () => {
                     }
                 } catch { /* timeout de rede, tenta novamente */ }
             }, 2000);
-
         } catch (err: any) {
             setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
             setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, `❌ ${err.message}`], result: 'error' } : prev);
         }
     };
 
-    if (loading) {
+    const handleChargeClient = async (client: Client) => {
+        const token = localStorage.getItem('reyb_token');
+        if (!token) { navigate('/login'); return; }
+        setChargeStatus(prev => ({ ...prev, [client.id]: 'sending' }));
+        try {
+            const res = await fetch(`${API_URL}/api/admin/clients/${client.id}/charge`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            });
+            const data = await res.json() as { message?: string; error?: string };
+            if (res.ok) {
+                setChargeStatus(prev => ({ ...prev, [client.id]: 'done' }));
+                setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
+            } else {
+                alert(data.error || 'Erro ao enviar cobrança.');
+                setChargeStatus(prev => ({ ...prev, [client.id]: 'error' }));
+                setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
+            }
+        } catch {
+            setChargeStatus(prev => ({ ...prev, [client.id]: 'error' }));
+            setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
+        }
+    };
+
+    if (loading && clients.length === 0) {
         return (
             <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
                 <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
@@ -433,10 +411,8 @@ export const AdminPage = () => {
                 <div className="glass border border-red-500/30 rounded-3xl p-8 max-w-md w-full text-center">
                     <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-6 opacity-80" />
                     <h2 className="text-2xl font-bold text-slate-100 mb-4 tracking-tight">Acesso Bloqueado</h2>
-                    <p className="text-slate-400 mb-8 leading-relaxed">
-                        {error}
-                    </p>
-                    <button 
+                    <p className="text-slate-400 mb-8 leading-relaxed">{error}</p>
+                    <button
                         onClick={() => navigate('/dashboard')}
                         className="btn-shimmer w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-3 px-4 rounded-2xl transition-all duration-300 border-none"
                     >
@@ -450,39 +426,29 @@ export const AdminPage = () => {
     return (
         <div className="min-h-screen pt-28 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="mb-10 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2">
                         <Users className="w-8 h-8 text-cyan-400" />
                         <h1 className="text-3xl md:text-4xl font-extrabold text-gradient tracking-tight">
                             Gestão de Clientes
                         </h1>
                     </div>
-                    <p className="text-slate-400 max-w-2xl text-lg">
+                    <p className="text-slate-400 text-lg">
                         Administre e visualize todos os cadastros ativos na plataforma Reybraztech.
                     </p>
                 </div>
-                
-                <div className="glass rounded-2xl p-5 shrink-0">
-                    <p className="text-sm font-medium text-slate-400 mb-1 flex items-center justify-center md:justify-start gap-2">
-                        <UserCheck className="w-4 h-4 text-cyan-400" /> Total de Clientes
-                    </p>
-                    <p className="text-3xl font-bold text-slate-100 text-center md:text-left">
-                        {total}
-                    </p>
-                </div>
-
                 <button
                     onClick={handleSyncClick}
                     disabled={syncing}
-                    className="btn-shimmer flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-5 rounded-2xl transition-all duration-300 border-none disabled:opacity-50"
+                    className="btn-shimmer flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-5 rounded-2xl transition-all duration-300 border-none disabled:opacity-50 shrink-0"
                 >
                     <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
                     {syncing ? 'Sincronizando...' : 'Sincronizar Starhome'}
                 </button>
             </div>
 
-            {/* Modal de Verificação de Senha Starhome */}
+            {/* Modais */}
             {showPasswordModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass border border-yellow-500/30 rounded-3xl p-6 max-w-sm w-full">
@@ -491,13 +457,9 @@ export const AdminPage = () => {
                                 <ShieldAlert className="w-5 h-5 text-yellow-400" />
                                 Verificação Admin
                             </h3>
-                            <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-slate-200">
-                                <X className="w-5 h-5" />
-                            </button>
+                            <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
                         </div>
-                        <p className="text-slate-300 mb-4">
-                            Digite a senha do painel Starhome para continuar.
-                        </p>
+                        <p className="text-slate-300 mb-4">Digite a senha do painel Starhome para continuar.</p>
                         <input
                             type="password"
                             value={starhomePassword}
@@ -506,9 +468,7 @@ export const AdminPage = () => {
                             placeholder="Senha do Starhome"
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-100 mb-2 focus:outline-none focus:border-yellow-500"
                         />
-                        {passwordError && (
-                            <p className="text-red-400 text-sm mb-4">{passwordError}</p>
-                        )}
+                        {passwordError && <p className="text-red-400 text-sm mb-4">{passwordError}</p>}
                         <button
                             onClick={verifyPassword}
                             disabled={verifyingPassword || !starhomePassword}
@@ -520,7 +480,6 @@ export const AdminPage = () => {
                 </div>
             )}
 
-            {/* Modal de Sincronização */}
             {showSyncModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass border border-purple-500/30 rounded-3xl p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
@@ -529,18 +488,10 @@ export const AdminPage = () => {
                                 <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
                                 Sincronização Starhome
                             </h3>
-                            <button 
-                                onClick={() => setShowSyncModal(false)} 
-                                className="text-slate-400 hover:text-slate-200"
-                                disabled={syncing}
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                            <button onClick={() => setShowSyncModal(false)} className="text-slate-400 hover:text-slate-200" disabled={syncing}><X className="w-5 h-5" /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto bg-black/30 rounded-xl p-4 font-mono text-sm text-slate-300 max-h-[60vh]">
-                            {syncLog.map((log, i) => (
-                                <div key={i} className="mb-1">{log}</div>
-                            ))}
+                            {syncLog.map((log, i) => <div key={i} className="mb-1">{log}</div>)}
                             {syncLog.length === 0 && <span className="text-slate-500">Aguardando início...</span>}
                         </div>
                         <button
@@ -554,19 +505,14 @@ export const AdminPage = () => {
                 </div>
             )}
 
-            {/* Modal para Ativar Cliente */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass border border-cyan-500/30 rounded-3xl p-6 max-w-sm w-full">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold text-slate-100">Ativar Cliente</h3>
-                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-200">
-                                <X className="w-5 h-5" />
-                            </button>
+                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
                         </div>
-                        <p className="text-slate-300 mb-4">
-                            Quantos dias deseja conceder a <strong>{selectedClient?.name}</strong>?
-                        </p>
+                        <p className="text-slate-300 mb-4">Quantos dias deseja conceder a <strong>{selectedClient?.name}</strong>?</p>
                         <input
                             type="number"
                             value={daysToGrant}
@@ -585,7 +531,6 @@ export const AdminPage = () => {
                 </div>
             )}
 
-            {/* Modal de Vincular Starhome */}
             {showLinkModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass border border-cyan-500/30 rounded-3xl p-6 max-w-sm w-full">
@@ -594,13 +539,9 @@ export const AdminPage = () => {
                                 <Link className="w-5 h-5 text-cyan-400" />
                                 Vincular Starhome
                             </h3>
-                            <button onClick={() => setShowLinkModal(false)} className="text-slate-400 hover:text-slate-200">
-                                <X className="w-5 h-5" />
-                            </button>
+                            <button onClick={() => setShowLinkModal(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
                         </div>
-                        <p className="text-slate-300 mb-4">
-                            Vincular código Starhome ao cliente: <strong>{linkClient?.name}</strong>
-                        </p>
+                        <p className="text-slate-300 mb-4">Vincular código Starhome ao cliente: <strong>{linkClient?.name}</strong></p>
                         <input
                             type="text"
                             value={starhomeCode}
@@ -619,7 +560,6 @@ export const AdminPage = () => {
                 </div>
             )}
 
-            {/* Modal de Renovação */}
             {renewModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="glass border border-orange-500/30 rounded-3xl p-6 max-w-lg w-full max-h-[80vh] flex flex-col">
@@ -645,9 +585,7 @@ export const AdminPage = () => {
                                     ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                                     : 'bg-red-500/10 border border-red-500/20 text-red-400'
                             }`}>
-                                {renewModal.result === 'done'
-                                    ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                    : <XCircle className="w-4 h-4 shrink-0" />}
+                                {renewModal.result === 'done' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
                                 {renewModal.result === 'done' ? 'Renovação concluída com sucesso!' : 'Falha na renovação. Verifique os logs.'}
                             </div>
                         )}
@@ -706,213 +644,334 @@ export const AdminPage = () => {
             ) : activeTab === 'pool' ? (
                 <LoginPool />
             ) : (
-                <div className="glass rounded-3xl overflow-hidden">
-                    <div className="p-4 border-b border-white/5 flex gap-4 items-center bg-white/5">
-                        <div className="flex-1 relative">
-                            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Buscar por Nome, WhatsApp ou Account..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && fetchClients(1, searchQuery)}
-                                className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-slate-100 mb-0 focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500"
-                            />
-                        </div>
-                        <button
-                            onClick={() => fetchClients(1, searchQuery)}
-                            className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30 font-bold py-3 px-6 rounded-xl transition-all"
-                        >
-                            Buscar
-                        </button>
+                <div className="space-y-6">
+                    {/* Métricas */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {[
+                            { label: 'Total', value: stats?.total ?? 0, icon: Users, color: 'border-white/5 text-slate-200', filter: () => applyFilter('', '', false) },
+                            { label: 'Ativos', value: stats?.active ?? 0, icon: UserCheck, color: 'border-emerald-500/20 text-emerald-400', filter: () => applyFilter('Ativo', filterPlan, false) },
+                            { label: 'Inativos', value: stats?.inactive ?? 0, icon: AlertTriangle, color: 'border-red-500/20 text-red-400', filter: () => applyFilter('Inativo', filterPlan, false) },
+                            { label: 'Venc. em 7d', value: stats?.expiringSoon ?? 0, icon: Clock, color: 'border-yellow-500/20 text-yellow-400', filter: () => applyFilter('Ativo', '', false) },
+                            { label: 'Em Trial', value: stats?.trials ?? 0, icon: Gift, color: 'border-purple-500/20 text-purple-400', filter: () => applyFilter('', 'trial', false) },
+                            { label: 'Novos 24h', value: stats?.newLast24h ?? 0, icon: TrendingUp, color: 'border-cyan-500/20 text-cyan-400', filter: () => applyFilter('', '', false) },
+                        ].map(({ label, value, icon: Icon, color, filter }) => (
+                            <button
+                                key={label}
+                                onClick={filter}
+                                className={`glass rounded-2xl p-4 border flex flex-col gap-1 text-left hover:brightness-110 transition-all ${color}`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{label}</span>
+                                    <Icon className="w-3.5 h-3.5 opacity-50" />
+                                </div>
+                                <p className="text-2xl font-black">{value}</p>
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                        <thead className="bg-white/5 text-slate-300 border-b border-white/5">
-                            <tr>
-                                <th className="px-6 py-5 font-semibold">Cliente</th>
-                                <th className="px-6 py-5 font-semibold">Contato</th>
-                                <th className="px-6 py-5 font-semibold">Dispositivo</th>
-                                <th className="px-6 py-5 font-semibold">Plano</th>
-                                <th className="px-6 py-5 font-semibold">Starhome</th>
-                                <th className="px-6 py-5 font-semibold">Dias Rest.</th>
-                                <th className="px-6 py-5 font-semibold">Status</th>
-                                <th className="px-6 py-5 font-semibold">Data Cadastro</th>
-                                <th className="px-6 py-5 font-semibold">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {clients.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
-                                        <AlertTriangle className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                                        Nenhum cliente encontrado.
-                                    </td>
-                                </tr>
-                            ) : (
-                                clients.map((client) => (
-                                    <tr key={client.id} className="hover:bg-white/5 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center border border-cyan-500/20 font-bold text-cyan-400">
-                                                    {client.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="text-slate-200 font-medium flex items-center gap-2">
-                                                        {client.name}
-                                                        {client.is_admin && (
-                                                            <span className="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border border-yellow-500/20">
-                                                                Admin
-                                                            </span>
-                                                        )}
-                                                    </p>
-                                                    <p className="text-slate-500 text-xs mt-0.5">ID: {client.id}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="flex items-center gap-2 text-slate-300">
-                                                    <Smartphone className="w-4 h-4 text-slate-500" />
-                                                    {client.whatsapp}
-                                                </div>
-                                                {client.email && (
-                                                    <div className="flex items-center gap-2 text-slate-400 text-xs">
-                                                        <Mail className="w-3 h-3 text-slate-500" />
-                                                        {client.email}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 text-slate-300">
-                                                <Monitor className="w-4 h-4 text-slate-500" />
-                                                <span className="capitalize">{client.device || 'N/A'}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
-                                                {client.plan}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleLinkStarhome(client)}
-                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all duration-200 ${
-                                                    client.starhome_account
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
-                                                        : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-slate-300'
-                                                }`}
-                                                title={client.starhome_account ? 'Código vinculado' : 'Vincular código Starhome'}
-                                            >
-                                                {client.starhome_account ? (
-                                                    <>
-                                                        <Link className="w-3 h-3" />
-                                                        {client.starhome_account}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Unlink className="w-3 h-3" />
-                                                        Vincular
-                                                    </>
-                                                )}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
-                                                client.days_remaining > 10 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                client.days_remaining > 3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                                'bg-red-500/10 text-red-500 border-red-500/20'
-                                            }`}>
-                                                {client.days_remaining} dias
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
-                                                client.status === 'Ativo' 
-                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                    : 'bg-red-500/10 text-red-500 border-red-500/20'
-                                            }`}>
-                                                {client.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-400">
-                                            {new Date(client.created_at).toLocaleDateString('pt-BR')}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => handleClientAction(client)}
-                                                    disabled={updating}
-                                                    className={`p-2 rounded-lg transition-all duration-200 ${
-                                                        client.status === 'Ativo'
-                                                            ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500'
-                                                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
-                                                    } disabled:opacity-50`}
-                                                    title={client.status === 'Ativo' ? 'Desativar' : 'Ativar'}
-                                                >
-                                                    {client.status === 'Ativo' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRenewClient(client)}
-                                                    disabled={renewStatus[client.id] === 'running'}
-                                                    className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-50 ${
-                                                        renewStatus[client.id] === 'done'
-                                                            ? 'bg-emerald-500/10 text-emerald-400'
-                                                            : renewStatus[client.id] === 'error'
-                                                                ? 'bg-red-500/10 text-red-400'
-                                                                : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400'
-                                                    }`}
-                                                    title="Renovar no Starhome"
-                                                >
-                                                    {renewStatus[client.id] === 'running' ? (
-                                                        <RotateCcw className="w-4 h-4 animate-spin" />
-                                                    ) : renewStatus[client.id] === 'done' ? (
-                                                        <CheckCircle2 className="w-4 h-4" />
-                                                    ) : renewStatus[client.id] === 'error' ? (
-                                                        <XCircle className="w-4 h-4" />
-                                                    ) : (
-                                                        <RotateCcw className="w-4 h-4" />
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </td>
+                    {/* Tabela de clientes */}
+                    <div className="glass rounded-3xl overflow-hidden">
+                        {/* Barra de busca e filtros */}
+                        <div className="p-4 border-b border-white/5 bg-white/5 space-y-3">
+                            <div className="flex gap-3 items-center">
+                                <div className="flex-1 relative">
+                                    <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar por Nome, WhatsApp ou Account..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && fetchClients(1, searchQuery)}
+                                        className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => fetchClients(1, searchQuery)}
+                                    className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30 font-bold py-3 px-6 rounded-xl transition-all"
+                                >
+                                    Buscar
+                                </button>
+                            </div>
+
+                            {/* Filtros rápidos */}
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider mr-1">Status:</span>
+                                {(['', 'Ativo', 'Inativo'] as const).map((s) => (
+                                    <button
+                                        key={s || 'todos'}
+                                        onClick={() => applyFilter(s, filterPlan, filterExpiring)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
+                                            filterStatus === s
+                                                ? s === 'Ativo'
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                                    : s === 'Inativo'
+                                                        ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                                                        : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                                                : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {s === '' ? 'Todos' : s}
+                                    </button>
+                                ))}
+
+                                <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider ml-3 mr-1">Plano:</span>
+                                {(['', ...PLANS] as const).map((p) => (
+                                    <button
+                                        key={p || 'todos'}
+                                        onClick={() => applyFilter(filterStatus, p, filterExpiring)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all capitalize ${
+                                            filterPlan === p
+                                                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                                                : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {p === '' ? 'Todos' : p}
+                                    </button>
+                                ))}
+
+                                <button
+                                    onClick={() => applyFilter(filterStatus, filterPlan, !filterExpiring)}
+                                    className={`ml-3 flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
+                                        filterExpiring
+                                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+                                            : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                                    }`}
+                                >
+                                    <BellRing className="w-3 h-3" />
+                                    Vencendo em 3 dias
+                                </button>
+
+                                {(filterStatus || filterPlan || filterExpiring) && (
+                                    <button
+                                        onClick={() => applyFilter('', '', false)}
+                                        className="ml-auto text-xs text-slate-500 hover:text-slate-300 underline"
+                                    >
+                                        Limpar filtros
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead className="bg-white/5 text-slate-300 border-b border-white/5">
+                                    <tr>
+                                        <th className="px-6 py-5 font-semibold">Cliente</th>
+                                        <th className="px-6 py-5 font-semibold">Contato</th>
+                                        <th className="px-6 py-5 font-semibold">Dispositivo</th>
+                                        <th className="px-6 py-5 font-semibold">Plano</th>
+                                        <th className="px-6 py-5 font-semibold">Starhome</th>
+                                        <th className="px-6 py-5 font-semibold">Dias Rest.</th>
+                                        <th className="px-6 py-5 font-semibold">Status</th>
+                                        <th className="px-6 py-5 font-semibold">Cadastro</th>
+                                        <th className="px-6 py-5 font-semibold">Ações</th>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {clients.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
+                                                <AlertTriangle className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                                                Nenhum cliente encontrado.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        clients.map((client) => {
+                                            const isExpiringSoon = client.days_remaining <= 3 && client.days_remaining >= 0 && client.status === 'Ativo';
+                                            return (
+                                                <tr key={client.id} className={`transition-colors ${isExpiringSoon ? 'bg-yellow-500/5 hover:bg-yellow-500/10' : 'hover:bg-white/5'}`}>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center border font-bold ${
+                                                                isExpiringSoon
+                                                                    ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                                                                    : 'bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-cyan-500/20 text-cyan-400'
+                                                            }`}>
+                                                                {client.name.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-slate-200 font-medium flex items-center gap-2">
+                                                                    {client.name}
+                                                                    {client.is_admin && (
+                                                                        <span className="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border border-yellow-500/20">Admin</span>
+                                                                    )}
+                                                                    {isExpiringSoon && (
+                                                                        <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border border-yellow-500/20 flex items-center gap-1">
+                                                                            <Bell className="w-2.5 h-2.5" /> Vence em breve
+                                                                        </span>
+                                                                    )}
+                                                                </p>
+                                                                <p className="text-slate-500 text-xs mt-0.5">ID: {client.id}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <div className="flex items-center gap-2 text-slate-300">
+                                                                <Smartphone className="w-4 h-4 text-slate-500" />
+                                                                {client.whatsapp}
+                                                            </div>
+                                                            {client.email && (
+                                                                <div className="flex items-center gap-2 text-slate-400 text-xs">
+                                                                    <Mail className="w-3 h-3 text-slate-500" />
+                                                                    {client.email}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2 text-slate-300">
+                                                            <Monitor className="w-4 h-4 text-slate-500" />
+                                                            <span className="capitalize">{client.device || 'N/A'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
+                                                            {client.plan}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={() => handleLinkStarhome(client)}
+                                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all duration-200 ${
+                                                                client.starhome_account
+                                                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                                                                    : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-slate-300'
+                                                            }`}
+                                                            title={client.starhome_account ? 'Código vinculado' : 'Vincular código Starhome'}
+                                                        >
+                                                            {client.starhome_account ? (
+                                                                <><Link className="w-3 h-3" />{client.starhome_account}</>
+                                                            ) : (
+                                                                <><Unlink className="w-3 h-3" />Vincular</>
+                                                            )}
+                                                        </button>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
+                                                            client.days_remaining > 10
+                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                                : client.days_remaining > 3
+                                                                    ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                                                    : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                        }`}>
+                                                            {client.days_remaining} dias
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
+                                                            client.status === 'Ativo'
+                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                                : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                                        }`}>
+                                                            {client.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-400">
+                                                        {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {/* Ativar/Desativar */}
+                                                            <button
+                                                                onClick={() => handleClientAction(client)}
+                                                                disabled={updating}
+                                                                className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                                                                    client.status === 'Ativo'
+                                                                        ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500'
+                                                                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
+                                                                }`}
+                                                                title={client.status === 'Ativo' ? 'Desativar' : 'Ativar'}
+                                                            >
+                                                                {client.status === 'Ativo' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                                                            </button>
 
-                {/* Paginação */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
-                        <p className="text-sm text-slate-400">
-                            Mostrando {((page - 1) * 20) + 1} - {Math.min(page * 20, total)} de {total}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => fetchClients(page - 1)}
-                                disabled={page === 1 || loading}
-                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <span className="text-sm text-slate-300 px-3">
-                                Página {page} de {totalPages}
-                            </span>
-                            <button
-                                onClick={() => fetchClients(page + 1)}
-                                disabled={page === totalPages || loading}
-                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
+                                                            {/* Renovar */}
+                                                            <button
+                                                                onClick={() => handleRenewClient(client)}
+                                                                disabled={renewStatus[client.id] === 'running'}
+                                                                className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                                                                    renewStatus[client.id] === 'done'
+                                                                        ? 'bg-emerald-500/10 text-emerald-400'
+                                                                        : renewStatus[client.id] === 'error'
+                                                                            ? 'bg-red-500/10 text-red-400'
+                                                                            : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400'
+                                                                }`}
+                                                                title="Renovar no Starhome"
+                                                            >
+                                                                {renewStatus[client.id] === 'running' ? (
+                                                                    <RotateCcw className="w-4 h-4 animate-spin" />
+                                                                ) : renewStatus[client.id] === 'done' ? (
+                                                                    <CheckCircle2 className="w-4 h-4" />
+                                                                ) : renewStatus[client.id] === 'error' ? (
+                                                                    <XCircle className="w-4 h-4" />
+                                                                ) : (
+                                                                    <RotateCcw className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+
+                                                            {/* Cobrar via WhatsApp */}
+                                                            <button
+                                                                onClick={() => handleChargeClient(client)}
+                                                                disabled={chargeStatus[client.id] === 'sending'}
+                                                                className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                                                                    chargeStatus[client.id] === 'done'
+                                                                        ? 'bg-emerald-500/10 text-emerald-400'
+                                                                        : chargeStatus[client.id] === 'error'
+                                                                            ? 'bg-red-500/10 text-red-400'
+                                                                            : isExpiringSoon
+                                                                                ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 ring-1 ring-yellow-500/40'
+                                                                                : 'bg-white/5 hover:bg-white/10 text-slate-400'
+                                                                }`}
+                                                                title="Enviar cobrança via WhatsApp"
+                                                            >
+                                                                {chargeStatus[client.id] === 'sending' ? (
+                                                                    <Bell className="w-4 h-4 animate-pulse" />
+                                                                ) : chargeStatus[client.id] === 'done' ? (
+                                                                    <CheckCircle2 className="w-4 h-4" />
+                                                                ) : chargeStatus[client.id] === 'error' ? (
+                                                                    <XCircle className="w-4 h-4" />
+                                                                ) : (
+                                                                    <Bell className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
+
+                        {/* Paginação */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
+                                <p className="text-sm text-slate-400">
+                                    Mostrando {((page - 1) * 20) + 1} - {Math.min(page * 20, total)} de {total}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => fetchClients(page - 1)}
+                                        disabled={page === 1 || loading}
+                                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
+                                    <span className="text-sm text-slate-300 px-3">Página {page} de {totalPages}</span>
+                                    <button
+                                        onClick={() => fetchClients(page + 1)}
+                                        disabled={page === totalPages || loading}
+                                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </div>
             )}
         </div>
     );

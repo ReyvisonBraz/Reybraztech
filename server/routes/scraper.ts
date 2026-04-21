@@ -124,6 +124,45 @@ router.get('/sync-status', async (_req: AuthRequest, res: Response) => {
 });
 
 // ============================================================
+// POST /api/admin/renew-client — Renova cliente via scraper
+// Body: { clientName: string }
+// ============================================================
+router.post('/renew-client', async (req: AuthRequest, res: Response) => {
+    const { clientName } = req.body;
+    if (!clientName) {
+        res.status(400).json({ error: 'clientName é obrigatório.' });
+        return;
+    }
+
+    const url = scraperUrl();
+    const key = scraperKey();
+
+    try {
+        const r = await fetch(`${url}/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+            body: JSON.stringify({ action: 'renew', query: clientName, searchBy: 'buyer_name' }),
+            signal: AbortSignal.timeout(10000),
+        });
+
+        const data = await r.json() as { jobId?: string; message?: string; error?: string };
+
+        if (!r.ok) {
+            res.status(r.status).json({ error: data.error || 'Falha ao iniciar renovação.' });
+            return;
+        }
+
+        res.json({ jobId: data.jobId, message: data.message });
+    } catch (err: any) {
+        if (err.name === 'AbortError' || err.message.includes('timeout')) {
+            res.status(202).json({ waking: true, message: 'Scraper acordando, tente novamente em 30s.' });
+        } else {
+            res.status(504).json({ error: `Erro ao chamar scraper: ${err.message}` });
+        }
+    }
+});
+
+// ============================================================
 // GET /api/admin/scraper-health — Proxy health check (evita CORS)
 // ============================================================
 router.get('/scraper-health', async (_req: AuthRequest, res: Response) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity, Search, KeyRound } from 'lucide-react';
+import { Users, AlertTriangle, UserCheck, Smartphone, Mail, ShieldAlert, Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw, Link, Unlink, Activity, Search, KeyRound, RotateCcw, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
 import { SystemMonitor } from '../components/admin/SystemMonitor';
@@ -44,6 +44,10 @@ export const AdminPage = () => {
     const [starhomeCode, setStarhomeCode] = useState('');
     const [linking, setLinking] = useState(false);
     const [activeTab, setActiveTab] = useState<'clients' | 'monitor' | 'pool'>('clients');
+    // Renovação por cliente: { [clientId]: 'idle' | 'running' | 'done' | 'error' }
+    const [renewStatus, setRenewStatus] = useState<Record<number, 'idle' | 'running' | 'done' | 'error'>>({});
+    const [renewModal, setRenewModal] = useState<{ clientId: number; clientName: string; logs: string[]; result: string } | null>(null);
+    const renewPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -332,6 +336,89 @@ export const AdminPage = () => {
         }
     };
 
+    const handleRenewClient = async (client: Client) => {
+        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
+        const token = localStorage.getItem('reyb_token');
+        if (!token) { navigate('/login'); return; }
+
+        setRenewStatus(prev => ({ ...prev, [client.id]: 'running' }));
+        setRenewModal({ clientId: client.id, clientName: client.name, logs: ['Iniciando renovação...'], result: '' });
+
+        try {
+            const res = await fetch(`${API_URL}/api/admin/renew-client`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientName: client.name }),
+            });
+            const data = await res.json() as { jobId?: string; waking?: boolean; error?: string };
+
+            if (data.waking) {
+                setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, '⏳ Scraper acordando, aguarde...'] } : prev);
+                setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
+                return;
+            }
+            if (!res.ok || !data.jobId) {
+                setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, `❌ ${data.error || 'Erro ao iniciar'}`], result: 'error' } : prev);
+                setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
+                return;
+            }
+
+            const jobId = data.jobId;
+            setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, `Job ${jobId} criado. Aguardando...`] } : prev);
+
+            // Polling a cada 2s
+            let polls = 0;
+            const maxPolls = 60;
+            if (renewPollRef.current) clearInterval(renewPollRef.current);
+
+            renewPollRef.current = setInterval(async () => {
+                polls++;
+                if (polls > maxPolls) {
+                    clearInterval(renewPollRef.current!);
+                    setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
+                    setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, '⏱️ Timeout. Verifique via Telegram.'], result: 'error' } : prev);
+                    return;
+                }
+
+                try {
+                    const pr = await fetch(`${API_URL}/api/admin/sync-poll/${jobId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        signal: AbortSignal.timeout(5000),
+                    });
+                    if (!pr.ok) return;
+                    const pd = await pr.json() as { status: string; logs?: string[]; result?: { success: boolean; account?: string; clientName?: string; error?: string } };
+
+                    if (pd.logs && pd.logs.length > 0) {
+                        const last = pd.logs.slice(-3);
+                        setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, ...last] } : prev);
+                    }
+
+                    if (pd.status === 'done') {
+                        clearInterval(renewPollRef.current!);
+                        const success = pd.result?.success;
+                        setRenewStatus(prev => ({ ...prev, [client.id]: success ? 'done' : 'error' }));
+                        const msg = success
+                            ? `✅ Renovado: ${pd.result?.clientName || client.name} | ${pd.result?.account || ''}`
+                            : `❌ Falha: ${pd.result?.error || 'Erro desconhecido'}`;
+                        setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, msg], result: success ? 'done' : 'error' } : prev);
+                        if (success) fetchClients(page);
+                        // Resetar ícone após 5s
+                        setTimeout(() => setRenewStatus(prev => ({ ...prev, [client.id]: 'idle' })), 5000);
+                    } else if (pd.status === 'error') {
+                        clearInterval(renewPollRef.current!);
+                        setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
+                        setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, `❌ ${pd.result?.error || 'Erro'}`], result: 'error' } : prev);
+                        setTimeout(() => setRenewStatus(prev => ({ ...prev, [client.id]: 'idle' })), 5000);
+                    }
+                } catch { /* timeout de rede, tenta novamente */ }
+            }, 2000);
+
+        } catch (err: any) {
+            setRenewStatus(prev => ({ ...prev, [client.id]: 'error' }));
+            setRenewModal(prev => prev ? { ...prev, logs: [...prev.logs, `❌ ${err.message}`], result: 'error' } : prev);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen pt-24 pb-12 px-4 flex items-center justify-center">
@@ -532,6 +619,49 @@ export const AdminPage = () => {
                 </div>
             )}
 
+            {/* Modal de Renovação */}
+            {renewModal && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="glass border border-orange-500/30 rounded-3xl p-6 max-w-lg w-full max-h-[80vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                                <RotateCcw className={`w-5 h-5 text-orange-400 ${renewStatus[renewModal.clientId] === 'running' ? 'animate-spin' : ''}`} />
+                                Renovar: {renewModal.clientName}
+                            </h3>
+                            <button
+                                onClick={() => { setRenewModal(null); if (renewPollRef.current) clearInterval(renewPollRef.current); }}
+                                disabled={renewStatus[renewModal.clientId] === 'running'}
+                                className="text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto bg-black/30 rounded-xl p-4 font-mono text-sm text-slate-300 max-h-[50vh] space-y-1">
+                            {renewModal.logs.map((log, i) => <div key={i}>{log}</div>)}
+                        </div>
+                        {renewModal.result && (
+                            <div className={`mt-4 flex items-center gap-2 p-3 rounded-xl text-sm font-bold ${
+                                renewModal.result === 'done'
+                                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                                    : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                            }`}>
+                                {renewModal.result === 'done'
+                                    ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                    : <XCircle className="w-4 h-4 shrink-0" />}
+                                {renewModal.result === 'done' ? 'Renovação concluída com sucesso!' : 'Falha na renovação. Verifique os logs.'}
+                            </div>
+                        )}
+                        <button
+                            onClick={() => { setRenewModal(null); if (renewPollRef.current) clearInterval(renewPollRef.current); }}
+                            disabled={renewStatus[renewModal.clientId] === 'running'}
+                            className="mt-4 btn-shimmer w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-3 px-4 rounded-2xl border-none disabled:opacity-50"
+                        >
+                            {renewStatus[renewModal.clientId] === 'running' ? 'Aguarde...' : 'Fechar'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Tab Bar */}
             <div className="flex gap-1 mb-8 bg-white/5 p-1 rounded-2xl w-fit">
                 <button
@@ -711,18 +841,42 @@ export const AdminPage = () => {
                                             {new Date(client.created_at).toLocaleDateString('pt-BR')}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleClientAction(client)}
-                                                disabled={updating}
-                                                className={`p-2 rounded-lg transition-all duration-200 ${
-                                                    client.status === 'Ativo'
-                                                        ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500'
-                                                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
-                                                } disabled:opacity-50`}
-                                                title={client.status === 'Ativo' ? 'Desativar' : 'Ativar'}
-                                            >
-                                                {client.status === 'Ativo' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleClientAction(client)}
+                                                    disabled={updating}
+                                                    className={`p-2 rounded-lg transition-all duration-200 ${
+                                                        client.status === 'Ativo'
+                                                            ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500'
+                                                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
+                                                    } disabled:opacity-50`}
+                                                    title={client.status === 'Ativo' ? 'Desativar' : 'Ativar'}
+                                                >
+                                                    {client.status === 'Ativo' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRenewClient(client)}
+                                                    disabled={renewStatus[client.id] === 'running'}
+                                                    className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                                                        renewStatus[client.id] === 'done'
+                                                            ? 'bg-emerald-500/10 text-emerald-400'
+                                                            : renewStatus[client.id] === 'error'
+                                                                ? 'bg-red-500/10 text-red-400'
+                                                                : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400'
+                                                    }`}
+                                                    title="Renovar no Starhome"
+                                                >
+                                                    {renewStatus[client.id] === 'running' ? (
+                                                        <RotateCcw className="w-4 h-4 animate-spin" />
+                                                    ) : renewStatus[client.id] === 'done' ? (
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                    ) : renewStatus[client.id] === 'error' ? (
+                                                        <XCircle className="w-4 h-4" />
+                                                    ) : (
+                                                        <RotateCcw className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

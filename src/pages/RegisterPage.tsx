@@ -105,7 +105,7 @@ export const RegisterPage = () => {
     setPollingOtp(true);
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${API_URL}/api/otp/status/${whatsapp}`);
+        const res = await fetch(`${API_URL}/api/otp/status/${whatsapp}`, { cache: 'no-store' });
         const data = await res.json();
         if (data.ready) {
           clearInterval(pollingRef.current!);

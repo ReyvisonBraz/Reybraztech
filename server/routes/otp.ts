@@ -188,6 +188,7 @@ router.get('/status/:whatsapp', async (req: Request, res: Response) => {
       LIMIT 1
     `;
 
+    res.setHeader('Cache-Control', 'no-store');
     res.json({ ready: !!record });
   } catch (error) {
     logger.error('Erro ao checar status OTP:', error);

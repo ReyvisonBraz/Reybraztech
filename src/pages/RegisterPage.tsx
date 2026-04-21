@@ -103,7 +103,7 @@ export const RegisterPage = () => {
     if (!whatsapp || pollingRef.current) return;
 
     setPollingOtp(true);
-    pollingRef.current = setInterval(async () => {
+    pollingRef.current = setInterval(async () => { // 7s — evita rate limit (120 req/15min)
       try {
         const res = await fetch(`${API_URL}/api/otp/status/${whatsapp}`, { cache: 'no-store' });
         const data = await res.json();
@@ -116,7 +116,7 @@ export const RegisterPage = () => {
       } catch {
         // ignora erros de rede durante polling
       }
-    }, 3000);
+    }, 7000);
 
     // Para o polling após 3 minutos para não ficar rodando para sempre
     setTimeout(() => {

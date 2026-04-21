@@ -91,9 +91,19 @@ const webhookLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Rate limit dedicado para polling de OTP — 120 req/15min (1 req/7s por 14min)
+const otpStatusLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 120,
+    message: { error: 'Muitas requisições.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', limiter);
 app.use('/api/dashboard', limiter);
+app.use('/api/otp/status', otpStatusLimiter);
 app.use('/api/otp', limiter);
 app.use('/api/admin', limiter);
 app.use('/api/orders', limiter);

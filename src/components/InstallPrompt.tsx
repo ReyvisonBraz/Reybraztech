@@ -13,33 +13,25 @@ export function InstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
       return;
     }
 
-    // Listen for the beforeinstallprompt event
+    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    const recentlyDismissed = dismissed
+      && Date.now() - parseInt(dismissed) < 7 * 24 * 60 * 60 * 1000;
+
     const handleBeforeInstallPrompt = (e: Event) => {
+      // Sempre previne o banner nativo do browser/Play Store
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Show banner after a short delay (don't annoy users immediately)
-      setTimeout(() => setShowBanner(true), 5000);
+      if (!recentlyDismissed) {
+        setTimeout(() => setShowBanner(true), 5000);
+      }
     };
 
-    // Listen for app install
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Detect if user already dismissed
-    const dismissed = localStorage.getItem('pwa-install-dismissed');
-    if (dismissed) {
-      const dismissedTime = parseInt(dismissed);
-      // Don't show again for 7 days
-      if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) {
-        return;
-      }
-    }
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };

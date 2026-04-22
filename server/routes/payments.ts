@@ -192,6 +192,13 @@ router.post('/webhook', async (req, res) => {
               WHERE id = ${client.id}
             `;
 
+            // Marcar order como registered — cliente já existe, não precisa de complete-registration
+            await sql`
+              UPDATE pending_orders
+              SET status = 'registered', client_id = ${client.id}, registered_at = NOW()
+              WHERE id = ${orderId}
+            `;
+
             logger.info(`🔑 Login ${poolEntry.app_account} atribuído ao cliente ${client.id}`);
 
             await sendTelegramMessage(
@@ -212,6 +219,12 @@ router.post('/webhook', async (req, res) => {
                   days_remaining = ${daysToAdd},
                   plan = ${order.plan}
               WHERE id = ${client.id}
+            `;
+
+            await sql`
+              UPDATE pending_orders
+              SET status = 'registered', client_id = ${client.id}, registered_at = NOW()
+              WHERE id = ${orderId}
             `;
 
             logger.warn(`⚠️ Pool vazio! Cliente ${client.id} ativado sem login atribuído.`);
@@ -238,15 +251,6 @@ router.post('/webhook', async (req, res) => {
             `👉 Cliente pagou mas não tem conta. Verifique!`
           );
         }
-
-        // Enviar WhatsApp com dados do pagamento (abre janela 24h)
-        await sendPaymentConfirmation(
-          order.whatsapp,
-          order.name,
-          order.plan,
-          Number(order.amount),
-          orderId
-        );
       } else {
         logger.info(`ℹ️ Pagamento ${paymentId} com status: ${payment.status}`);
       }

@@ -147,6 +147,7 @@ export const DashboardPage = () => {
   const [showUnitvPromo, setShowUnitvPromo] = useState(false);
   const [copiedField, setCopiedField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showPaymentBanner, setShowPaymentBanner] = useState(false);
 
   // Dados de boas-vindas (temporários via sessionStorage)
   const [welcomeData, setWelcomeData] = useState<{
@@ -156,6 +157,13 @@ export const DashboardPage = () => {
   } | null>(null);
 
   const location = useLocation();
+
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      setShowPaymentBanner(true);
+      setSearchParams({});
+    }
+  }, []);
 
   useEffect(() => {
     // Verificar se é primeiro acesso após cadastro
@@ -549,6 +557,47 @@ export const DashboardPage = () => {
             </div>
           </motion.div>
         )}
+
+        {/* ─── Banner: Pagamento aprovado ─── */}
+        <AnimatePresence>
+          {showPaymentBanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              className="mb-8 rounded-3xl border-2 border-emerald-500/40 bg-emerald-500/10 p-5 md:p-6"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-emerald-400 font-black text-lg mb-1">Pagamento confirmado! 🎉</h3>
+                    <p className="text-slate-300 text-sm mb-3">
+                      Seu plano <span className="font-bold text-white capitalize">{user.plan}</span> está ativo
+                      por <span className="font-bold text-white">{user.days_remaining} dias</span>.
+                      Suas credenciais já estão disponíveis abaixo.
+                    </p>
+                    {user.app_account && (
+                      <div className="flex flex-wrap gap-3 text-sm font-mono">
+                        <span className="bg-black/30 border border-white/10 px-3 py-1.5 rounded-xl text-slate-200">
+                          👤 <span className="text-white font-bold">{user.app_account}</span>
+                        </span>
+                        <span className="bg-black/30 border border-white/10 px-3 py-1.5 rounded-xl text-slate-200">
+                          🔐 <span className="text-white font-bold">{user.app_password}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => setShowPaymentBanner(false)} className="text-slate-500 hover:text-slate-300 shrink-0 mt-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ─── Banner: Validar WhatsApp ─── */}
         <WhatsAppValidationBanner whatsapp={user.whatsapp} />

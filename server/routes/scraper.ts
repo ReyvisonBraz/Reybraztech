@@ -163,6 +163,45 @@ router.post('/renew-client', async (req: AuthRequest, res: Response) => {
 });
 
 // ============================================================
+// POST /api/admin/search-client — Busca cliente no StarHome via scraper
+// Body: { query: string }
+// ============================================================
+router.post('/search-client', async (req: AuthRequest, res: Response) => {
+    const { query } = req.body;
+    if (!query) {
+        res.status(400).json({ error: 'query é obrigatório.' });
+        return;
+    }
+
+    const url = scraperUrl();
+    const key = scraperKey();
+
+    try {
+        const r = await fetch(`${url}/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+            body: JSON.stringify({ action: 'search', query, searchBy: 'buyer_name' }),
+            signal: AbortSignal.timeout(10000),
+        });
+
+        const data = await r.json() as { jobId?: string; message?: string; error?: string };
+
+        if (!r.ok) {
+            res.status(r.status).json({ error: data.error || 'Falha ao iniciar busca.' });
+            return;
+        }
+
+        res.json({ jobId: data.jobId, message: data.message });
+    } catch (err: any) {
+        if (err.name === 'AbortError' || err.message.includes('timeout')) {
+            res.status(202).json({ waking: true, message: 'Scraper acordando, tente novamente em 30s.' });
+        } else {
+            res.status(504).json({ error: `Erro ao chamar scraper: ${err.message}` });
+        }
+    }
+});
+
+// ============================================================
 // GET /api/admin/scraper-health — Proxy health check (evita CORS)
 // ============================================================
 router.get('/scraper-health', async (_req: AuthRequest, res: Response) => {

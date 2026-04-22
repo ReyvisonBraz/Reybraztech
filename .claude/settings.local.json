@@ -26,7 +26,8 @@
       "Bash(npx vite:*)",
       "WebFetch(domain:cdn.pulse.is)",
       "Bash(npm run:*)",
-      "Bash(node scripts/generate-icons.cjs)"
+      "Bash(node scripts/generate-icons.cjs)",
+      "Bash(grep -E \"\\\\.ts$\")"
     ]
   }
 }

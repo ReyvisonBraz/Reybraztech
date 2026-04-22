@@ -3,6 +3,7 @@ import sql from '../database.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { verifyAdmin } from '../middleware/admin.js';
 import logger from '../utils/logger.js';
+import { sendWhatsApp } from '../services/whatsapp.js';
 
 const router = Router();
 
@@ -137,37 +138,13 @@ router.post('/clients/:id/charge', async (req: AuthRequest, res: Response) => {
         const [client] = await sql`SELECT id, name, whatsapp, days_remaining, plan FROM clients WHERE id = ${id}`;
         if (!client) { res.status(404).json({ error: 'Cliente não encontrado.' }); return; }
 
-        const sendpulseUrl = `https://api.sendpulse.com/whatsapp/contacts/sendByPhone`;
-        const tokenRes = await fetch('https://api.sendpulse.com/oauth/access_token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                grant_type: 'client_credentials',
-                client_id: process.env.SENDPULSE_CLIENT_ID,
-                client_secret: process.env.SENDPULSE_CLIENT_SECRET,
-            }),
-        });
-        if (!tokenRes.ok) { res.status(502).json({ error: 'Falha ao autenticar com SendPulse.' }); return; }
-        const { access_token } = await tokenRes.json() as { access_token: string };
-
         const days = client.days_remaining;
         const msg = days <= 0
             ? `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* expirou. Renove agora para continuar usando nossos serviços!\n\nFale comigo para renovar. 🚀`
             : `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* vence em *${days} dia${days === 1 ? '' : 's'}*. Renove com antecedência e não perca o acesso!\n\nFale comigo para renovar. 🚀`;
 
-        const msgRes = await fetch(sendpulseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${access_token}` },
-            body: JSON.stringify({
-                bot_id: process.env.SENDPULSE_BOT_ID,
-                phone: client.whatsapp,
-                message: { type: 'text', text: { body: msg } },
-            }),
-        });
-
-        if (!msgRes.ok) {
-            const errBody = await msgRes.text();
-            logger.error('SendPulse charge error:', errBody);
+        const sent = await sendWhatsApp(client.whatsapp, msg);
+        if (!sent) {
             res.status(502).json({ error: 'Falha ao enviar mensagem de cobrança.' });
             return;
         }
@@ -192,33 +169,10 @@ router.post('/clients/:id/send-credentials', async (req: AuthRequest, res: Respo
             res.status(400).json({ error: 'Este cliente não possui credenciais de acesso cadastradas.' }); return;
         }
 
-        const tokenRes = await fetch('https://api.sendpulse.com/oauth/access_token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                grant_type: 'client_credentials',
-                client_id: process.env.SENDPULSE_CLIENT_ID,
-                client_secret: process.env.SENDPULSE_CLIENT_SECRET,
-            }),
-        });
-        if (!tokenRes.ok) { res.status(502).json({ error: 'Falha ao autenticar com SendPulse.' }); return; }
-        const { access_token } = await tokenRes.json() as { access_token: string };
-
         const msg = `Olá ${client.name}! 👋\n\nSeguem suas credenciais de acesso:\n\n👤 *Usuário:* ${client.app_account}\n🔐 *Senha:* ${client.app_password}\n\nGuarde em local seguro e não compartilhe com ninguém. 🔒`;
 
-        const msgRes = await fetch('https://api.sendpulse.com/whatsapp/contacts/sendByPhone', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${access_token}` },
-            body: JSON.stringify({
-                bot_id: process.env.SENDPULSE_BOT_ID,
-                phone: client.whatsapp,
-                message: { type: 'text', text: { body: msg } },
-            }),
-        });
-
-        if (!msgRes.ok) {
-            const errBody = await msgRes.text();
-            logger.error('SendPulse credentials error:', errBody);
+        const sent = await sendWhatsApp(client.whatsapp, msg);
+        if (!sent) {
             res.status(502).json({ error: 'Falha ao enviar credenciais.' });
             return;
         }

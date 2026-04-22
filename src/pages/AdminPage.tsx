@@ -71,8 +71,6 @@ export const AdminPage = () => {
     const [activeTab, setActiveTab] = useState<'clients' | 'monitor' | 'pool'>('clients');
     const [renewStatus, setRenewStatus] = useState<Record<number, 'idle' | 'running' | 'done' | 'error'>>({});
     const [renewModal, setRenewModal] = useState<{ clientId: number; clientName: string; logs: string[]; result: string } | null>(null);
-    const [chargeStatus, setChargeStatus] = useState<Record<number, 'idle' | 'sending' | 'done' | 'error'>>({});
-    const [credStatus, setCredStatus] = useState<Record<number, 'idle' | 'sending' | 'done' | 'error'>>({});
     const renewPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const navigate = useNavigate();
 
@@ -376,55 +374,23 @@ export const AdminPage = () => {
         }
     };
 
-    const handleChargeClient = async (client: Client) => {
-        const token = localStorage.getItem('reyb_token');
-        if (!token) { navigate('/login'); return; }
-        setChargeStatus(prev => ({ ...prev, [client.id]: 'sending' }));
-        try {
-            const res = await fetch(`${API_URL}/api/admin/clients/${client.id}/charge`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            });
-            const data = await res.json() as { message?: string; error?: string };
-            if (res.ok) {
-                setChargeStatus(prev => ({ ...prev, [client.id]: 'done' }));
-                setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
-            } else {
-                alert(data.error || 'Erro ao enviar cobrança.');
-                setChargeStatus(prev => ({ ...prev, [client.id]: 'error' }));
-                setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
-            }
-        } catch {
-            setChargeStatus(prev => ({ ...prev, [client.id]: 'error' }));
-            setTimeout(() => setChargeStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
-        }
+    const handleChargeClient = (client: Client) => {
+        const days = client.days_remaining;
+        const msg = days <= 0
+            ? `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* expirou. Renove agora para continuar usando nossos serviços!\n\nFale comigo para renovar. 🚀`
+            : `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* vence em *${days} dia${days === 1 ? '' : 's'}*. Renove com antecedência e não perca o acesso!\n\nFale comigo para renovar. 🚀`;
+        const number = client.whatsapp.replace(/\D/g, '');
+        window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
-    const handleSendCredentials = async (client: Client) => {
-        const token = localStorage.getItem('reyb_token');
-        if (!token) { navigate('/login'); return; }
-        if (!client.app_account) {
+    const handleSendCredentials = (client: Client) => {
+        if (!client.app_account || !client.app_password) {
             alert('Este cliente não possui credenciais cadastradas.');
             return;
         }
-        setCredStatus(prev => ({ ...prev, [client.id]: 'sending' }));
-        try {
-            const res = await fetch(`${API_URL}/api/admin/clients/${client.id}/send-credentials`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            });
-            const data = await res.json() as { message?: string; error?: string };
-            if (res.ok) {
-                setCredStatus(prev => ({ ...prev, [client.id]: 'done' }));
-            } else {
-                alert(data.error || 'Erro ao enviar credenciais.');
-                setCredStatus(prev => ({ ...prev, [client.id]: 'error' }));
-            }
-        } catch {
-            setCredStatus(prev => ({ ...prev, [client.id]: 'error' }));
-        } finally {
-            setTimeout(() => setCredStatus(prev => ({ ...prev, [client.id]: 'idle' })), 4000);
-        }
+        const msg = `Olá ${client.name}! 👋\n\nSeguem suas credenciais de acesso:\n\n👤 *Usuário:* ${client.app_account}\n🔐 *Senha:* ${client.app_password}\n\nGuarde em local seguro e não compartilhe com ninguém. 🔒`;
+        const number = client.whatsapp.replace(/\D/g, '');
+        window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
     if (loading && clients.length === 0) {
@@ -881,35 +847,24 @@ export const AdminPage = () => {
                                             </button>
                                             <button
                                                 onClick={() => handleChargeClient(client)}
-                                                disabled={chargeStatus[client.id] === 'sending'}
-                                                className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
-                                                    chargeStatus[client.id] === 'done' ? 'bg-emerald-500/10 text-emerald-400'
-                                                    : chargeStatus[client.id] === 'error' ? 'bg-red-500/10 text-red-400'
-                                                    : isExpiringSoon ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/40'
-                                                    : 'bg-white/5 text-slate-400'
+                                                className={`p-2 rounded-lg transition-all ${
+                                                    isExpiringSoon ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/40 hover:bg-yellow-500/30'
+                                                    : 'bg-white/5 text-slate-400 hover:bg-white/10'
                                                 }`}
-                                                title="Cobrar via WhatsApp"
+                                                title="Enviar lembrete via WhatsApp"
                                             >
-                                                {chargeStatus[client.id] === 'sending' ? <Bell className="w-4 h-4 animate-pulse" />
-                                                    : chargeStatus[client.id] === 'done' ? <CheckCircle2 className="w-4 h-4" />
-                                                    : chargeStatus[client.id] === 'error' ? <XCircle className="w-4 h-4" />
-                                                    : <Bell className="w-4 h-4" />}
+                                                <Bell className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleSendCredentials(client)}
-                                                disabled={credStatus[client.id] === 'sending' || !client.app_account}
+                                                disabled={!client.app_account}
                                                 className={`p-2 rounded-lg transition-all disabled:opacity-40 ${
-                                                    credStatus[client.id] === 'done' ? 'bg-emerald-500/10 text-emerald-400'
-                                                    : credStatus[client.id] === 'error' ? 'bg-red-500/10 text-red-400'
-                                                    : client.app_account ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
+                                                    client.app_account ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
                                                     : 'bg-white/5 text-slate-600'
                                                 }`}
-                                                title="Enviar credenciais via WhatsApp"
+                                                title={client.app_account ? 'Enviar credenciais via WhatsApp' : 'Sem credenciais cadastradas'}
                                             >
-                                                {credStatus[client.id] === 'sending' ? <SendHorizonal className="w-4 h-4 animate-pulse" />
-                                                    : credStatus[client.id] === 'done' ? <CheckCircle2 className="w-4 h-4" />
-                                                    : credStatus[client.id] === 'error' ? <XCircle className="w-4 h-4" />
-                                                    : <SendHorizonal className="w-4 h-4" />}
+                                                <SendHorizonal className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
@@ -1076,56 +1031,31 @@ export const AdminPage = () => {
                                                                 )}
                                                             </button>
 
-                                                            {/* Cobrar via WhatsApp */}
+                                                            {/* Lembrete via WhatsApp */}
                                                             <button
                                                                 onClick={() => handleChargeClient(client)}
-                                                                disabled={chargeStatus[client.id] === 'sending'}
-                                                                className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-50 ${
-                                                                    chargeStatus[client.id] === 'done'
-                                                                        ? 'bg-emerald-500/10 text-emerald-400'
-                                                                        : chargeStatus[client.id] === 'error'
-                                                                            ? 'bg-red-500/10 text-red-400'
-                                                                            : isExpiringSoon
-                                                                                ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 ring-1 ring-yellow-500/40'
-                                                                                : 'bg-white/5 hover:bg-white/10 text-slate-400'
+                                                                className={`p-2 rounded-lg transition-all duration-200 ${
+                                                                    isExpiringSoon
+                                                                        ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 ring-1 ring-yellow-500/40'
+                                                                        : 'bg-white/5 hover:bg-white/10 text-slate-400'
                                                                 }`}
-                                                                title="Enviar cobrança via WhatsApp"
+                                                                title="Enviar lembrete via WhatsApp"
                                                             >
-                                                                {chargeStatus[client.id] === 'sending' ? (
-                                                                    <Bell className="w-4 h-4 animate-pulse" />
-                                                                ) : chargeStatus[client.id] === 'done' ? (
-                                                                    <CheckCircle2 className="w-4 h-4" />
-                                                                ) : chargeStatus[client.id] === 'error' ? (
-                                                                    <XCircle className="w-4 h-4" />
-                                                                ) : (
-                                                                    <Bell className="w-4 h-4" />
-                                                                )}
+                                                                <Bell className="w-4 h-4" />
                                                             </button>
 
                                                             {/* Enviar credenciais */}
                                                             <button
                                                                 onClick={() => handleSendCredentials(client)}
-                                                                disabled={credStatus[client.id] === 'sending' || !client.app_account}
+                                                                disabled={!client.app_account}
                                                                 className={`p-2 rounded-lg transition-all duration-200 disabled:opacity-40 ${
-                                                                    credStatus[client.id] === 'done'
-                                                                        ? 'bg-emerald-500/10 text-emerald-400'
-                                                                        : credStatus[client.id] === 'error'
-                                                                            ? 'bg-red-500/10 text-red-400'
-                                                                            : client.app_account
-                                                                                ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400'
-                                                                                : 'bg-white/5 text-slate-600'
+                                                                    client.app_account
+                                                                        ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400'
+                                                                        : 'bg-white/5 text-slate-600'
                                                                 }`}
                                                                 title={client.app_account ? 'Enviar credenciais via WhatsApp' : 'Sem credenciais cadastradas'}
                                                             >
-                                                                {credStatus[client.id] === 'sending' ? (
-                                                                    <SendHorizonal className="w-4 h-4 animate-pulse" />
-                                                                ) : credStatus[client.id] === 'done' ? (
-                                                                    <CheckCircle2 className="w-4 h-4" />
-                                                                ) : credStatus[client.id] === 'error' ? (
-                                                                    <XCircle className="w-4 h-4" />
-                                                                ) : (
-                                                                    <SendHorizonal className="w-4 h-4" />
-                                                                )}
+                                                                <SendHorizonal className="w-4 h-4" />
                                                             </button>
                                                         </div>
                                                     </td>

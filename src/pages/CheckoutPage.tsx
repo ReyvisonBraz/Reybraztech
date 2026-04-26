@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { motion } from 'motion/react';
-import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle, Loader2, XCircle } from 'lucide-react';
 import { API_URL } from '../config/api';
 
 // Links do Mercado Pago (Fallbacks caso a API falhe)
@@ -38,6 +38,10 @@ export const CheckoutPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [selectedGateway, setSelectedGateway] = useState<'mercadopago' | 'infinitypay'>('mercadopago');
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'waiting' | 'success' | 'error'>('idle');
+  const [checkoutUrl, setCheckoutUrl] = useState('');
+  const [currentOrderId, setCurrentOrderId] = useState('');
 
   // Detectar login e pré-preencher dados do usuário
   useEffect(() => {
@@ -70,6 +74,67 @@ export const CheckoutPage = () => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
+
+    if (selectedGateway === 'infinitypay') {
+      setPaymentStatus('processing');
+
+      const whatsapp = isLoggedIn
+        ? (JSON.parse(localStorage.getItem('reyb_user') || '{}').whatsapp || '').replace(/^55/, '')
+        : phone.replace(/\D/g, '');
+      const cleanWhatsapp = `${countryCode}${whatsapp}`;
+      const amount = parseFloat(selectedPlan.price.replace(',', '.'));
+
+      try {
+        const response = await fetch(`${API_URL}/api/payments/infinitypay`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan, name, whatsapp: cleanWhatsapp, amount }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.checkoutUrl) {
+          throw new Error(data.error || 'Erro ao gerar link');
+        }
+
+        setCurrentOrderId(data.orderId);
+        setCheckoutUrl(data.checkoutUrl);
+        setPaymentStatus('waiting');
+
+        window.open(data.checkoutUrl, '_blank');
+
+        const maxPolls = 90;
+        let polls = 0;
+        const pollInterval = setInterval(async () => {
+          polls++;
+          if (polls >= maxPolls) {
+            clearInterval(pollInterval);
+            setPaymentStatus('error');
+            return;
+          }
+          try {
+            const token = localStorage.getItem('reyb_token');
+            const res = await fetch(`${API_URL}/api/orders/${data.orderId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+              const orderData = await res.json();
+              if (orderData.status === 'paid' || orderData.status === 'registered') {
+                clearInterval(pollInterval);
+                setPaymentStatus('success');
+                return;
+              }
+            }
+          } catch { /* continue polling */ }
+        }, 2000);
+      } catch (err) {
+        console.error('Erro:', err);
+        setPaymentStatus('error');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     try {
       let response: Response;
@@ -135,6 +200,54 @@ export const CheckoutPage = () => {
           <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
           {isLoggedIn ? 'Voltar para o painel' : 'Voltar para o início'}
         </Link>
+
+        {/* Seletor de Gateway */}
+        <div className="mb-8">
+          <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-3">Escolha a forma de pagamento:</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => { setSelectedGateway('mercadopago'); setPaymentStatus('idle'); }}
+              className={`p-4 rounded-2xl border-2 text-left transition-all relative ${
+                selectedGateway === 'mercadopago'
+                  ? 'border-green-500 bg-green-500/10'
+                  : 'border-white/10 hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedGateway === 'mercadopago' ? 'bg-green-500/20' : 'bg-white/5'}`}>
+                  <CreditCard className={`w-5 h-5 ${selectedGateway === 'mercadopago' ? 'text-green-400' : 'text-slate-400'}`} />
+                </div>
+                <div>
+                  <p className={`font-bold ${selectedGateway === 'mercadopago' ? 'text-green-400' : 'text-white'}`}>Mercado Pago</p>
+                  <p className="text-slate-500 text-xs">Redirect para checkout</p>
+                </div>
+              </div>
+              {selectedGateway === 'mercadopago' && <CheckCircle2 className="w-4 h-4 text-green-400 absolute top-3 right-3" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setSelectedGateway('infinitypay'); setPaymentStatus('idle'); }}
+              className={`p-4 rounded-2xl border-2 text-left transition-all relative ${
+                selectedGateway === 'infinitypay'
+                  ? 'border-yellow-500 bg-yellow-500/10'
+                  : 'border-white/10 hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedGateway === 'infinitypay' ? 'bg-yellow-500/20' : 'bg-white/5'}`}>
+                  <QrCode className={`w-5 h-5 ${selectedGateway === 'infinitypay' ? 'text-yellow-400' : 'text-slate-400'}`} />
+                </div>
+                <div>
+                  <p className={`font-bold ${selectedGateway === 'infinitypay' ? 'text-yellow-400' : 'text-white'}`}>InfinityPay</p>
+                  <p className="text-slate-500 text-xs">Pagamento rápido</p>
+                </div>
+              </div>
+              {selectedGateway === 'infinitypay' && <CheckCircle2 className="w-4 h-4 text-yellow-400 absolute top-3 right-3" />}
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
@@ -320,6 +433,57 @@ export const CheckoutPage = () => {
                       Chamar no WhatsApp
                     </a>
                   </div>
+
+                  {paymentStatus === 'processing' && (
+                    <div className="mt-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-center">
+                      <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-2" />
+                      <p className="text-blue-400 text-sm">Gerando link de pagamento...</p>
+                    </div>
+                  )}
+
+                  {paymentStatus === 'waiting' && (
+                    <div className="mt-6 p-6 rounded-2xl bg-yellow-500/10 border border-yellow-500/30">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse" />
+                        <span className="text-yellow-400 font-bold">Aguardando pagamento...</span>
+                      </div>
+                      <p className="text-slate-400 text-sm mb-4">
+                        O pagamento está sendo processado. Você pode acompanhar na outra aba.
+                      </p>
+                      <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                        <div className="h-full bg-yellow-400 animate-pulse" style={{ width: '60%' }} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => window.open(checkoutUrl, '_blank')}
+                        className="mt-4 text-sm text-yellow-400 hover:underline"
+                      >
+                        Abrir checkout novamente
+                      </button>
+                    </div>
+                  )}
+
+                  {paymentStatus === 'success' && (
+                    <div className="mt-6 p-6 rounded-2xl bg-green-500/10 border border-green-500/30 text-center">
+                      <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                      <h3 className="text-xl font-bold text-white mb-2">Pagamento Aprovado!</h3>
+                      <p className="text-slate-400 text-sm mb-4">Seu acesso foi liberado. Bom proveito!</p>
+                      <Link to="/dashboard" className="inline-block px-6 py-3 bg-green-500 text-white font-bold rounded-xl">
+                        Ir para o Dashboard
+                      </Link>
+                    </div>
+                  )}
+
+                  {paymentStatus === 'error' && (
+                    <div className="mt-6 p-6 rounded-2xl bg-red-500/10 border border-red-500/30">
+                      <XCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                      <h3 className="text-xl font-bold text-white mb-2">Tempo esgotado</h3>
+                      <p className="text-slate-400 text-sm mb-4">O pagamento não foi detectado. Tente novamente.</p>
+                      <button type="button" onClick={() => setPaymentStatus('idle')} className="text-sm text-red-400 hover:underline">
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
                 </form>
               </>
             ) : (

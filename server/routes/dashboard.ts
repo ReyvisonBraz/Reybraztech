@@ -11,7 +11,12 @@ const router = Router();
 router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
     try {
         const [client] = await sql`
-          SELECT id, name, whatsapp, device, email, plan, status, days_remaining, app_account, app_password, created_at
+          SELECT id, name, whatsapp, device, email, plan, status, app_account, app_password, created_at,
+                 CASE
+                   WHEN starhome_expiration_date IS NOT NULL
+                   THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                   ELSE days_remaining
+                 END AS days_remaining
           FROM clients
           WHERE id = ${req.clientId!}
         `;

@@ -35,7 +35,15 @@ router.get('/system-stats', async (_req: AuthRequest, res: Response) => {
         const [totalRow]    = await sql`SELECT COUNT(*)::int as count FROM clients`;
         const [activeRow]   = await sql`SELECT COUNT(*)::int as count FROM clients WHERE status = 'Ativo'`;
         const [inactiveRow] = await sql`SELECT COUNT(*)::int as count FROM clients WHERE status != 'Ativo'`;
-        const [expiringRow] = await sql`SELECT COUNT(*)::int as count FROM clients WHERE days_remaining <= 7 AND days_remaining > 0 AND status = 'Ativo'`;
+        const [expiringRow] = await sql`
+            SELECT COUNT(*)::int as count FROM clients
+            WHERE status = 'Ativo'
+            AND CASE
+              WHEN starhome_expiration_date IS NOT NULL
+              THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+              ELSE days_remaining
+            END BETWEEN 1 AND 7
+        `;
         const [trialsRow]   = await sql`SELECT COUNT(*)::int as count FROM clients WHERE plan = 'trial'`;
         const [newRow]      = await sql`SELECT COUNT(*)::int as count FROM clients WHERE created_at >= NOW() - INTERVAL '24 hours'`;
 
@@ -90,7 +98,13 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
         const expiringOnly = req.query.expiring === 'true';
 
         const clients = await sql`
-            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at, days_remaining, starhome_account, app_account, app_password
+            SELECT id, name, whatsapp, email, plan, status, is_admin, device, created_at,
+                   starhome_account, app_account, app_password,
+                   CASE
+                     WHEN starhome_expiration_date IS NOT NULL
+                     THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                     ELSE days_remaining
+                   END AS days_remaining
             FROM clients
             WHERE (
                 ${search === '' ? sql`TRUE` : sql`(
@@ -101,7 +115,14 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
             )
             AND (${statusFilter === '' ? sql`TRUE` : sql`status = ${statusFilter}`})
             AND (${planFilter === '' ? sql`TRUE` : sql`plan = ${planFilter}`})
-            AND (${!expiringOnly ? sql`TRUE` : sql`days_remaining <= 3 AND days_remaining >= 0 AND status = 'Ativo'`})
+            AND (${!expiringOnly ? sql`TRUE` : sql`
+                CASE
+                  WHEN starhome_expiration_date IS NOT NULL
+                  THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                  ELSE days_remaining
+                END <= 3
+                AND status = 'Ativo'
+            `})
             ORDER BY created_at DESC
             LIMIT ${limit} OFFSET ${offset}
         `;
@@ -118,7 +139,14 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
             )
             AND (${statusFilter === '' ? sql`TRUE` : sql`status = ${statusFilter}`})
             AND (${planFilter === '' ? sql`TRUE` : sql`plan = ${planFilter}`})
-            AND (${!expiringOnly ? sql`TRUE` : sql`days_remaining <= 3 AND days_remaining >= 0 AND status = 'Ativo'`})
+            AND (${!expiringOnly ? sql`TRUE` : sql`
+                CASE
+                  WHEN starhome_expiration_date IS NOT NULL
+                  THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                  ELSE days_remaining
+                END <= 3
+                AND status = 'Ativo'
+            `})
         `;
 
         const total = countResult?.total ?? 0;

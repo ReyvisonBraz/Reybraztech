@@ -266,4 +266,133 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
+// ============================================================
+// POST /api/payments/infinitypay — Criar link de pagamento
+// ============================================================
+router.post('/infinitypay', async (req: any, res: any) => {
+  const { plan, name, whatsapp, amount, orderId } = req.body;
+
+  if (!plan || !whatsapp) {
+    res.status(400).json({ error: 'Plano e WhatsApp são obrigatórios.' });
+    return;
+  }
+
+  const handle = process.env.INFINITYPAY_HANDLE;
+  if (!handle) {
+    res.status(500).json({ error: 'InfinityPay não configurado.' });
+    return;
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const apiUrl = process.env.API_URL || frontendUrl;
+  const generatedOrderId = orderId || `INF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  try {
+    const { createInfinityPayLink } = await import('../services/infinitypay.js');
+
+    const linkData = await createInfinityPayLink({
+      handle,
+      items: [{
+        quantity: 1,
+        price: Math.round(amount * 100),
+        description: `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)} - Reybraztech`,
+      }],
+      order_nsu: generatedOrderId,
+      redirect_url: `${frontendUrl}/dashboard?payment=success`,
+      webhook_url: `${apiUrl}/api/payments/infinitypay-webhook`,
+      customer: {
+        name,
+        phone_number: `+55${whatsapp.replace(/\D/g, '')}`,
+      },
+    });
+
+    if (!linkData.success || !linkData.link) {
+      res.status(500).json({ error: linkData.error || 'Erro ao criar link.' });
+      return;
+    }
+
+    logger.info(`[InfinityPay] Link gerado para ${whatsapp}: ${linkData.link}`);
+
+    res.json({
+      success: true,
+      checkoutUrl: linkData.link,
+      orderId: generatedOrderId,
+      slug: linkData.slug,
+    });
+  } catch (error) {
+    logger.error('[InfinityPay] Erro ao gerar link:', error);
+    res.status(500).json({ error: 'Erro ao processar pagamento.' });
+  }
+});
+
+// ============================================================
+// POST /api/payments/infinitypay-webhook — Webhook
+// ============================================================
+router.post('/infinitypay-webhook', async (req: any, res: any) => {
+  const { order_nsu, invoice_slug, paid, amount, paid_amount, capture_method, transaction_nsu, receipt_url } = req.body;
+
+  logger.info('[InfinityPay] Webhook recebido:', req.body);
+
+  res.sendStatus(200);
+
+  if (!paid) {
+    logger.info(`[InfinityPay] Pagamento não aprovado para ${order_nsu}`);
+    return;
+  }
+
+  try {
+    const [order] = await sql`
+      SELECT id, name, whatsapp, plan, status FROM pending_orders WHERE id = ${order_nsu}
+    `;
+
+    if (!order) {
+      logger.warn(`[InfinityPay] Pedido ${order_nsu} não encontrado`);
+      return;
+    }
+
+    if (order.status === 'paid' || order.status === 'registered') {
+      logger.info(`[InfinityPay] Pedido ${order_nsu} já processado`);
+      return;
+    }
+
+    await sql`
+      UPDATE pending_orders SET status = 'paid', paid_at = NOW() WHERE id = ${order_nsu}
+    `;
+
+    const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+
+    const [client] = await sql`
+      SELECT id FROM clients WHERE whatsapp = ${order.whatsapp}
+    `;
+
+    if (client) {
+      const [poolEntry] = await sql`
+        UPDATE login_pool
+        SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
+        WHERE id = (SELECT id FROM login_pool WHERE status = 'disponivel' ORDER BY created_at ASC LIMIT 1)
+        RETURNING id, app_account, app_password
+      `;
+
+      if (poolEntry) {
+        await sql`
+          UPDATE clients SET status = 'Ativo', days_remaining = ${daysToAdd},
+          app_account = ${poolEntry.app_account}, app_password = ${poolEntry.app_password}, plan = ${order.plan}
+          WHERE id = ${client.id}
+        `;
+
+        await sql`
+          UPDATE pending_orders SET status = 'registered', client_id = ${client.id}, registered_at = NOW()
+          WHERE id = ${order_nsu}
+        `;
+
+        logger.info(`[InfinityPay] Acesso liberado para ${client.id}`);
+      }
+    }
+
+    logger.info(`[InfinityPay] Pagamento confirmado: ${order_nsu}`);
+  } catch (error) {
+    logger.error('[InfinityPay] Erro ao processar webhook:', error);
+  }
+});
+
 export default router;

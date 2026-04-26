@@ -333,7 +333,8 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
 
   logger.info('[InfinityPay] Webhook recebido:', req.body);
 
-  res.sendStatus(200);
+  // Responder com JSON conforme documentação
+  res.status(200).json({ success: true });
 
   if (!paid) {
     logger.info(`[InfinityPay] Pagamento não aprovado para ${order_nsu}`);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Wifi, WifiOff, Database, Server, Zap, AlertCircle, Activity } from 'lucide-react';
+import { Wifi, WifiOff, Database, Server, Zap, AlertCircle, Activity, BellRing } from 'lucide-react';
 import { API_URL } from '../../config/api';
 
 interface ServiceStatus {
@@ -36,7 +36,12 @@ const getStatusLabel = (status: ServiceStatus['status']) => {
   }
 };
 
-export const ServiceHealthCards = () => {
+interface Props {
+  onWakeAndSync?: () => void;
+  syncing?: boolean;
+}
+
+export const ServiceHealthCards = ({ onWakeAndSync, syncing }: Props) => {
   const token = localStorage.getItem('reyb_token') ?? '';
 
   const [services, setServices] = useState<ServiceStatus[]>([
@@ -60,7 +65,6 @@ export const ServiceHealthCards = () => {
   };
 
   const checkScraper = async () => {
-    // Usa proxy do nosso backend para evitar CORS
     try {
       const res = await fetch(`${API_URL}/api/admin/scraper-health`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -98,9 +102,11 @@ export const ServiceHealthCards = () => {
     return <Zap className="w-5 h-5 text-blue-400" />;
   };
 
+  const scraperStatus = services[1]?.status;
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Saúde dos Serviços</h3>
         <button
           onClick={checkAll}
@@ -135,6 +141,26 @@ export const ServiceHealthCards = () => {
           </div>
         </div>
       ))}
+
+      {/* Botão acordar + sincronizar */}
+      {onWakeAndSync && (
+        <button
+          onClick={onWakeAndSync}
+          disabled={syncing}
+          className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl text-sm font-bold border transition-all disabled:opacity-50 ${
+            scraperStatus === 'sleeping'
+              ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/25'
+              : 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20'
+          }`}
+        >
+          <BellRing className={`w-4 h-4 ${syncing ? 'animate-pulse' : ''}`} />
+          {syncing
+            ? 'Processando...'
+            : scraperStatus === 'sleeping'
+              ? 'Acordar e Sincronizar'
+              : 'Acordar + Sincronizar Starhome'}
+        </button>
+      )}
     </div>
   );
 };

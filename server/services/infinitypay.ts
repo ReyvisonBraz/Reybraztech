@@ -1,6 +1,6 @@
 import logger from '../utils/logger.js';
 
-const INFINITYPAY_API = 'https://api.checkout.infinitepay.io';
+const INFINITYPAY_API = 'https://api.infinitepay.io';
 
 interface InfinityPayItem {
   quantity: number;
@@ -24,7 +24,7 @@ export const createInfinityPayLink = async (params: {
   customer?: { name: string; email?: string; phone_number?: string };
 }): Promise<InfinityPayLinkResponse> => {
   try {
-    const response = await fetch(`${INFINITYPAY_API}/links`, {
+    const response = await fetch(`${INFINITYPAY_API}/invoices/public/checkout/links`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
@@ -37,8 +37,8 @@ export const createInfinityPayLink = async (params: {
       return { success: false, error: data.message || 'Erro ao criar link' };
     }
 
-    logger.info(`[InfinityPay] Link criado: ${data.link}`);
-    return { success: true, link: data.link, slug: data.slug };
+    logger.info(`[InfinityPay] Link criado: ${data.url}`);
+    return { success: true, link: data.url, slug: data.slug };
   } catch (error) {
     logger.error('[InfinityPay] Erro na API:', error);
     return { success: false, error: 'Erro de conexão com InfinityPay' };
@@ -52,7 +52,7 @@ export const checkInfinityPayStatus = async (params: {
   slug?: string;
 }): Promise<{ paid: boolean; amount?: number; capture_method?: string }> => {
   try {
-    const response = await fetch(`${INFINITYPAY_API}/payment_check`, {
+    const response = await fetch(`${INFINITYPAY_API}/invoices/public/checkout/payment_check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),

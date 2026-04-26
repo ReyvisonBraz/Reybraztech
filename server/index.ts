@@ -280,7 +280,7 @@ async function startTelegramBot() {
                             if (SCRAPER_URL && SCRAPER_KEY) {
                                 await sendTelegram('⏳ Sincronização iniciada!\nO scraper está sendo executado...\n\nVocê receberá uma notificação quando concluir.');
                                 try {
-                                    await axios.post(`${SCRAPER_URL}/run`, { action: 'sync' }, { headers: { 'x-api-key': SCRAPER_KEY }, timeout: 300000 });
+                                    await axios.post(`${SCRAPER_URL}/run`, { action: 'sync' }, { headers: { 'x-api-key': SCRAPER_KEY }, timeout: 600000 });
                                 } catch (err: any) {
                                     await sendTelegram(`🚨 Erro: ${err.message}`);
                                 }
@@ -377,7 +377,7 @@ async function startTelegramBot() {
                         try {
                             await sendTelegram('🔄 Etapa 3/4: Executando scraper...\n(Aguarde, isso pode levar alguns minutos)');
                             const startTime = Date.now();
-                            await axios.post(`${SCRAPER_URL}/run`, { action: 'sync' }, { headers: { 'x-api-key': SCRAPER_KEY }, timeout: 300000 });
+                            await axios.post(`${SCRAPER_URL}/run`, { action: 'sync' }, { headers: { 'x-api-key': SCRAPER_KEY }, timeout: 600000 });
                             const duration = Math.round((Date.now() - startTime) / 1000);
                             await sendTelegram(`✅ <b>Etapa 4/4: Concluído!</b>\n\n⏱️ Tempo total: ${duration}s\n\nUse /status para ver os dados atualizados.`);
                         } catch (err: any) {

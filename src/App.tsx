@@ -55,11 +55,18 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(isInstalledPWA);
 
   // Wake Up Server Strategy (Render Free Tier)
+  const [serverAwake, setServerAwake] = useState(false);
+
   useEffect(() => {
-    fetch(`${API_URL}/api/health`, { method: 'GET' })
-      .then(() => console.log('🟢 Servidor Acordado ou Conectado'))
-      .catch((err) => console.log('🔴 Servidor indisponível no momento', err));
-  }, []);
+    if (!serverAwake) {
+      fetch(`${API_URL}/api/health`, { method: 'GET' })
+        .then(() => {
+          console.log('🟢 Servidor Acordado ou Conectado');
+          setServerAwake(true);
+        })
+        .catch((err) => console.log('🔴 Servidor indisponível no momento', err));
+    }
+  }, [serverAwake]);
 
   // Restore SendPulse chat if user had an active conversation
   useEffect(() => {

@@ -5,6 +5,7 @@ import { Zap, Clock, Shield, PlayCircle, LogOut, CreditCard, CheckCircle2, Loade
 import { API_URL } from '../config/api';
 import { InstallationGuideModal } from '../components/InstallationGuideModal';
 import { UnitvPromoModal } from '../components/UnitvPromoModal';
+import { DashboardSkeleton } from '../components/ui/skeleton';
 
 const WHATSAPP_BOT_NUMBER = '559191715764';
 const WHATSAPP_ACTIVATION_MESSAGE = 'Olá! Quero solicitar meu código de verificação 🔐';
@@ -296,10 +297,9 @@ export const DashboardPage = () => {
   // Estado de carregamento
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
-          <p className="text-slate-400">Carregando seu painel...</p>
+      <div className="min-h-screen bg-transparent pt-24 pb-12 px-4 md:pt-32 md:pb-20">
+        <div className="max-w-6xl mx-auto space-y-8">
+          <DashboardSkeleton />
         </div>
       </div>
     );

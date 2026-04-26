@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import sql from '../database.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { verifyAdmin } from '../middleware/admin.js';
@@ -18,8 +19,18 @@ router.post('/verify-starhome', async (req: AuthRequest, res: Response) => {
     try {
         const { starhome_password } = req.body;
         if (!starhome_password) { res.status(400).json({ error: 'Senha do Starhome é obrigatória.' }); return; }
+        
         const envPassword = process.env.PANEL_PASSWORD;
-        if (starhome_password !== envPassword) { res.status(401).json({ error: 'Senha do Starhome incorreta.' }); return; }
+        const envHash = process.env.STARHOME_PASSWORD_HASH;
+        
+        let isValid = false;
+        if (envHash) {
+            isValid = await bcrypt.compare(starhome_password, envHash);
+        } else if (envPassword) {
+            isValid = starhome_password === envPassword;
+        }
+        
+        if (!isValid) { res.status(401).json({ error: 'Senha do Starhome incorreta.' }); return; }
         res.json({ verified: true });
     } catch (error) {
         logger.error('Erro ao verificar senha Starhome:', error);

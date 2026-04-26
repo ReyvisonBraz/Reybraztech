@@ -48,6 +48,13 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const { name, whatsapp, device, email, password } = result.data;
 
+    // Validar phone format (após extrair whatsapp e antes de consultar DB)
+    const cleanPhone = whatsapp.replace(/\D/g, '');
+    if (cleanPhone.length < 10 || cleanPhone.length > 13) {
+        res.status(400).json({ error: 'WhatsApp inválido. Forneça um número com DDD.' });
+        return;
+    }
+
     try {
         // Verificar se o WhatsApp já existe
         const [existingWhatsapp] = await sql`
@@ -142,14 +149,21 @@ router.post('/login', async (req: Request, res: Response) => {
         let client: any;
         let cleanPhone = '';
 
+        // Validar phone format (após extrair identifier e antes de consultar DB)
+        if (!isEmail) {
+            cleanPhone = identifier.replace(/\D/g, '');
+            if (cleanPhone.length < 10 || cleanPhone.length > 13) {
+                res.status(400).json({ error: 'WhatsApp inválido. Forneça um número com DDD.' });
+                return;
+            }
+        }
+
         const dbStart = performance.now();
         if (isEmail) {
             [client] = await sql`
               SELECT * FROM clients WHERE email = ${identifier}
             `;
         } else {
-            // Limpar o telefone (remover espaços, traços, parênteses)
-            cleanPhone = identifier.replace(/[\s\-\(\)]/g, '');
             [client] = await sql`
               SELECT * FROM clients WHERE whatsapp = ${cleanPhone}
             `;

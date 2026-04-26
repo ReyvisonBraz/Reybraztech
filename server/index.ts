@@ -11,7 +11,7 @@ if (!process.env.DATABASE_URL) {
 if (process.env.SENTRY_DSN) {
     Sentry.init({
         dsn: process.env.SENTRY_DSN,
-        tracesSampleRate: 1.0,
+        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
     });
 }
 
@@ -66,7 +66,7 @@ app.use(helmet());
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50,
+    max: 200, // era 50 — adequado para polling do frontend
     message: { error: 'Muitas requisições deste IP, tente novamente mais tarde.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -100,6 +100,15 @@ const otpStatusLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Rate limit dedicado para registro — 20 req/15min
+const registerLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: 'Muitas tentativas de cadastro. Aguarde 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', limiter);
 app.use('/api/dashboard', limiter);
@@ -108,6 +117,7 @@ app.use('/api/otp', limiter);
 app.use('/api/admin', limiter);
 app.use('/api/orders', limiter);
 app.use('/api/payments/webhook', webhookLimiter);
+app.use('/api/auth/register', registerLimiter);
 
 // ─── Rotas ──────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);

@@ -10,21 +10,45 @@ const router = Router();
 // ============================================================
 router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
     try {
-        const [client] = await sql`
-          SELECT id, name, whatsapp, device, email, plan, status,
-                 app_account, app_password, created_at,
-                 starhome_account, starhome_password, starhome_package,
-                 starhome_days_remaining, starhome_in_use,
-                 starhome_expiration_date, starhome_last_sync,
-                 whatsapp_verified,
-                 CASE
-                   WHEN starhome_expiration_date IS NOT NULL
-                   THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
-                   ELSE days_remaining
-                 END AS days_remaining
-          FROM clients
-          WHERE id = ${req.clientId!}
-        `;
+        // Garantir que a coluna whatsapp_verified exista (migração automática)
+        await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS whatsapp_verified BOOLEAN DEFAULT FALSE`.catch(() => {});
+
+        let client: any;
+        let whatsappVerified = false;
+        try {
+          [client] = await sql`
+            SELECT id, name, whatsapp, device, email, plan, status,
+                   app_account, app_password, created_at,
+                   starhome_account, starhome_password, starhome_package,
+                   starhome_days_remaining, starhome_in_use,
+                   starhome_expiration_date, starhome_last_sync,
+                   COALESCE(whatsapp_verified, FALSE) AS whatsapp_verified,
+                   CASE
+                     WHEN starhome_expiration_date IS NOT NULL
+                     THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                     ELSE days_remaining
+                   END AS days_remaining
+            FROM clients
+            WHERE id = ${req.clientId!}
+          `;
+          whatsappVerified = client?.whatsapp_verified || false;
+        } catch {
+          // Fallback: coluna whatsapp_verified pode não existir
+          [client] = await sql`
+            SELECT id, name, whatsapp, device, email, plan, status,
+                   app_account, app_password, created_at,
+                   starhome_account, starhome_password, starhome_package,
+                   starhome_days_remaining, starhome_in_use,
+                   starhome_expiration_date, starhome_last_sync,
+                   CASE
+                     WHEN starhome_expiration_date IS NOT NULL
+                     THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                     ELSE days_remaining
+                   END AS days_remaining
+            FROM clients
+            WHERE id = ${req.clientId!}
+          `;
+        }
 
         if (!client) {
             res.status(404).json({ error: 'Cliente não encontrado.' });
@@ -52,7 +76,7 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             name: client.name,
             email: client.email,
             whatsapp: client.whatsapp,
-            whatsapp_verified: client.whatsapp_verified || false,
+            whatsapp_verified: whatsappVerified,
             device: client.device,
             plan: client.plan,
             status: client.status,
@@ -71,9 +95,9 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             createdAt: client.created_at,
             paymentHistory,
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Erro no dashboard:', error);
-        res.status(500).json({ error: 'Erro ao carregar dados.' });
+        res.status(500).json({ error: 'Erro ao carregar dados.', detail: error?.message || String(error) });
     }
 });
 

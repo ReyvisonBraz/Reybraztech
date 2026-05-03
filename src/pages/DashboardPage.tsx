@@ -253,7 +253,7 @@ export const DashboardPage = () => {
 
         const data = await response.json();
         if (!response.ok) {
-          setError(data.error || 'Erro ao carregar dados.');
+          setError(data.detail || data.error || 'Erro ao carregar dados.');
           return;
         }
 

@@ -16,6 +16,7 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
                  starhome_account, starhome_password, starhome_package,
                  starhome_days_remaining, starhome_in_use,
                  starhome_expiration_date, starhome_last_sync,
+                 whatsapp_verified,
                  CASE
                    WHEN starhome_expiration_date IS NOT NULL
                    THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
@@ -51,6 +52,7 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             name: client.name,
             email: client.email,
             whatsapp: client.whatsapp,
+            whatsapp_verified: client.whatsapp_verified || false,
             device: client.device,
             plan: client.plan,
             status: client.status,

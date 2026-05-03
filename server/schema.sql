@@ -37,6 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_pending_orders_status ON pending_orders(status);
 -- ============================================================
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS device VARCHAR(50);
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS plan VARCHAR(50);
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS whatsapp_verified BOOLEAN DEFAULT FALSE;
 
 -- ============================================================
 -- Verificar estrutura final

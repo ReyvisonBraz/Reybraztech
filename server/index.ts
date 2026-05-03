@@ -59,7 +59,7 @@ app.use(cors({
     ],
     credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(helmet());
 
 const limiter = rateLimit({
@@ -107,9 +107,19 @@ const registerLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Rate limit dedicado para envio de OTP — 3 req/15min por número (anti-spam WhatsApp)
+const otpSendLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 3,
+    message: { error: 'Muitas solicitações de código. Aguarde 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', limiter);
 app.use('/api/dashboard', limiter);
+app.use('/api/otp/send', otpSendLimiter);
 app.use('/api/otp/status', otpStatusLimiter);
 app.use('/api/otp', limiter);
 app.use('/api/admin', limiter);

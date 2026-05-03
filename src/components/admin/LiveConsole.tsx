@@ -57,10 +57,6 @@ function newLog(level: LogEntry['level'], message: string): LogEntry {
   };
 }
 
-const scraperUrl = () =>
-  (import.meta.env.VITE_SCRAPER_URL || 'https://reybraztech-scraper.onrender.com').replace(/\/+$/, '');
-const scraperKey = () => import.meta.env.VITE_SCRAPER_API_KEY || '';
-
 export const LiveConsole = () => {
   const [logs, setLogs] = useState<LogEntry[]>([
     newLog('success', 'Console Reybraztech inicializado. Digite "help" para ver os comandos.'),
@@ -84,8 +80,8 @@ export const LiveConsole = () => {
     if (!running) return;
     const interval = setInterval(async () => {
       try {
-        const r = await fetch(`${scraperUrl()}/2fa-status`, {
-          headers: { 'x-api-key': scraperKey() },
+        const r = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
+          headers: authHeaders(),
           signal: AbortSignal.timeout(4000),
         });
         const data = await r.json() as { waiting: boolean };
@@ -107,9 +103,9 @@ export const LiveConsole = () => {
     if (!code) return;
     setTwoFA(p => ({ ...p, submitting: true }));
     try {
-      const res = await fetch(`${scraperUrl()}/2fa`, {
+      const res = await fetch(`${API_URL}/api/admin/scraper-2fa`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': scraperKey() },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
       });
       addLog(res.ok ? 'success' : 'error',
@@ -221,8 +217,8 @@ export const LiveConsole = () => {
       // 2fa status
       if (cmd === '2fa status') {
         try {
-          const r = await fetch(`${scraperUrl()}/2fa-status`, {
-            headers: { 'x-api-key': scraperKey() },
+          const r = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
+            headers: authHeaders(),
             signal: AbortSignal.timeout(6000),
           });
           const d = await r.json() as { waiting: boolean };
@@ -292,8 +288,8 @@ export const LiveConsole = () => {
       if (cmd === 'jobs') {
         addLog('info', 'Consultando jobs recentes...');
         try {
-          const r = await fetch(`${scraperUrl()}/jobs`, {
-            headers: { 'x-api-key': scraperKey() },
+          const r = await fetch(`${API_URL}/api/admin/scraper-jobs`, {
+            headers: authHeaders(),
             signal: AbortSignal.timeout(8000),
           });
           if (!r.ok) { addLog('error', `Scraper retornou ${r.status}`); setRunning(false); return; }
@@ -318,8 +314,8 @@ export const LiveConsole = () => {
         const jobId = raw.replace(/^job\s+/i, '').trim();
         addLog('info', `Buscando job ${jobId}...`);
         try {
-          const r = await fetch(`${scraperUrl()}/job/${jobId}`, {
-            headers: { 'x-api-key': scraperKey() },
+          const r = await fetch(`${API_URL}/api/admin/scraper-job/${jobId}`, {
+            headers: authHeaders(),
             signal: AbortSignal.timeout(8000),
           });
           if (!r.ok) { addLog('error', `Job não encontrado (${r.status})`); setRunning(false); return; }

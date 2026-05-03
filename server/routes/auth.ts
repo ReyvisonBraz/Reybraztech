@@ -22,17 +22,17 @@ async function logLoginEvent(action: string, whatsapp?: string, email?: string, 
 
 // Schema de validação do login
 const loginSchema = z.object({
-    identifier: z.string().min(1, 'WhatsApp/E-mail é obrigatório'),
-    password: z.string().min(1, 'Senha é obrigatória'),
+    identifier: z.string().min(1, 'WhatsApp/E-mail é obrigatório').max(255),
+    password: z.string().min(1, 'Senha é obrigatória').max(128),
 });
 
 // Schema de validação usando Zod
 const registerSchema = z.object({
-    name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-    whatsapp: z.string().min(10, 'WhatsApp inválido'),
-    device: z.string().min(1, 'Informe o dispositivo'),
-    email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+    name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100),
+    whatsapp: z.string().min(10, 'WhatsApp inválido').max(20),
+    device: z.string().min(1, 'Informe o dispositivo').max(50),
+    email: z.string().email('E-mail inválido').max(255).optional().or(z.literal('')),
+    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(128),
 });
 
 // ============================================================
@@ -230,10 +230,10 @@ router.post('/login', async (req: Request, res: Response) => {
 // POST /api/auth/register-from-order — Cadastro pós-pagamento/trial
 // ============================================================
 const registerFromOrderSchema = z.object({
-    orderId: z.string().min(1, 'ID do pedido inválido'),
-    device: z.string().optional().or(z.literal('')),
-    email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+    orderId: z.string().min(1, 'ID do pedido inválido').max(100),
+    device: z.string().max(50).optional().or(z.literal('')),
+    email: z.string().email('E-mail inválido').max(255).optional().or(z.literal('')),
+    password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(128),
 });
 
 router.post('/register-from-order', async (req: Request, res: Response) => {

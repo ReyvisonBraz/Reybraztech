@@ -65,8 +65,18 @@ async function sendTelegram(text: string, replyMarkup?: InlineKeyboard): Promise
 }
 
 function authenticate(req: express.Request, res: express.Response, next: express.NextFunction): void {
-  // Auth temporariamente desabilitado para teste
-  console.log('[AUTH] Allow all (test mode)');
+  const apiKey = process.env.SCRAPER_API_KEY;
+  if (!apiKey) {
+    console.error('[AUTH] SCRAPER_API_KEY não configurado');
+    res.status(500).json({ error: 'Servidor mal configurado' });
+    return;
+  }
+  const provided = req.headers['x-api-key'] as string;
+  if (!provided || provided !== apiKey) {
+    console.warn('[AUTH] Tentativa de acesso não autorizado');
+    res.status(401).json({ error: 'Não autorizado' });
+    return;
+  }
   next();
 }
 

@@ -20,15 +20,15 @@ router.post('/verify-starhome', async (req: AuthRequest, res: Response) => {
         const { starhome_password } = req.body;
         if (!starhome_password) { res.status(400).json({ error: 'Senha do Starhome é obrigatória.' }); return; }
         
-        const envPassword = process.env.PANEL_PASSWORD;
         const envHash = process.env.STARHOME_PASSWORD_HASH;
         
-        let isValid = false;
-        if (envHash) {
-            isValid = await bcrypt.compare(starhome_password, envHash);
-        } else if (envPassword) {
-            isValid = starhome_password === envPassword;
+        // Apenas comparação segura (bcrypt). Plaintext foi removido.
+        if (!envHash) {
+            res.status(500).json({ error: 'STARHOME_PASSWORD_HASH não configurado no servidor.' });
+            return;
         }
+
+        const isValid = await bcrypt.compare(starhome_password, envHash);
         
         if (!isValid) { res.status(401).json({ error: 'Senha do Starhome incorreta.' }); return; }
         res.json({ verified: true });

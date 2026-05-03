@@ -49,6 +49,8 @@ export async function ensureTables() {
     await sql`CREATE INDEX IF NOT EXISTS idx_login_logs_whatsapp ON login_logs(whatsapp)`.catch(() => {});
     await sql`CREATE INDEX IF NOT EXISTS idx_login_logs_action ON login_logs(action)`.catch(() => {});
     
+    await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS whatsapp_verified BOOLEAN DEFAULT FALSE`.catch(() => {});
+
     logger.info('✅ Tabelas verificadas/criadas automaticamente');
   } catch (err: any) {
     logger.error('⚠️ Erro ao criar tabelas:', err.message);

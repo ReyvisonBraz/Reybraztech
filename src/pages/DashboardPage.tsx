@@ -17,11 +17,16 @@ function WhatsAppValidationBanner({ whatsapp, verified }: { whatsapp: string; ve
   const [sent, setSent] = useState(false);
   const [done, setDone] = useState(false);
 
+  const persistDismiss = () => {
+    localStorage.setItem(`wa_validated_${whatsapp}`, 'true');
+    setDismissed(true);
+  };
+
   // Reagir quando a verificação automática (via link) for concluída
   useEffect(() => {
     if (verified || localStorage.getItem(`wa_validated_${whatsapp}`) === 'true') {
       setDone(true);
-      const t = setTimeout(() => setDismissed(true), 3000);
+      const t = setTimeout(() => persistDismiss(), 3000);
       return () => clearTimeout(t);
     }
   }, [verified, whatsapp]);
@@ -107,7 +112,7 @@ function WhatsAppValidationBanner({ whatsapp, verified }: { whatsapp: string; ve
                     <button onClick={() => setSent(false)} className="text-xs text-slate-500 hover:text-slate-300 underline">
                       Voltar
                     </button>
-                    <button onClick={() => setDismissed(true)} className="text-xs text-slate-500 hover:text-slate-300">
+                    <button onClick={persistDismiss} className="text-xs text-slate-500 hover:text-slate-300">
                       Fazer depois
                     </button>
                   </div>
@@ -115,7 +120,7 @@ function WhatsAppValidationBanner({ whatsapp, verified }: { whatsapp: string; ve
               )}
             </div>
           </div>
-          <button onClick={() => setDismissed(true)} className="text-slate-600 hover:text-slate-400 transition-colors shrink-0">
+          <button onClick={persistDismiss} className="text-slate-600 hover:text-slate-400 transition-colors shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -129,6 +134,7 @@ interface UserData {
   plan: string;
   status: string;
   whatsapp: string;
+  whatsapp_verified: boolean;
   days_remaining: number;
   app_account: string | null;
   app_password: string | null;
@@ -213,6 +219,7 @@ export const DashboardPage = () => {
           if (res.ok) {
             localStorage.setItem(`wa_validated_${wa}`, 'true');
             setShowWaVerified(true);
+            setUser(prev => prev ? { ...prev, whatsapp_verified: true } : null);
             setTimeout(() => setShowWaVerified(false), 5000);
           }
         } catch {
@@ -951,43 +958,39 @@ export const DashboardPage = () => {
 
             )}
 
-            {/* ─── StarHome Panel Credentials ─── */}
-            {user.starhome && (
+            {/* ─── Referência ao Painel StarHome ─── */}
+            {/* Só aparece se o cliente tem conta StarHome DIFERENTE da conta do app */}
+            {user.starhome && user.starhome.account !== user.app_account && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mt-6 p-5 rounded-3xl border border-purple-500/20 bg-gradient-to-br from-purple-500/[0.05] to-indigo-500/[0.03]"
+                transition={{ delay: 0.15 }}
+                className="mt-4 p-3 rounded-2xl bg-purple-500/[0.04] border border-purple-500/15"
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <Shield className="w-4 h-4 text-purple-400" />
-                  <h4 className="text-purple-400 font-black text-sm uppercase tracking-widest">Painel StarHome</h4>
-                  {user.starhome.last_sync && (
-                    <span className="text-[0.6rem] text-slate-500 ml-auto">
-                      Sincronizado: {new Date(user.starhome.last_sync).toLocaleDateString('pt-BR')}
-                    </span>
-                  )}
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-[0.65rem] text-purple-400 font-bold uppercase tracking-widest">Painel StarHome</span>
+                  <span className="text-[0.55rem] text-slate-600 ml-auto">para renovação</span>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Conta</p>
-                    <p className="text-sm font-bold text-white truncate">{user.starhome.account}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <p className="text-[0.55rem] text-slate-600 uppercase font-bold tracking-wider">Conta</p>
+                    <p className="text-xs font-bold text-slate-300 truncate">{user.starhome.account}</p>
                   </div>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Senha</p>
-                    <p className="text-sm font-bold text-white font-mono truncate">{user.starhome.password}</p>
+                  <div>
+                    <p className="text-[0.55rem] text-slate-600 uppercase font-bold tracking-wider">Senha</p>
+                    <p className="text-xs font-bold text-slate-300 font-mono truncate">{user.starhome.password}</p>
                   </div>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Pacote</p>
-                    <p className="text-sm font-bold text-cyan-400 truncate">{user.starhome.package || 'N/A'}</p>
+                  <div>
+                    <p className="text-[0.55rem] text-slate-600 uppercase font-bold tracking-wider">Pacote</p>
+                    <p className="text-xs font-bold text-slate-400 truncate">{user.starhome.package || 'N/A'}</p>
                   </div>
-                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Expira em</p>
-                    <p className="text-sm font-bold text-white">
+                  <div>
+                    <p className="text-[0.55rem] text-slate-600 uppercase font-bold tracking-wider">Expira</p>
+                    <p className="text-xs font-bold text-slate-300">
                       {user.starhome.expiration_date
                         ? new Date(user.starhome.expiration_date).toLocaleDateString('pt-BR')
-                        : `${user.starhome.days_remaining} dias`}
+                        : `${user.starhome.days_remaining}d`}
                     </p>
                   </div>
                 </div>

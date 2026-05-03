@@ -79,6 +79,9 @@ router.post('/verify', async (req: Request, res: Response) => {
 
     // Se for validação de WhatsApp (register), tentar vincular ao StarHome
     if (type === 'register') {
+      await sql`
+        UPDATE clients SET whatsapp_verified = TRUE WHERE whatsapp = ${whatsapp}
+      `;
       linkClientByWhatsapp(whatsapp).catch((err) =>
         logger.error('Erro ao vincular cliente ao StarHome:', err)
       );

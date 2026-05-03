@@ -218,4 +218,72 @@ router.get('/scraper-health', async (_req: AuthRequest, res: Response) => {
     }
 });
 
+// ============================================================
+// GET /api/admin/scraper-2fa-status — Proxy 2FA status
+// ============================================================
+router.get('/scraper-2fa-status', async (_req: AuthRequest, res: Response) => {
+    try {
+        const r = await fetch(`${scraperUrl()}/2fa-status`, {
+            headers: { 'x-api-key': scraperKey() },
+            signal: AbortSignal.timeout(8000),
+        });
+        const data = await r.json();
+        res.json(data);
+    } catch (err: any) {
+        res.status(504).json({ error: err.message });
+    }
+});
+
+// ============================================================
+// POST /api/admin/scraper-2fa — Envia código 2FA
+// ============================================================
+router.post('/scraper-2fa', async (req: AuthRequest, res: Response) => {
+    const { code } = req.body;
+    if (!code) { res.status(400).json({ error: 'Código obrigatório' }); return; }
+    try {
+        const r = await fetch(`${scraperUrl()}/2fa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': scraperKey() },
+            body: JSON.stringify({ code }),
+            signal: AbortSignal.timeout(8000),
+        });
+        const data = await r.json();
+        res.json(data);
+    } catch (err: any) {
+        res.status(504).json({ error: err.message });
+    }
+});
+
+// ============================================================
+// GET /api/admin/scraper-jobs — Lista jobs do scraper
+// ============================================================
+router.get('/scraper-jobs', async (_req: AuthRequest, res: Response) => {
+    try {
+        const r = await fetch(`${scraperUrl()}/jobs`, {
+            headers: { 'x-api-key': scraperKey() },
+            signal: AbortSignal.timeout(8000),
+        });
+        const data = await r.json();
+        res.json(data);
+    } catch (err: any) {
+        res.status(504).json({ error: err.message });
+    }
+});
+
+// ============================================================
+// GET /api/admin/scraper-job/:id — Status de um job específico
+// ============================================================
+router.get('/scraper-job/:id', async (req: AuthRequest, res: Response) => {
+    try {
+        const r = await fetch(`${scraperUrl()}/job/${req.params.id}`, {
+            headers: { 'x-api-key': scraperKey() },
+            signal: AbortSignal.timeout(8000),
+        });
+        const data = await r.json();
+        res.json(data);
+    } catch (err: any) {
+        res.status(504).json({ error: err.message });
+    }
+});
+
 export default router;

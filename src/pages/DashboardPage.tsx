@@ -7,34 +7,65 @@ import { InstallationGuideModal } from '../components/InstallationGuideModal';
 import { UnitvPromoModal } from '../components/UnitvPromoModal';
 import { DashboardSkeleton } from '../components/ui/skeleton';
 
+const WHATSAPP_BOT_NUMBER = '559191715764';
+const WHATSAPP_ACTIVATION_MESSAGE = 'Olá! Quero solicitar meu código de verificação 🔐';
+
 function WhatsAppValidationBanner({ whatsapp }: { whatsapp: string }) {
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(`wa_validated_${whatsapp}`) === 'true'
   );
   const [step, setStep] = useState<'idle' | 'sending' | 'waiting' | 'done'>('idle');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
   if (dismissed) return null;
 
-  const handleSendVerificationLink = async () => {
+  const waLink = `https://wa.me/${WHATSAPP_BOT_NUMBER}?text=${encodeURIComponent(WHATSAPP_ACTIVATION_MESSAGE)}`;
+
+  const handleRequestOTP = async () => {
     setStep('sending');
     setError('');
     try {
-      const res = await fetch(`${API_URL}/api/otp/send-verification-link`, {
+      const res = await fetch(`${API_URL}/api/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whatsapp }),
+        body: JSON.stringify({ whatsapp, type: 'register' }),
       });
       if (res.ok) {
         setStep('waiting');
       } else {
         const data = await res.json();
-        setError(data.error || 'Erro ao enviar link. Tente novamente.');
+        setError(data.error || 'Erro ao enviar código. Tente novamente.');
         setStep('idle');
       }
     } catch {
       setError('Erro de conexão. Tente novamente.');
       setStep('idle');
+    }
+  };
+
+  const handleVerify = async () => {
+    if (code.length !== 6) { setError('Digite o código de 6 dígitos.'); return; }
+    setVerifying(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/otp/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp, token: code, type: 'register' }),
+      });
+      if (res.ok) {
+        setStep('done');
+        localStorage.setItem(`wa_validated_${whatsapp}`, 'true');
+        setTimeout(() => setDismissed(true), 2500);
+      } else {
+        setError('Código inválido ou expirado. Tente novamente.');
+      }
+    } catch {
+      setError('Erro de conexão. Tente novamente.');
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -64,37 +95,54 @@ function WhatsAppValidationBanner({ whatsapp }: { whatsapp: string }) {
               </p>
 
               {step === 'idle' && (
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <button onClick={handleSendVerificationLink}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-black rounded-xl text-sm transition-all">
+                <div className="mt-4 space-y-3">
+                  <p className="text-slate-300 text-xs">1. Envie uma mensagem para o bot no WhatsApp:</p>
+                  <a href={waLink} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl text-sm transition-all">
                     <MessageCircle className="w-4 h-4" />
-                    Enviar link de verificação
-                  </button>
-                  <button onClick={() => setDismissed(true)}
-                    className="px-4 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors">
-                    Fazer depois
-                  </button>
+                    Abrir WhatsApp
+                  </a>
+                  <p className="text-slate-300 text-xs mt-3">2. Depois de enviar, clique abaixo para receber seu código:</p>
+                  <div className="flex flex-wrap gap-3">
+                    <button onClick={handleRequestOTP}
+                      className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-black rounded-xl text-sm transition-all">
+                      Já enviei, receber código
+                    </button>
+                    <button onClick={() => setDismissed(true)}
+                      className="px-4 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors">
+                      Fazer depois
+                    </button>
+                  </div>
                 </div>
               )}
 
               {step === 'sending' && (
                 <div className="mt-4 flex items-center gap-3">
                   <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
-                  <p className="text-cyan-400 text-sm font-bold">Enviando link de verificação...</p>
+                  <p className="text-cyan-400 text-sm font-bold">Enviando código de verificação...</p>
                 </div>
               )}
 
               {step === 'waiting' && (
                 <div className="mt-4 space-y-3">
-                  <p className="text-cyan-400 text-sm font-bold">Enviamos um link de verificação para seu WhatsApp!</p>
-                  <p className="text-slate-400 text-xs">Abra o WhatsApp, clique no link que enviamos e você será validado automaticamente.</p>
+                  <p className="text-cyan-400 text-sm font-bold">Código enviado! Verifique seu WhatsApp.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text" inputMode="numeric" maxLength={6} placeholder="000000"
+                      value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="w-36 p-3 bg-white/5 border border-white/10 rounded-xl text-white text-center text-xl font-mono tracking-[0.4em] focus:border-cyan-500 outline-none"
+                    />
+                    <button onClick={handleVerify} disabled={verifying || code.length !== 6}
+                      className="px-5 py-3 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white font-black rounded-xl text-sm transition-all">
+                      {verifying ? '...' : 'Verificar'}
+                    </button>
+                  </div>
+                  {error && <p className="text-red-400 text-xs">{error}</p>}
                   <button onClick={() => setStep('idle')} className="text-xs text-slate-500 hover:text-slate-300 underline">
-                    Reenviar link
+                    Reenviar código
                   </button>
                 </div>
               )}
-
-              {error && <p className="mt-3 text-red-400 text-xs">{error}</p>}
             </div>
           </div>
           <button onClick={() => setDismissed(true)} className="text-slate-600 hover:text-slate-400 transition-colors shrink-0">
@@ -136,7 +184,6 @@ export const DashboardPage = () => {
   const [copiedField, setCopiedField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showPaymentBanner, setShowPaymentBanner] = useState(false);
-  const [showWaVerified, setShowWaVerified] = useState(false);
 
   // Dados de boas-vindas (temporários via sessionStorage)
   const [welcomeData, setWelcomeData] = useState<{
@@ -185,13 +232,10 @@ export const DashboardPage = () => {
           });
           if (res.ok) {
             localStorage.setItem(`wa_validated_${wa}`, 'true');
-            setShowWaVerified(true);
-            setTimeout(() => setShowWaVerified(false), 4000);
           }
         } catch {
           // Silencioso - o banner ainda aparecerá para tentar novamente
         }
-        setSearchParams({});
       };
       autoVerify();
     }
@@ -610,27 +654,6 @@ export const DashboardPage = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ─── Banner: WhatsApp verificado (auto-link) ─── */}
-        <AnimatePresence>
-          {showWaVerified && (
-            <motion.div
-              initial={{ opacity: 0, y: -16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              className="mb-8 rounded-3xl border-2 border-emerald-500/40 bg-emerald-500/10 p-5 flex items-center gap-3"
-            >
-              <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
-              <div>
-                <p className="text-emerald-400 font-bold">WhatsApp verificado com sucesso!</p>
-                <p className="text-slate-400 text-xs mt-0.5">Agora você pode recuperar sua conta pelo WhatsApp.</p>
-              </div>
-              <button onClick={() => setShowWaVerified(false)} className="ml-auto text-slate-500 hover:text-slate-300 shrink-0">
-                <X className="w-4 h-4" />
-              </button>
             </motion.div>
           )}
         </AnimatePresence>

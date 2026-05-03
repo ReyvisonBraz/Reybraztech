@@ -52,3 +52,5 @@ coverage/
 # AI Agent Skills
 .opencode/skills/
 .claude/skills/
+.vercel
+.env*.local

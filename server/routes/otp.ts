@@ -196,4 +196,54 @@ router.get('/status/:whatsapp', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/otp/send-verification-link
+ * Body: { whatsapp: '5511999998888' }
+ * Gera um token e envia um LINK de verificação via WhatsApp (SendPulse).
+ * O cliente clica no link, volta ao site e a verificação é feita automaticamente.
+ */
+router.post('/send-verification-link', async (req: Request, res: Response) => {
+  const { whatsapp } = req.body;
+
+  if (!whatsapp) {
+    res.status(400).json({ error: 'WhatsApp é obrigatório.' });
+    return;
+  }
+
+  try {
+    // Limpar tokens expirados/usados
+    await sql`DELETE FROM otp_tokens WHERE expires_at < NOW() OR used = TRUE`;
+
+    const token = generateOTP();
+    await saveOTP(whatsapp, token, 'whatsapp_verification');
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const verifyUrl = `${frontendUrl}/dashboard?verify=${token}&wa=${encodeURIComponent(whatsapp)}`;
+
+    const message = [
+      `🔐 *Reybraztech — Validação de WhatsApp*`,
+      ``,
+      `Clique no link abaixo para validar seu número:`,
+      ``,
+      `${verifyUrl}`,
+      ``,
+      `⏰ Válido por 5 minutos.`,
+      `Se você não solicitou, ignore esta mensagem.`,
+    ].join('\n');
+
+    const { sendWhatsApp } = await import('../services/whatsapp.js');
+    const sent = await sendWhatsApp(whatsapp, message);
+
+    if (!sent) {
+      res.status(500).json({ error: 'Não foi possível enviar a mensagem. Tente novamente.' });
+      return;
+    }
+
+    res.json({ message: 'Link de verificação enviado com sucesso!' });
+  } catch (error) {
+    logger.error('Erro ao enviar link de verificação:', error);
+    res.status(500).json({ error: 'Erro interno. Tente novamente.' });
+  }
+});
+
 export default router;

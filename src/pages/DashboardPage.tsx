@@ -112,6 +112,15 @@ interface UserData {
   days_remaining: number;
   app_account: string | null;
   app_password: string | null;
+  starhome: {
+    account: string;
+    password: string;
+    package: string;
+    days_remaining: number;
+    in_use: string;
+    expiration_date: string;
+    last_sync: string;
+  } | null;
   createdAt: string;
   paymentHistory: Array<{
     date: string;
@@ -919,6 +928,50 @@ export const DashboardPage = () => {
                 </div>
               )}
             </div>
+
+            )}
+
+            {/* ─── StarHome Panel Credentials ─── */}
+            {user.starhome && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mt-6 p-5 rounded-3xl border border-purple-500/20 bg-gradient-to-br from-purple-500/[0.05] to-indigo-500/[0.03]"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <Shield className="w-4 h-4 text-purple-400" />
+                  <h4 className="text-purple-400 font-black text-sm uppercase tracking-widest">Painel StarHome</h4>
+                  {user.starhome.last_sync && (
+                    <span className="text-[0.6rem] text-slate-500 ml-auto">
+                      Sincronizado: {new Date(user.starhome.last_sync).toLocaleDateString('pt-BR')}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Conta</p>
+                    <p className="text-sm font-bold text-white truncate">{user.starhome.account}</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Senha</p>
+                    <p className="text-sm font-bold text-white font-mono truncate">{user.starhome.password}</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Pacote</p>
+                    <p className="text-sm font-bold text-cyan-400 truncate">{user.starhome.package || 'N/A'}</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                    <p className="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest mb-1">Expira em</p>
+                    <p className="text-sm font-bold text-white">
+                      {user.starhome.expiration_date
+                        ? new Date(user.starhome.expiration_date).toLocaleDateString('pt-BR')
+                        : `${user.starhome.days_remaining} dias`}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
             )}
 
           </motion.div>

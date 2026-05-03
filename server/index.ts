@@ -182,6 +182,11 @@ app.post('/api/whatsapp-webhook', webhookLimiter, async (req: express.Request, r
         ].join('\n'));
 
         logger.info(`✅ OTP gerado via webhook SendPulse para ${whatsapp}`);
+
+        // Tentar vincular ao StarHome
+        import('./services/starhome-link.js').then(({ linkClientByWhatsapp }) =>
+          linkClientByWhatsapp(whatsapp).catch(() => {})
+        );
         res.status(200).json({ ok: true });
     } catch (error) {
         logger.error('Erro no webhook SendPulse:', error);

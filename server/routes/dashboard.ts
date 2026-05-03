@@ -11,7 +11,11 @@ const router = Router();
 router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
     try {
         const [client] = await sql`
-          SELECT id, name, whatsapp, device, email, plan, status, app_account, app_password, created_at,
+          SELECT id, name, whatsapp, device, email, plan, status,
+                 app_account, app_password, created_at,
+                 starhome_account, starhome_password, starhome_package,
+                 starhome_days_remaining, starhome_in_use,
+                 starhome_expiration_date, starhome_last_sync,
                  CASE
                    WHEN starhome_expiration_date IS NOT NULL
                    THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
@@ -53,6 +57,15 @@ router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
             days_remaining: client.days_remaining,
             app_account: client.app_account,
             app_password: client.app_password,
+            starhome: client.starhome_account ? {
+              account: client.starhome_account,
+              password: client.starhome_password,
+              package: client.starhome_package,
+              days_remaining: client.starhome_days_remaining,
+              in_use: client.starhome_in_use,
+              expiration_date: client.starhome_expiration_date,
+              last_sync: client.starhome_last_sync,
+            } : null,
             createdAt: client.created_at,
             paymentHistory,
         });

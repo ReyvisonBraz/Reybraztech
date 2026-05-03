@@ -2,6 +2,7 @@
 import { Router, Request, Response } from 'express';
 import { generateOTP, saveOTP, verifyOTP } from '../services/otp.js';
 import { sendOTPMessage } from '../services/whatsapp.js';
+import { linkClientByWhatsapp } from '../services/starhome-link.js';
 import sql from '../database.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -76,6 +77,13 @@ router.post('/verify', async (req: Request, res: Response) => {
       return;
     }
 
+    // Se for validação de WhatsApp (register), tentar vincular ao StarHome
+    if (type === 'register') {
+      linkClientByWhatsapp(whatsapp).catch((err) =>
+        logger.error('Erro ao vincular cliente ao StarHome:', err)
+      );
+    }
+
     res.json({ valid: true, message: 'Código verificado com sucesso!' });
   } catch (error) {
     logger.error('Erro ao verificar OTP:', error);
@@ -115,6 +123,11 @@ router.post('/verify-login', async (req: Request, res: Response) => {
     );
 
     logger.info(`✅ Login via OTP: ${client.name} (${client.whatsapp})`);
+
+    // Tentar vincular ao StarHome (se ainda não vinculado)
+    linkClientByWhatsapp(whatsapp).catch((err) =>
+      logger.error('Erro ao vincular cliente ao StarHome:', err)
+    );
 
     res.json({
       success: true,

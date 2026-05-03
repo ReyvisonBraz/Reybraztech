@@ -10,13 +10,33 @@ import { DashboardSkeleton } from '../components/ui/skeleton';
 const WHATSAPP_BOT_NUMBER = '559191715764';
 const WHATSAPP_ACTIVATION_MESSAGE = 'Olá! Quero validar meu número 🔐';
 
-function WhatsAppValidationBanner({ whatsapp }: { whatsapp: string }) {
+function WhatsAppValidationBanner({ whatsapp, verified }: { whatsapp: string; verified: boolean }) {
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(`wa_validated_${whatsapp}`) === 'true'
   );
   const [sent, setSent] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // Reagir quando a verificação automática (via link) for concluída
+  useEffect(() => {
+    if (verified || localStorage.getItem(`wa_validated_${whatsapp}`) === 'true') {
+      setDone(true);
+      const t = setTimeout(() => setDismissed(true), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [verified, whatsapp]);
 
   if (dismissed) return null;
+
+  if (done) {
+    return (
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        className="mb-8 rounded-3xl border-2 border-emerald-500/40 bg-emerald-500/10 p-5 flex items-center gap-3">
+        <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+        <p className="text-emerald-400 font-bold">WhatsApp verificado com sucesso!</p>
+      </motion.div>
+    );
+  }
 
   const waLink = `https://wa.me/${WHATSAPP_BOT_NUMBER}?text=${encodeURIComponent(WHATSAPP_ACTIVATION_MESSAGE)}`;
 
@@ -675,7 +695,7 @@ export const DashboardPage = () => {
         </AnimatePresence>
 
         {/* ─── Banner: Validar WhatsApp ─── */}
-        <WhatsAppValidationBanner whatsapp={user.whatsapp} />
+        <WhatsAppValidationBanner whatsapp={user.whatsapp} verified={showWaVerified} />
 
         {/* ─── Banner: Trial — Feedback ─── */}
         {user.plan === 'trial' && user.status === 'Ativo' && (

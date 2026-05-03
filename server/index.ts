@@ -162,19 +162,17 @@ app.post('/api/whatsapp-webhook', webhookLimiter, async (req: express.Request, r
         const digits = phone.replace(/\D/g, '');
         const whatsapp = digits.startsWith('55') ? digits : `55${digits}`;
 
-        // Gerar e salvar OTP
+        // Gerar e salvar OTP, e enviar link de verificação automática (clica → valida)
         const otp = generateOTP();
         await saveOTP(whatsapp, otp, 'register');
-        await sendOTPMessage(whatsapp, otp, 'register');
 
-        // Enviar também um link de verificação automática (clica → valida)
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const verifyLink = `${frontendUrl}/dashboard?verify=${otp}&wa=${whatsapp}`;
         const { sendWhatsApp } = await import('./services/whatsapp.js');
         await sendWhatsApp(whatsapp, [
-          `✅ *Validação rápida*`,
+          `🔐 *Reybraztech — Validação de WhatsApp*`,
           ``,
-          `Clique no link abaixo para validar seu WhatsApp automaticamente:`,
+          `Clique no link abaixo para validar seu número automaticamente:`,
           ``,
           verifyLink,
           ``,

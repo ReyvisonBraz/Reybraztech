@@ -15,11 +15,8 @@ dist/
 build/
 out/
 
-# Scraper output (dados sensíveis do Starhome)
-scraper/output/
-scraper/output/*.json
-scraper/output/*.csv
-scraper/dist/
+# Scraper (repositório separado)
+reybraztech-scraper/
 
 # Variáveis de ambiente
 .env

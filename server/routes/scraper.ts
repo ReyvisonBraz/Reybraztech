@@ -25,40 +25,61 @@ async function handleSyncStart(_req: AuthRequest, res: Response) {
     const url = scraperUrl();
     const key = scraperKey();
 
-    try {
-        // Timeout curto (8s) — se o scraper estiver acordado, responde rápido
-        // Se estiver dormindo, o /run vai acordá-lo mas pode timeout aqui
-        const r = await fetch(`${url}/run`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
-            body: JSON.stringify({ action: 'sync' }),
-            signal: AbortSignal.timeout(8000),
-        });
-        const data = await r.json() as { jobId?: string; success?: boolean; clients?: number; stats?: any; error?: string };
-
-        if (!r.ok) { res.status(r.status).json({ error: data.error || 'Falha no Render' }); return; }
-
-        if (data.jobId) {
-            res.json({ jobId: data.jobId, mode: 'async' });
-            return;
-        }
-        if (typeof data.success === 'boolean') {
-            res.json({ mode: 'sync', done: true, success: data.success, clients: data.clients, stats: data.stats, error: data.error });
-            return;
-        }
-        res.status(502).json({ error: 'Resposta inesperada do Render' });
-    } catch (err: any) {
-        // Timeout significa que o scraper estava dormindo — está acordando agora
-        if (err.name === 'AbortError' || err.message.includes('timeout')) {
-            res.status(202).json({
-                mode: 'async',
-                waking: true,
-                message: 'Scraper está acordando. Aguarde ~30s e tente novamente para ver o jobId.'
+    // Helper para uma tentativa de chamada
+    async function attemptSync(): Promise<{ ok: boolean; jobId?: string; data?: any; waking?: boolean }> {
+        try {
+            const r = await fetch(`${url}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+                body: JSON.stringify({ action: 'sync' }),
+                signal: AbortSignal.timeout(120000),
             });
-        } else {
-            res.status(504).json({ error: `Erro ao chamar scraper: ${err.message}` });
+            const data = await r.json() as { jobId?: string; success?: boolean; clients?: number; stats?: any; error?: string };
+            if (!r.ok) return { ok: false, data };
+            if (data.jobId) return { ok: true, jobId: data.jobId };
+            if (typeof data.success === 'boolean') return { ok: true, data };
+            return { ok: false, data: { error: 'Resposta inesperada do Render' } };
+        } catch (err: any) {
+            if (err.name === 'AbortError' || err.message.includes('timeout')) {
+                return { ok: false, waking: true };
+            }
+            return { ok: false, data: { error: `Erro ao chamar scraper: ${err.message}` } };
         }
     }
+
+    // Primeira tentativa (120s timeout)
+    const first = await attemptSync();
+
+    if (first.ok) {
+        if (first.jobId) {
+            res.json({ jobId: first.jobId, mode: 'async' });
+        } else {
+            res.json({ mode: 'sync', done: true, success: first.data!.success, clients: first.data!.clients, stats: first.data!.stats, error: first.data!.error });
+        }
+        return;
+    }
+
+    if (first.waking) {
+        // Scraper está acordando — aguardar 30s e retentar
+        logger.info('Scraper waking, waiting 30s then retrying...');
+        await new Promise(r => setTimeout(r, 30000));
+        const second = await attemptSync();
+        if (second.ok && second.jobId) {
+            res.json({ jobId: second.jobId, mode: 'async', retried: true, message: 'Scraper acordou. Job iniciado.' });
+            return;
+        }
+        if (second.ok && second.data) {
+            res.json({ mode: 'sync', done: true, success: second.data!.success, clients: second.data!.clients, stats: second.data!.stats, error: second.data!.error, retried: true });
+            return;
+        }
+        // Mesmo falhando, informa que o scraper está acordando
+        res.status(202).json({ waking: true, message: 'Scraper ainda está acordando. O job pode iniciar em breve. Tente novamente.' });
+        return;
+    }
+
+    // Erro real
+    const errData = first.data as any;
+    res.status(502).json({ error: errData?.error || 'Erro desconhecido ao chamar scraper' });
 }
 
 router.post('/sync-start', handleSyncStart);
@@ -125,10 +146,10 @@ router.get('/sync-status', async (_req: AuthRequest, res: Response) => {
 
 // ============================================================
 // POST /api/admin/renew-client — Renova cliente via scraper
-// Body: { clientName: string }
+// Body: { clientName: string, searchBy?: 'account' | 'buyer_name' | 'phone' }
 // ============================================================
 router.post('/renew-client', async (req: AuthRequest, res: Response) => {
-    const { clientName } = req.body;
+    const { clientName, searchBy } = req.body;
     if (!clientName) {
         res.status(400).json({ error: 'clientName é obrigatório.' });
         return;
@@ -136,13 +157,14 @@ router.post('/renew-client', async (req: AuthRequest, res: Response) => {
 
     const url = scraperUrl();
     const key = scraperKey();
+    const by = searchBy || 'buyer_name';
 
     try {
         const r = await fetch(`${url}/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': key },
-            body: JSON.stringify({ action: 'renew', query: clientName, searchBy: 'buyer_name' }),
-            signal: AbortSignal.timeout(10000),
+            body: JSON.stringify({ action: 'renew', query: clientName, searchBy: by }),
+            signal: AbortSignal.timeout(60000),
         });
 
         const data = await r.json() as { jobId?: string; message?: string; error?: string };
@@ -181,7 +203,7 @@ router.post('/search-client', async (req: AuthRequest, res: Response) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': key },
             body: JSON.stringify({ action: 'search', query, searchBy: 'buyer_name' }),
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(60000),
         });
 
         const data = await r.json() as { jobId?: string; message?: string; error?: string };

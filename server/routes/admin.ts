@@ -13,29 +13,11 @@ router.use(verifyToken);
 router.use(verifyAdmin);
 
 // ============================================================
-// POST /api/admin/verify-starhome — Verificar senha do Starhome
+// POST /api/admin/verify-starhome — Manter compatibilidade (sempre true)
+// A autenticação admin já é garantida por verifyToken + verifyAdmin
 // ============================================================
-router.post('/verify-starhome', async (req: AuthRequest, res: Response) => {
-    try {
-        const { starhome_password } = req.body;
-        if (!starhome_password) { res.status(400).json({ error: 'Senha do Starhome é obrigatória.' }); return; }
-        
-        const envHash = process.env.STARHOME_PASSWORD_HASH;
-        
-        // Apenas comparação segura (bcrypt). Plaintext foi removido.
-        if (!envHash) {
-            res.status(500).json({ error: 'STARHOME_PASSWORD_HASH não configurado no servidor.' });
-            return;
-        }
-
-        const isValid = await bcrypt.compare(starhome_password, envHash);
-        
-        if (!isValid) { res.status(401).json({ error: 'Senha do Starhome incorreta.' }); return; }
-        res.json({ verified: true });
-    } catch (error) {
-        logger.error('Erro ao verificar senha Starhome:', error);
-        res.status(500).json({ error: 'Erro ao verificar senha.' });
-    }
+router.post('/verify-starhome', async (_req: AuthRequest, res: Response) => {
+    res.json({ verified: true });
 });
 
 // ============================================================
@@ -193,6 +175,107 @@ router.post('/clients/:id/charge', async (req: AuthRequest, res: Response) => {
     } catch (error) {
         logger.error('Erro ao enviar cobrança:', error);
         res.status(500).json({ error: 'Erro ao enviar cobrança.' });
+    }
+});
+
+// ============================================================
+// POST /api/admin/clients/charge-expiring — Cobrar vencendo em até 7 dias
+// ============================================================
+router.post('/clients/charge-expiring', async (_req: AuthRequest, res: Response) => {
+    try {
+        const expiringClients = await sql`
+            SELECT id, name, whatsapp, plan, status,
+                CASE
+                  WHEN starhome_expiration_date IS NOT NULL
+                  THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                  ELSE days_remaining
+                END AS days_remaining
+            FROM clients
+            WHERE status = 'Ativo'
+            AND (
+                CASE
+                  WHEN starhome_expiration_date IS NOT NULL
+                  THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                  ELSE days_remaining
+                END BETWEEN 0 AND 7
+            )
+        `;
+
+        let sent = 0;
+        let failed = 0;
+        const results: { id: number; name: string; sent: boolean }[] = [];
+
+        for (const client of expiringClients) {
+            const days = client.days_remaining;
+            const msg = days <= 0
+                ? `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* expirou. Renove agora para continuar usando nossos serviços!\n\nFale comigo para renovar. 🚀`
+                : `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* vence em *${days} dia${days === 1 ? '' : 's'}*. Renove com antecedência e não perca o acesso!\n\nFale comigo para renovar. 🚀`;
+
+            const ok = await sendWhatsApp(client.whatsapp, msg);
+            if (ok) {
+                sent++;
+                results.push({ id: client.id, name: client.name, sent: true });
+            } else {
+                failed++;
+                results.push({ id: client.id, name: client.name, sent: false });
+            }
+        }
+
+        logger.info(`💰 Cobrança em lote: ${sent} enviadas, ${failed} falhas (${expiringClients.length} total)`);
+        res.json({ sent, failed, total: expiringClients.length, clients: results });
+    } catch (error) {
+        logger.error('Erro ao enviar cobranças em lote:', error);
+        res.status(500).json({ error: 'Erro ao enviar cobranças em lote.' });
+    }
+});
+
+// ============================================================
+// POST /api/admin/clients/charge-bulk — Cobrar lista de IDs
+// ============================================================
+router.post('/clients/charge-bulk', async (req: AuthRequest, res: Response) => {
+    const { ids } = req.body as { ids: number[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ error: 'Envie um array de IDs.' });
+        return;
+    }
+
+    try {
+        const clients = await sql`
+            SELECT id, name, whatsapp, plan, status,
+                CASE
+                  WHEN starhome_expiration_date IS NOT NULL
+                  THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                  ELSE days_remaining
+                END AS days_remaining
+            FROM clients
+            WHERE id = ANY(${ids})
+        `;
+
+        let sent = 0;
+        let failed = 0;
+        const results: { id: number; name: string; sent: boolean }[] = [];
+
+        for (const client of clients) {
+            const days = client.days_remaining;
+            const msg = days <= 0
+                ? `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* expirou. Renove agora para continuar usando nossos serviços!\n\nFale comigo para renovar. 🚀`
+                : `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* vence em *${days} dia${days === 1 ? '' : 's'}*. Renove com antecedência e não perca o acesso!\n\nFale comigo para renovar. 🚀`;
+
+            const ok = await sendWhatsApp(client.whatsapp, msg);
+            if (ok) {
+                sent++;
+                results.push({ id: client.id, name: client.name, sent: true });
+            } else {
+                failed++;
+                results.push({ id: client.id, name: client.name, sent: false });
+            }
+        }
+
+        logger.info(`💰 Cobrança em bulk: ${sent} enviadas, ${failed} falhas (${ids.length} solicitadas)`);
+        res.json({ sent, failed, total: ids.length, clients: results });
+    } catch (error) {
+        logger.error('Erro ao enviar cobranças em bulk:', error);
+        res.status(500).json({ error: 'Erro ao enviar cobranças em bulk.' });
     }
 });
 

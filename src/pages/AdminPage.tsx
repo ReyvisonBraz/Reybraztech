@@ -41,7 +41,7 @@ interface Stats {
 const PLANS = ['mensal', 'trimestral', 'semestral', 'anual', 'trial'];
 
 // Etapas do modal de sync com mensagens amigáveis
-type SyncPhase = 'idle' | 'waking' | 'syncing' | 'polling' | 'done' | 'error';
+type SyncPhase = 'idle' | 'waking' | 'syncing' | 'polling' | 'done' | 'error' | 'cancelled';
 
 const SYNC_PHASE_MSG: Record<SyncPhase, { title: string; sub: string }> = {
     idle:    { title: 'Pronto',                    sub: '' },
@@ -50,6 +50,7 @@ const SYNC_PHASE_MSG: Record<SyncPhase, { title: string; sub: string }> = {
     polling: { title: 'Sincronizando clientes...',  sub: 'Isso pode levar alguns minutos. Não feche a janela.' },
     done:    { title: 'Sincronização concluída!',   sub: 'Os dados dos clientes foram atualizados.' },
     error:   { title: 'Falha na sincronização',     sub: 'Verifique os logs abaixo ou tente novamente.' },
+    cancelled: { title: 'Sincronização cancelada',  sub: 'O processo foi interrompido pelo usuário.' },
 };
 
 export const AdminPage = () => {
@@ -78,11 +79,7 @@ export const AdminPage = () => {
     const [syncLog, setSyncLog] = useState<string[]>([]);
     const [showSyncModal, setShowSyncModal] = useState(false);
 
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [starhomePassword, setStarhomePassword] = useState('');
-    const [passwordError, setPasswordError] = useState('');
-    const [verifyingPassword, setVerifyingPassword] = useState(false);
-    const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+    const [isPasswordVerified] = useState(true);
     const [showLinkModal, setShowLinkModal] = useState(false);
     const [linkClient, setLinkClient] = useState<Client | null>(null);
     const [starhomeCode, setStarhomeCode] = useState('');
@@ -95,13 +92,9 @@ export const AdminPage = () => {
     const [showTerminal, setShowTerminal] = useState(false);
 
     const renewPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const syncAbortRef = useRef(false);
     const syncLogRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        const verified = sessionStorage.getItem('admin_starhome_verified');
-        if (verified === 'true') setIsPasswordVerified(true);
-    }, []);
 
     useEffect(() => {
         if (syncLogRef.current) {
@@ -119,38 +112,12 @@ export const AdminPage = () => {
         } catch { /* silent */ }
     };
 
-    const verifyPassword = async () => {
-        const token = localStorage.getItem('reyb_token');
-        if (!token) { navigate('/login'); return; }
-        setVerifyingPassword(true);
-        setPasswordError('');
-        try {
-            const response = await fetch(`${API_URL}/api/admin/verify-starhome`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ starhome_password: starhomePassword }),
-            });
-            if (response.ok) {
-                sessionStorage.setItem('admin_starhome_verified', 'true');
-                setIsPasswordVerified(true);
-                setShowPasswordModal(false);
-                setStarhomePassword('');
-            } else {
-                const data = await response.json();
-                setPasswordError(data.error || 'Senha incorreta');
-            }
-        } catch { setPasswordError('Erro ao verificar senha'); }
-        finally { setVerifyingPassword(false); }
-    };
-
     const handleClientAction = (client: Client) => {
-        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         handleToggleStatus(client);
     };
 
     // Acorda o scraper antes de sincronizar
     const handleWakeAndSync = async () => {
-        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         const token = localStorage.getItem('reyb_token');
         if (!token) { navigate('/login'); return; }
 
@@ -158,6 +125,7 @@ export const AdminPage = () => {
         setSyncLog([]);
         setSyncPhase('waking');
         setShowSyncModal(true);
+        syncAbortRef.current = false;
 
         // 1. Acorda o Render
         const addLog = (msg: string) => setSyncLog(prev => [...prev, msg]);
@@ -236,9 +204,10 @@ export const AdminPage = () => {
             const maxPolls = 150;
             let lastLogCount = 0;
 
-            while (pollCount < maxPolls) {
+            while (pollCount < maxPolls && !syncAbortRef.current) {
                 await new Promise(r => setTimeout(r, 4000));
                 pollCount++;
+                if (syncAbortRef.current) break;
                 try {
                     const r = await fetch(`${API_URL}/api/admin/sync-poll/${jobId}`, {
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -283,8 +252,13 @@ export const AdminPage = () => {
                     addLog(`Sem resposta na tentativa ${pollCount}, tentando novamente...`);
                 }
             }
-            addLog('⏱️ Tempo limite atingido. Verifique pelo Telegram.');
-            setSyncPhase('error');
+            if (syncAbortRef.current) {
+                addLog('⏹️ Sincronização cancelada pelo usuário.');
+                setSyncPhase('cancelled');
+            } else {
+                addLog('⏱️ Tempo limite atingido. Verifique pelo Telegram.');
+                setSyncPhase('error');
+            }
         } catch (err: any) {
             addLog(`❌ Erro: ${err.message}`);
             setSyncPhase('error');
@@ -384,7 +358,6 @@ export const AdminPage = () => {
     };
 
     const handleLinkStarhome = (client: Client) => {
-        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         setLinkClient(client);
         setStarhomeCode(client.starhome_account || '');
         setShowLinkModal(true);
@@ -411,7 +384,6 @@ export const AdminPage = () => {
     };
 
     const handleRenewClient = async (client: Client) => {
-        if (!isPasswordVerified) { setShowPasswordModal(true); return; }
         const token = localStorage.getItem('reyb_token');
         if (!token) { navigate('/login'); return; }
         setRenewStatus(prev => ({ ...prev, [client.id]: 'running' }));
@@ -420,7 +392,10 @@ export const AdminPage = () => {
             const res = await fetch(`${API_URL}/api/admin/renew-client`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientName: client.name }),
+                body: JSON.stringify({
+                    clientName: client.starhome_account || client.name,
+                    searchBy: client.starhome_account ? 'account' : 'buyer_name',
+                }),
             });
             const data = await res.json() as { jobId?: string; waking?: boolean; error?: string };
             if (data.waking) {
@@ -487,6 +462,24 @@ export const AdminPage = () => {
         window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
+    const handleChargeAll = async () => {
+        const token = localStorage.getItem('reyb_token');
+        if (!token) { navigate('/login'); return; }
+        const confirmed = window.confirm('Enviar lembretes de cobrança para TODOS os clientes com vencimento em até 7 dias?');
+        if (!confirmed) return;
+        try {
+            const res = await fetch(`${API_URL}/api/admin/clients/charge-expiring`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await res.json() as { sent: number; failed: number; total: number };
+            alert(`Cobranças enviadas!\n\n✅ ${data.sent} enviadas\n❌ ${data.failed} falhas\n📊 ${data.total} total`);
+            fetchStats();
+        } catch (err: any) {
+            alert(`Erro: ${err.message}`);
+        }
+    };
+
     const handleSendCredentials = (client: Client) => {
         if (!client.app_account || !client.app_password) {
             alert('Este cliente não possui credenciais cadastradas.');
@@ -528,33 +521,9 @@ export const AdminPage = () => {
 
             {/* ── Modais ──────────────────────────────────────────────────── */}
 
-            {showPasswordModal && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                    <div className="glass border border-yellow-500/30 rounded-3xl p-6 max-w-sm w-full">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                                <ShieldAlert className="w-5 h-5 text-yellow-400" /> Verificação Admin
-                            </h3>
-                            <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
-                        </div>
-                        <p className="text-slate-300 mb-4">Digite a senha do painel Starhome para continuar.</p>
-                        <input type="password" value={starhomePassword}
-                            onChange={e => setStarhomePassword(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && verifyPassword()}
-                            placeholder="Senha do Starhome"
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-100 mb-2 focus:outline-none focus:border-yellow-500" />
-                        {passwordError && <p className="text-red-400 text-sm mb-4">{passwordError}</p>}
-                        <button onClick={verifyPassword} disabled={verifyingPassword || !starhomePassword}
-                            className="btn-shimmer w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-3 px-4 rounded-2xl border-none disabled:opacity-50">
-                            {verifyingPassword ? 'Verificando...' : 'Confirmar'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {/* Modal Sync — com fases e mensagens claras */}
             {showSyncModal && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
                     <div className="glass border border-purple-500/30 rounded-3xl p-6 max-w-lg w-full flex flex-col gap-4">
                         {/* Cabeçalho com fase */}
                         <div className="flex items-start justify-between gap-3">
@@ -565,7 +534,14 @@ export const AdminPage = () => {
                                 </h3>
                                 {phaseMsg.sub && <p className="text-sm text-slate-400 mt-0.5">{phaseMsg.sub}</p>}
                             </div>
-                            <button onClick={() => setShowSyncModal(false)} disabled={syncing}
+                            <button onClick={() => {
+                                syncAbortRef.current = true;
+                                setSyncing(false);
+                                if (syncPhase === 'polling' || syncPhase === 'syncing' || syncPhase === 'waking') {
+                                    setSyncPhase('cancelled');
+                                    setSyncLog(prev => [...prev, '⏹️ Cancelado pelo usuário.']);
+                                }
+                            }} disabled={syncPhase === 'done' || syncPhase === 'error' || syncPhase === 'cancelled'}
                                 className="text-slate-500 hover:text-slate-300 disabled:opacity-30 shrink-0 mt-0.5">
                                 <X className="w-5 h-5" />
                             </button>
@@ -574,7 +550,7 @@ export const AdminPage = () => {
                         {/* Barra de progresso visual */}
                         {syncing && (
                             <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse" style={{ width: syncPhase === 'waking' ? '20%' : syncPhase === 'syncing' ? '45%' : '75%' }} />
+                                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700" style={{ width: syncPhase === 'waking' ? '20%' : syncPhase === 'syncing' ? '45%' : '75%' }} />
                             </div>
                         )}
                         {syncPhase === 'done' && (
@@ -597,13 +573,17 @@ export const AdminPage = () => {
                                 })}
                         </div>
 
-                        <button onClick={() => setShowSyncModal(false)} disabled={syncing}
+                        <button onClick={() => {
+                            syncAbortRef.current = true;
+                            setSyncing(false);
+                            setShowSyncModal(false);
+                        }} disabled={syncing && syncPhase !== 'cancelled'}
                             className={`btn-shimmer w-full text-white font-bold py-3 px-4 rounded-2xl border-none disabled:opacity-50 bg-gradient-to-r ${
                                 syncPhase === 'done' ? 'from-emerald-500 to-cyan-500'
-                                : syncPhase === 'error' ? 'from-red-500 to-rose-600'
+                                : syncPhase === 'error' || syncPhase === 'cancelled' ? 'from-red-500 to-rose-600'
                                 : 'from-slate-600 to-slate-700'
                             }`}>
-                            {syncing ? 'Aguarde...' : syncPhase === 'done' ? 'Fechar' : 'Fechar'}
+                            {syncing ? 'Cancelar' : syncPhase === 'done' ? 'Fechar' : 'Fechar'}
                         </button>
                     </div>
                 </div>
@@ -720,6 +700,11 @@ export const AdminPage = () => {
                         className="btn-shimmer flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-2.5 px-4 rounded-2xl border-none disabled:opacity-50 text-sm">
                         <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                         {syncing ? 'Sincronizando...' : 'Acordar + Sincronizar'}
+                    </button>
+                    <button onClick={handleChargeAll}
+                        className="btn-shimmer flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-2.5 px-4 rounded-2xl border-none text-sm">
+                        <BellRing className="w-4 h-4" />
+                        Cobrar Vencendo
                     </button>
                 </div>
             </div>

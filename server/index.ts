@@ -37,9 +37,10 @@ import scraperRoutes from './routes/scraper.js';
 import paymentRoutes from './routes/payments.js';
 import orderRoutes from './routes/orders.js';
 import axios from 'axios';
-import { ensureTables } from './database.js';
+import { ensureTables, default as sql } from './database.js';
 import { generateOTP, saveOTP } from './services/otp.js';
-import { sendOTPMessage } from './services/whatsapp.js';
+import { sendOTPMessage, sendWhatsApp } from './services/whatsapp.js';
+import cron from 'node-cron';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -509,6 +510,82 @@ async function startTelegramBot() {
     }
 }
 
+// ==========================================
+// ⏰ CRON DE LEMBRETES AUTOMÁTICOS (só no Render)
+// Horários BRT: 9h, 12h, 15h, 18h
+// ==========================================
+function startReminderCron() {
+    const isProduction = process.env.NODE_ENV === 'production' && !process.env.VERCEL;
+    if (!isProduction) {
+        logger.info('⏰ Cron de lembretes desativado (não é produção Render)');
+        return;
+    }
+
+    const CLIENT_ID = process.env.SENDPULSE_CLIENT_ID;
+    const CLIENT_SECRET = process.env.SENDPULSE_CLIENT_SECRET;
+
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+        logger.warn('⚠️ Cron de lembretes: SendPulse não configurado (SENDPULSE_CLIENT_ID/CLIENT_SECRET)');
+        return;
+    }
+
+    // Horários BRT (UTC-3): 9h = 12h UTC, 12h = 15h UTC, 15h = 18h UTC, 18h = 21h UTC
+    cron.schedule('0 12,15,18,21 * * *', async () => {
+        logger.info('⏰ Executando cron de lembretes...');
+        try {
+            const expiringClients = await sql`
+                SELECT id, name, whatsapp, plan,
+                    CASE
+                      WHEN starhome_expiration_date IS NOT NULL
+                      THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                      ELSE days_remaining
+                    END AS days_remaining
+                FROM clients
+                WHERE status = 'Ativo'
+                AND (
+                    CASE
+                      WHEN starhome_expiration_date IS NOT NULL
+                      THEN GREATEST(0, (starhome_expiration_date::date - CURRENT_DATE)::int)
+                      ELSE days_remaining
+                    END IN (7, 3, 1, 0)
+                )
+            `;
+
+            if (expiringClients.length === 0) {
+                logger.info('⏰ Nenhum cliente para lembrar neste ciclo.');
+                return;
+            }
+
+            logger.info(`⏰ Enviando ${expiringClients.length} lembretes...`);
+            let sent = 0;
+            let failed = 0;
+
+            for (const client of expiringClients) {
+                const days = client.days_remaining;
+                const msg = days <= 0
+                    ? `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* expirou. Renove agora para continuar usando nossos serviços!\n\nFale comigo para renovar. 🚀`
+                    : `Olá ${client.name}! 👋\n\nSeu plano *${client.plan}* vence em *${days} dia${days === 1 ? '' : 's'}*. Renove com antecedência e não perca o acesso!\n\nFale comigo para renovar. 🚀`;
+
+                try {
+                    const ok = await sendWhatsApp(client.whatsapp, msg);
+                    if (ok) sent++;
+                    else failed++;
+                } catch {
+                    failed++;
+                }
+                // Pequena pausa entre envios para não sobrecarregar a API
+                await new Promise(r => setTimeout(r, 1500));
+            }
+
+            logger.info(`⏰ Cron concluído: ${sent} enviados, ${failed} falhas`);
+        } catch (err: any) {
+            logger.error('⏰ Erro no cron de lembretes:', err.message);
+        }
+    }, { timezone: 'Etc/UTC' });
+
+    logger.info('⏰ Cron de lembretes agendado: 9h, 12h, 15h, 18h (BRT)');
+}
+
 // ─── Iniciar servidor ────────────────────────────────────────
 if (!process.env.VERCEL) {
     app.listen(PORT, async () => {
@@ -522,6 +599,9 @@ if (!process.env.VERCEL) {
         
         // Iniciar bot de polling (só no Render/local)
         startTelegramBot().catch(console.error);
+        
+        // Iniciar cron de lembretes (só no Render)
+        startReminderCron();
     });
 }
 

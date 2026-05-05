@@ -18,6 +18,12 @@ out/
 # Scraper (repositório separado)
 reybraztech-scraper/
 
+# Dumps de clientes com senhas (NUNCA commitar)
+docs/clients_*.json
+docs/Leitura/clients_*.json
+output/
+*.last_update_id
+
 # Variáveis de ambiente
 .env
 .env.*

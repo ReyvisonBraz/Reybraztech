@@ -4,7 +4,7 @@ import {
     Monitor, ChevronLeft, ChevronRight, Power, PowerOff, X, RefreshCw,
     Link, Unlink, Search, KeyRound, RotateCcw, CheckCircle2,
     XCircle, Bell, TrendingUp, Clock, Gift, BellRing, SendHorizonal,
-    Terminal, Minimize2,
+    Terminal, Minimize2, Copy, Eye, EyeOff, Check, Filter,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
@@ -87,6 +87,9 @@ export const AdminPage = () => {
     const [activeTab, setActiveTab] = useState<'clients' | 'pool'>('clients');
     const [renewStatus, setRenewStatus] = useState<Record<number, 'idle' | 'running' | 'done' | 'error'>>({});
     const [renewModal, setRenewModal] = useState<{ clientId: number; clientName: string; logs: string[]; result: string } | null>(null);
+    const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+    const [copiedId, setCopiedId] = useState<number | null>(null);
+    const [sendingId, setSendingId] = useState<number | null>(null);
 
     // Terminal modal/minimizável
     const [showTerminal, setShowTerminal] = useState(false);
@@ -480,14 +483,52 @@ export const AdminPage = () => {
         }
     };
 
-    const handleSendCredentials = (client: Client) => {
+    const handleSendCredentials = async (client: Client) => {
+        if (!client.app_account || !client.app_password) {
+            alert('Este cliente não possui credenciais cadastradas.');
+            return;
+        }
+        const token = localStorage.getItem('reyb_token');
+        if (!token) { navigate('/login'); return; }
+        setSendingId(client.id);
+        try {
+            const res = await fetch(`${API_URL}/api/admin/clients/${client.id}/send-credentials`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await res.json() as { message: string; error?: string };
+            if (res.ok) {
+                alert(`✅ ${data.message}`);
+            } else {
+                alert(`❌ ${data.error || 'Falha ao enviar'}`);
+            }
+        } catch {
+            alert('Erro de conexão ao enviar credenciais.');
+        } finally {
+            setSendingId(null);
+        }
+    };
+
+    const handleCopyCredentials = (client: Client) => {
         if (!client.app_account || !client.app_password) {
             alert('Este cliente não possui credenciais cadastradas.');
             return;
         }
         const msg = `Olá ${client.name}! 👋\n\nSeguem suas credenciais de acesso:\n\n👤 *Usuário:* ${client.app_account}\n🔐 *Senha:* ${client.app_password}\n\nGuarde em local seguro e não compartilhe com ninguém. 🔒`;
-        const number = client.whatsapp.replace(/\D/g, '');
-        window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, '_blank');
+        navigator.clipboard.writeText(msg).then(() => {
+            setCopiedId(client.id);
+            setTimeout(() => setCopiedId(null), 2000);
+        }).catch(() => {
+            // Fallback para navegadores que não suportam clipboard API
+            const textarea = document.createElement('textarea');
+            textarea.value = msg;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            setCopiedId(client.id);
+            setTimeout(() => setCopiedId(null), 2000);
+        });
     };
 
     if (loading && clients.length === 0) {
@@ -760,59 +801,79 @@ export const AdminPage = () => {
 
                 {/* Tabela de clientes */}
                 <div className="glass rounded-3xl overflow-hidden">
-                    {/* Barra de busca e filtros */}
-                    <div className="p-4 border-b border-white/5 bg-white/5 space-y-3">
-                        <div className="flex gap-3 items-center">
+                    {/* Barra de busca e filtros — redesign */}
+                    <div className="p-4 border-b border-white/5">
+                        {/* Linha 1: Search bar */}
+                        <div className="flex gap-2 items-center mb-3">
                             <div className="flex-1 relative">
-                                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" placeholder="Buscar por Nome, WhatsApp ou Account..."
+                                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                <input type="text" placeholder="Buscar por Nome, WhatsApp ou Account StarHome..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && fetchClients(1, searchQuery)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-500" />
+                                    className="w-full bg-black/30 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all placeholder:text-slate-600" />
                             </div>
                             <button onClick={() => fetchClients(1, searchQuery)}
-                                className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30 font-bold py-3 px-5 rounded-xl transition-all">
+                                className="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30 font-bold py-2.5 px-5 rounded-xl transition-all text-sm">
                                 Buscar
                             </button>
                         </div>
 
-                        {/* Filtros rápidos */}
-                        <div className="flex flex-wrap gap-2 items-center">
-                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mr-1">Status:</span>
-                            {(['', 'Ativo', 'Inativo'] as const).map(s => (
-                                <button key={s || 'todos'} onClick={() => applyFilter(s, filterPlan, filterExpiring)}
-                                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                                        filterStatus === s
-                                            ? s === 'Ativo' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                                            : s === 'Inativo' ? 'bg-red-500/20 text-red-400 border-red-500/40'
-                                            : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-                                            : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'}`}>
-                                    {s === '' ? 'Todos' : s}
-                                </button>
-                            ))}
+                        {/* Linha 2: Filtros em chips/pills */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <Filter className="w-3.5 h-3.5 text-slate-500 mr-1" />
+                            
+                            {/* Status filter */}
+                            <div className="flex items-center gap-0.5 bg-white/5 rounded-xl p-0.5">
+                                {([
+                                    { label: 'Todos', value: '', dot: 'bg-slate-500' },
+                                    { label: 'Ativos', value: 'Ativo', dot: 'bg-emerald-500' },
+                                    { label: 'Inativos', value: 'Inativo', dot: 'bg-red-500' },
+                                ] as const).map(({ label, value, dot }) => (
+                                    <button key={value} onClick={() => applyFilter(value, filterPlan, filterExpiring)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold transition-all ${
+                                            filterStatus === value
+                                                ? 'bg-white/10 text-slate-100 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
+                                        <span className={`w-2 h-2 rounded-full ${dot}`} />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
 
-                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider ml-2 mr-1">Plano:</span>
-                            {(['', ...PLANS] as const).map(p => (
-                                <button key={p || 'todos'} onClick={() => applyFilter(filterStatus, p, filterExpiring)}
-                                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all capitalize ${
-                                        filterPlan === p ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-                                            : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'}`}>
-                                    {p === '' ? 'Todos' : p}
-                                </button>
-                            ))}
+                            <span className="w-px h-5 bg-white/10 mx-1" />
 
+                            {/* Plan filter */}
+                            <div className="flex items-center gap-0.5 bg-white/5 rounded-xl p-0.5">
+                                {(['', ...PLANS] as const).map(p => (
+                                    <button key={p || 'all'} onClick={() => applyFilter(filterStatus, p, filterExpiring)}
+                                        className={`px-3 py-1.5 rounded-[10px] text-xs font-semibold transition-all capitalize ${
+                                            filterPlan === p
+                                                ? 'bg-white/10 text-slate-100'
+                                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
+                                        {p === '' ? 'Todos' : p}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <span className="w-px h-5 bg-white/10 mx-1" />
+
+                            {/* Expiring toggle */}
                             <button onClick={() => applyFilter(filterStatus, filterPlan, !filterExpiring)}
-                                className={`ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
-                                    filterExpiring ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
-                                        : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'}`}>
-                                <BellRing className="w-3 h-3" /> Venc. 3 dias
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold border transition-all ${
+                                    filterExpiring
+                                        ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
+                                        : 'border-white/10 text-slate-500 hover:text-yellow-400 hover:border-yellow-500/20'}`}>
+                                <BellRing className="w-3 h-3" />
+                                Vencendo ≤3d
                             </button>
 
+                            {/* Clear filters */}
                             {(filterStatus || filterPlan || filterExpiring) && (
                                 <button onClick={() => applyFilter('', '', false)}
-                                    className="ml-auto text-xs text-slate-500 hover:text-slate-300 underline">
-                                    Limpar filtros
+                                    className="ml-auto flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-xs font-medium text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all">
+                                    <X className="w-3 h-3" />
+                                    Limpar
                                 </button>
                             )}
                         </div>
@@ -859,12 +920,33 @@ export const AdminPage = () => {
                                                 <Bell className="w-2.5 h-2.5" /> Vence em breve
                                             </span>
                                         )}
-                                        {client.app_account && (
-                                            <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                                                <KeyRound className="w-2.5 h-2.5" /> {client.app_account}
-                                            </span>
-                                        )}
                                     </div>
+                                    {/* Credenciais no mobile */}
+                                    {client.app_account ? (
+                                        <div className="flex items-center gap-3 mb-3 p-2 rounded-xl bg-purple-500/5 border border-purple-500/10">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] text-slate-500 font-mono uppercase">User:</span>
+                                                    <span className="text-xs text-purple-300 font-mono truncate">{client.app_account}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[10px] text-slate-500 font-mono uppercase">Pass:</span>
+                                                    <span className="text-xs text-purple-300 font-mono">
+                                                        {visiblePasswords[client.id] ? client.app_password : '••••••••'}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setVisiblePasswords(prev => ({ ...prev, [client.id]: !prev[client.id] }))}
+                                                        className="text-slate-500 hover:text-slate-300">
+                                                        {visiblePasswords[client.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mb-3 p-2 rounded-xl bg-white/5 border border-white/5">
+                                            <span className="text-slate-600 text-xs italic">Sem credenciais</span>
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <button onClick={() => handleLinkStarhome(client)}
                                             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
@@ -892,10 +974,15 @@ export const AdminPage = () => {
                                             title="Cobrar via WhatsApp">
                                             <Bell className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => handleSendCredentials(client)} disabled={!client.app_account}
+                                        <button onClick={() => handleSendCredentials(client)} disabled={!client.app_account || sendingId === client.id}
                                             className={`p-2 rounded-lg transition-all disabled:opacity-40 ${client.app_account ? 'bg-purple-500/10 text-purple-400' : 'bg-white/5 text-slate-600'}`}
-                                            title="Enviar credenciais via WhatsApp">
-                                            <SendHorizonal className="w-4 h-4" />
+                                            title="Enviar automático (SendPulse)">
+                                            {sendingId === client.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <SendHorizonal className="w-4 h-4" />}
+                                        </button>
+                                        <button onClick={() => handleCopyCredentials(client)} disabled={!client.app_account}
+                                            className={`p-2 rounded-lg transition-all disabled:opacity-40 ${client.app_account ? 'bg-cyan-500/10 text-cyan-400' : 'bg-white/5 text-slate-600'}`}
+                                            title="Copiar mensagem para envio manual">
+                                            {copiedId === client.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>
@@ -908,19 +995,20 @@ export const AdminPage = () => {
                         <table className="w-full text-left text-sm whitespace-nowrap">
                             <thead className="bg-white/5 text-slate-300 border-b border-white/5">
                                 <tr>
-                                    <th className="px-6 py-4 font-semibold">Cliente</th>
-                                    <th className="px-6 py-4 font-semibold">Contato</th>
-                                    <th className="px-6 py-4 font-semibold">Dispositivo</th>
-                                    <th className="px-6 py-4 font-semibold">Starhome</th>
-                                    <th className="px-6 py-4 font-semibold">Dias Rest.</th>
-                                    <th className="px-6 py-4 font-semibold">Status</th>
-                                    <th className="px-6 py-4 font-semibold">Cadastro</th>
-                                    <th className="px-6 py-4 font-semibold">Ações</th>
+                                    <th className="px-4 py-4 font-semibold">Cliente</th>
+                                    <th className="px-4 py-4 font-semibold">Contato</th>
+                                    <th className="px-4 py-4 font-semibold">Disp.</th>
+                                    <th className="px-4 py-4 font-semibold">Credenciais</th>
+                                    <th className="px-4 py-4 font-semibold">Starhome</th>
+                                    <th className="px-4 py-4 font-semibold">Dias</th>
+                                    <th className="px-4 py-4 font-semibold">Status</th>
+                                    <th className="px-4 py-4 font-semibold">Cadastro</th>
+                                    <th className="px-4 py-4 font-semibold">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {clients.length === 0 ? (
-                                    <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                                    <tr><td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                                         <AlertTriangle className="w-8 h-8 mx-auto mb-3 opacity-50" />
                                         Nenhum cliente encontrado.
                                     </td></tr>
@@ -928,88 +1016,116 @@ export const AdminPage = () => {
                                     const isExpiringSoon = client.days_remaining <= 3 && client.days_remaining >= 0 && client.status === 'Ativo';
                                     return (
                                         <tr key={client.id} className={`transition-colors ${isExpiringSoon ? 'bg-yellow-500/5 hover:bg-yellow-500/10' : 'hover:bg-white/5'}`}>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center border font-bold text-sm shrink-0 ${
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border font-bold text-xs shrink-0 ${
                                                         isExpiringSoon ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
                                                             : 'bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-cyan-500/20 text-cyan-400'}`}>
                                                         {client.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p className="text-slate-200 font-medium flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-slate-200 font-medium text-xs flex items-center gap-1 flex-wrap">
                                                             {client.name}
-                                                            {client.is_admin && <span className="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase border border-yellow-500/20">Admin</span>}
-                                                            {isExpiringSoon && <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-yellow-500/20 flex items-center gap-1"><Bell className="w-2.5 h-2.5" />Vence em breve</span>}
+                                                            {client.is_admin && <span className="bg-yellow-500/10 text-yellow-500 text-[9px] font-bold px-1 py-0.5 rounded uppercase border border-yellow-500/20">Admin</span>}
+                                                            {isExpiringSoon && <span className="bg-yellow-500/10 text-yellow-400 text-[9px] font-bold px-1 py-0.5 rounded border border-yellow-500/20 flex items-center gap-1"><Bell className="w-2 h-2" />Vence</span>}
                                                         </p>
-                                                        <p className="text-slate-500 text-xs">ID {client.id} · {client.plan}</p>
+                                                        <p className="text-slate-500 text-[10px]">ID {client.id} · {client.plan}</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-2 text-slate-300"><Smartphone className="w-3.5 h-3.5 text-slate-500" />{client.whatsapp}</div>
-                                                    {client.email && <div className="flex items-center gap-2 text-slate-400 text-xs"><Mail className="w-3 h-3 text-slate-500" />{client.email}</div>}
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-1.5 text-slate-300 text-xs"><Smartphone className="w-3 h-3 text-slate-500" />{client.whatsapp}</div>
+                                                    {client.email && <div className="flex items-center gap-1.5 text-slate-400 text-[10px]"><Mail className="w-2.5 h-2.5 text-slate-500" />{client.email}</div>}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2 text-slate-300">
-                                                    <Monitor className="w-3.5 h-3.5 text-slate-500" />
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-1.5 text-slate-300 text-xs">
+                                                    <Monitor className="w-3 h-3 text-slate-500" />
                                                     <span className="capitalize">{client.device || 'N/A'}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-3">
+                                                {client.app_account ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">User:</span>
+                                                            <span className="text-xs text-purple-300 font-mono">{client.app_account}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">Pass:</span>
+                                                            <span className="text-xs text-purple-300 font-mono">
+                                                                {visiblePasswords[client.id] ? client.app_password : '••••••••'}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => setVisiblePasswords(prev => ({ ...prev, [client.id]: !prev[client.id] }))}
+                                                                className="text-slate-500 hover:text-slate-300 ml-0.5">
+                                                                {visiblePasswords[client.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-600 text-xs italic">Sem credenciais</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
                                                 <button onClick={() => handleLinkStarhome(client)}
-                                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-all ${
+                                                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-all ${
                                                         client.starhome_account ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                                                             : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'}`}>
-                                                    {client.starhome_account ? <><Link className="w-3 h-3" />{client.starhome_account}</> : <><Unlink className="w-3 h-3" />Vincular</>}
+                                                    {client.starhome_account ? <><Link className="w-2.5 h-2.5" />{client.starhome_account}</> : <><Unlink className="w-2.5 h-2.5" />Vincular</>}
                                                 </button>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                                                     client.days_remaining > 10 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                         : client.days_remaining > 3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
                                                         : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
-                                                    {client.days_remaining} dias
+                                                    {client.days_remaining}d
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-1 rounded text-xs font-bold border ${
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                                                     client.status === 'Ativo' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                         : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
                                                     {client.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-slate-400 text-xs">
+                                            <td className="px-4 py-3 text-slate-400 text-[10px]">
                                                 {new Date(client.created_at).toLocaleDateString('pt-BR')}
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-1.5">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-1">
                                                     <button onClick={() => handleClientAction(client)} disabled={updating}
-                                                        className={`p-2 rounded-lg transition-all disabled:opacity-50 ${client.status === 'Ativo' ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'}`}
+                                                        className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${client.status === 'Ativo' ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'}`}
                                                         title={client.status === 'Ativo' ? 'Desativar' : 'Ativar'}>
-                                                        {client.status === 'Ativo' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                                                        {client.status === 'Ativo' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                                                     </button>
                                                     <button onClick={() => handleRenewClient(client)} disabled={renewStatus[client.id] === 'running'}
-                                                        className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                                                        className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
                                                             renewStatus[client.id] === 'done' ? 'bg-emerald-500/10 text-emerald-400'
                                                                 : renewStatus[client.id] === 'error' ? 'bg-red-500/10 text-red-400'
                                                                 : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400'}`}
                                                         title="Renovar no Starhome">
-                                                        {renewStatus[client.id] === 'running' ? <RotateCcw className="w-4 h-4 animate-spin" />
-                                                            : renewStatus[client.id] === 'done' ? <CheckCircle2 className="w-4 h-4" />
-                                                            : renewStatus[client.id] === 'error' ? <XCircle className="w-4 h-4" />
-                                                            : <RotateCcw className="w-4 h-4" />}
+                                                        {renewStatus[client.id] === 'running' ? <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                                                            : renewStatus[client.id] === 'done' ? <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            : renewStatus[client.id] === 'error' ? <XCircle className="w-3.5 h-3.5" />
+                                                            : <RotateCcw className="w-3.5 h-3.5" />}
                                                     </button>
                                                     <button onClick={() => handleChargeClient(client)}
-                                                        className={`p-2 rounded-lg transition-all ${isExpiringSoon ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 ring-1 ring-yellow-500/40' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                                                        className={`p-1.5 rounded-lg transition-all ${isExpiringSoon ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 ring-1 ring-yellow-500/40' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
                                                         title="Cobrar via WhatsApp">
-                                                        <Bell className="w-4 h-4" />
+                                                        <Bell className="w-3.5 h-3.5" />
                                                     </button>
-                                                    <button onClick={() => handleSendCredentials(client)} disabled={!client.app_account}
-                                                        className={`p-2 rounded-lg transition-all disabled:opacity-40 ${client.app_account ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400' : 'bg-white/5 text-slate-600'}`}
-                                                        title={client.app_account ? 'Enviar credenciais via WhatsApp' : 'Sem credenciais'}>
-                                                        <SendHorizonal className="w-4 h-4" />
+                                                    <button onClick={() => handleSendCredentials(client)} disabled={!client.app_account || sendingId === client.id}
+                                                        className={`p-1.5 rounded-lg transition-all disabled:opacity-40 ${client.app_account ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400' : 'bg-white/5 text-slate-600'}`}
+                                                        title="Enviar credenciais automático (SendPulse)">
+                                                        {sendingId === client.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <SendHorizonal className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    <button onClick={() => handleCopyCredentials(client)} disabled={!client.app_account}
+                                                        className={`p-1.5 rounded-lg transition-all disabled:opacity-40 ${client.app_account ? 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-slate-600'}`}
+                                                        title="Copiar mensagem para envio manual">
+                                                        {copiedId === client.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                                     </button>
                                                 </div>
                                             </td>

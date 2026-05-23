@@ -194,32 +194,32 @@ export const CheckoutPage = () => {
   };
 
   return (
-    <div className="pt-32 pb-20 min-h-screen bg-transparent">
+    <div className="pt-24 md:pt-32 pb-36 md:pb-20 min-h-screen bg-transparent">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to={isLoggedIn ? '/dashboard' : '/'} className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-8 transition-colors group font-bold">
+        <Link to={isLoggedIn ? '/dashboard' : '/'} className="inline-flex items-center text-cyan-400 hover:text-cyan-300 mb-5 md:mb-8 transition-colors group font-bold">
           <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
           {isLoggedIn ? 'Voltar para o painel' : 'Voltar para o início'}
         </Link>
 
         {/* Seletor de Gateway */}
-        <div className="mb-8">
+        <div className="mb-5 md:mb-8">
           <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-3">Escolha a forma de pagamento:</p>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => { setSelectedGateway('mercadopago'); setPaymentStatus('idle'); }}
-              className={`p-4 rounded-2xl border-2 text-left transition-all relative ${
+              className={`p-3 sm:p-4 rounded-2xl border-2 text-left transition-all relative ${
                 selectedGateway === 'mercadopago'
                   ? 'border-green-500 bg-green-500/10'
                   : 'border-white/10 hover:border-white/20'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedGateway === 'mercadopago' ? 'bg-green-500/20' : 'bg-white/5'}`}>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex shrink-0 items-center justify-center ${selectedGateway === 'mercadopago' ? 'bg-green-500/20' : 'bg-white/5'}`}>
                   <CreditCard className={`w-5 h-5 ${selectedGateway === 'mercadopago' ? 'text-green-400' : 'text-slate-400'}`} />
                 </div>
-                <div>
-                  <p className={`font-bold ${selectedGateway === 'mercadopago' ? 'text-green-400' : 'text-white'}`}>Mercado Pago</p>
+                <div className="min-w-0">
+                  <p className={`font-bold text-sm sm:text-base ${selectedGateway === 'mercadopago' ? 'text-green-400' : 'text-white'}`}>Mercado Pago</p>
                   <p className="text-slate-500 text-xs">Redirect para checkout</p>
                 </div>
               </div>
@@ -229,18 +229,18 @@ export const CheckoutPage = () => {
             <button
               type="button"
               onClick={() => { setSelectedGateway('infinitypay'); setPaymentStatus('idle'); }}
-              className={`p-4 rounded-2xl border-2 text-left transition-all relative ${
+              className={`p-3 sm:p-4 rounded-2xl border-2 text-left transition-all relative ${
                 selectedGateway === 'infinitypay'
                   ? 'border-yellow-500 bg-yellow-500/10'
                   : 'border-white/10 hover:border-white/20'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedGateway === 'infinitypay' ? 'bg-yellow-500/20' : 'bg-white/5'}`}>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex shrink-0 items-center justify-center ${selectedGateway === 'infinitypay' ? 'bg-yellow-500/20' : 'bg-white/5'}`}>
                   <QrCode className={`w-5 h-5 ${selectedGateway === 'infinitypay' ? 'text-yellow-400' : 'text-slate-400'}`} />
                 </div>
-                <div>
-                  <p className={`font-bold ${selectedGateway === 'infinitypay' ? 'text-yellow-400' : 'text-white'}`}>InfinityPay</p>
+                <div className="min-w-0">
+                  <p className={`font-bold text-sm sm:text-base ${selectedGateway === 'infinitypay' ? 'text-yellow-400' : 'text-white'}`}>InfinityPay</p>
                   <p className="text-slate-500 text-xs">Pagamento rápido</p>
                 </div>
               </div>
@@ -255,12 +255,12 @@ export const CheckoutPage = () => {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+            className="order-2 lg:order-1 space-y-4 md:space-y-6"
           >
-            <div className={`glass ${selectedPlan.border} p-6 md:p-8 rounded-3xl border`}>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Resumo do Pedido</h2>
+            <div className={`glass ${selectedPlan.border} p-5 md:p-8 rounded-3xl border`}>
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mb-4 md:mb-6">Resumo do Pedido</h2>
 
-              <div className="flex justify-between items-center p-5 bg-white/5 rounded-2xl border border-white/5 mb-6">
+              <div className="flex justify-between items-center p-4 md:p-5 bg-white/5 rounded-2xl border border-white/5 mb-5 md:mb-6">
                 <div>
                   <p className={`font-bold uppercase tracking-widest text-xs mb-1 ${selectedPlan.color}`}>Plano Selecionado</p>
                   <h3 className="text-xl font-black text-slate-900 dark:text-white capitalize">{plan}</h3>
@@ -271,7 +271,7 @@ export const CheckoutPage = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 hidden sm:block">
                 <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">O que esta incluso:</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {['Acesso Imediato', 'Suporte 24/7', 'Qualidade 4K HDR', '+500 Canais UHD'].map((item, i) => (
@@ -285,7 +285,7 @@ export const CheckoutPage = () => {
             </div>
 
             {/* Pagamento Seguro */}
-            <div className="glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2">
+            <div className="hidden md:block glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2">
               <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <ShieldCheck className="w-6 h-6 text-green-400" />
                 Pagamento Seguro
@@ -317,7 +317,7 @@ export const CheckoutPage = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass border-cyan-500/20 p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 h-fit"
+            className="order-1 lg:order-2 glass border-cyan-500/20 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border-2 h-fit"
           >
             {!submitted ? (
               <>
@@ -353,7 +353,7 @@ export const CheckoutPage = () => {
                   </div>
                 )}
 
-                <form onSubmit={handleProceed} className="space-y-4">
+                <form id="checkout-form" onSubmit={handleProceed} className="space-y-4">
                   <div className="space-y-4 mb-6">
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -399,7 +399,7 @@ export const CheckoutPage = () => {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="btn-shimmer w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/25 transition-all text-lg border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-shimmer hidden md:flex w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black rounded-2xl items-center justify-center gap-3 shadow-lg shadow-green-500/25 transition-all text-lg border-none disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? (
                       <>
@@ -415,12 +415,12 @@ export const CheckoutPage = () => {
                     )}
                   </button>
 
-                  <p className="text-center text-slate-500 text-xs px-4 mt-4">
+                  <p className="text-center text-slate-500 text-xs px-4 mt-4 hidden md:block">
                     Voce sera redirecionado para o Checkout Seguro do Mercado Pago.
                   </p>
 
                   {/* Suporte WhatsApp */}
-                  <div className="mt-8 pt-8 border-t border-white/10 text-center">
+                  <div className="mt-6 md:mt-8 pt-6 md:pt-8 border-t border-white/10 text-center">
                     <h4 className="font-bold text-white mb-2">Dificuldades com o pagamento?</h4>
                     <p className="text-sm text-slate-400 mb-4">Nossa equipe esta pronta para ajudar voce agora mesmo.</p>
                     <a
@@ -521,6 +521,34 @@ export const CheckoutPage = () => {
 
         </div>
       </div>
+      {!submitted && paymentStatus !== 'success' && (
+        <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-slate-950/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 shadow-2xl shadow-black/40 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-5xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Plano {plan}</p>
+              <p className={`text-2xl font-black leading-none ${selectedPlan.color}`}>R${selectedPlan.price}</p>
+            </div>
+            <button
+              type="submit"
+              form="checkout-form"
+              disabled={submitting}
+              className="btn-shimmer flex min-h-14 shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 px-5 text-sm font-black text-white shadow-lg shadow-green-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Processando
+                </>
+              ) : (
+                <>
+                  Pagar agora
+                  <ExternalLink className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

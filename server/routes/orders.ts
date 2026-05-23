@@ -16,6 +16,15 @@ const PLAN_PRICES: Record<string, { amount: number; title: string; days: number 
   anual:      { amount: 299, title: 'Plano Anual',      days: 365 },
 };
 
+function getOrderStatusUrls(frontendUrl: string, orderId: string) {
+  const statusUrl = `${frontendUrl}/order-status?order=${encodeURIComponent(orderId)}`;
+  return {
+    success: statusUrl,
+    failure: `${statusUrl}&payment=failure`,
+    pending: `${statusUrl}&payment=pending`,
+  };
+}
+
 // Schema de validação
 const createOrderSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -64,11 +73,7 @@ router.post('/create', async (req: Request, res: Response) => {
       // Reutilizar pedido existente — apenas gera nova preferência (a anterior pode ter expirado)
       logger.info(`♻️ Pedido recente encontrado para ${whatsapp}, reutilizando ${recentOrder.id}`);
 
-      const backUrls = {
-        success: `${frontendUrl}/dashboard?payment=success`,
-        failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
-        pending: `${frontendUrl}/dashboard?payment=pending`,
-      };
+      const backUrls = getOrderStatusUrls(frontendUrl, recentOrder.id);
 
       const preference = await createPaymentPreference(items, recentOrder.id, backUrls);
 
@@ -94,11 +99,7 @@ router.post('/create', async (req: Request, res: Response) => {
       RETURNING id
     `;
 
-    const backUrls = {
-      success: `${frontendUrl}/dashboard?payment=success`,
-      failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
-      pending: `${frontendUrl}/dashboard?payment=pending`,
-    };
+    const backUrls = getOrderStatusUrls(frontendUrl, order.id);
 
     const preference = await createPaymentPreference(items, order.id, backUrls);
 
@@ -118,6 +119,49 @@ router.post('/create', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Erro ao criar pedido:', error);
     res.status(500).json({ error: 'Erro ao processar pedido. Tente novamente.' });
+  }
+});
+
+// ============================================================
+// GET /api/orders/public/:id — Status publico minimo do pedido
+// ============================================================
+router.get('/public/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id || id.length > 120) {
+    res.status(400).json({ error: 'ID do pedido invalido.' });
+    return;
+  }
+
+  try {
+    const [order] = await sql`
+      SELECT id, plan, amount, status, created_at, paid_at, registered_at, client_id
+      FROM pending_orders
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+
+    if (!order) {
+      res.status(404).json({ error: 'Pedido nao encontrado.' });
+      return;
+    }
+
+    const registered = order.status === 'registered' || !!order.registered_at || !!order.client_id;
+
+    res.json({
+      id: order.id,
+      plan: order.plan,
+      amount: Number(order.amount),
+      status: order.status,
+      created_at: order.created_at,
+      paid_at: order.paid_at,
+      registered_at: order.registered_at,
+      registered,
+      needs_registration: order.status === 'paid' && !registered,
+    });
+  } catch (error) {
+    logger.error('Erro ao buscar status publico do pedido:', error);
+    res.status(500).json({ error: 'Erro ao buscar pedido.' });
   }
 });
 
@@ -243,11 +287,7 @@ router.post('/renew', verifyToken, async (req: AuthRequest, res: Response) => {
       currency_id: 'BRL',
     }];
 
-    const backUrls = {
-      success: `${frontendUrl}/dashboard?payment=success`,
-      failure: `${frontendUrl}/checkout?plan=${plan}&error=payment_failed`,
-      pending: `${frontendUrl}/dashboard?payment=pending`,
-    };
+    const backUrls = getOrderStatusUrls(frontendUrl, order.id);
 
     const preference = await createPaymentPreference(items, order.id, backUrls);
 

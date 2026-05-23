@@ -22,9 +22,9 @@ export const createPaymentPreference = async (
     external_reference: externalReference,
     notification_url: process.env.PAYMENT_WEBHOOK_URL || '',
     back_urls: backUrls || {
-      success: `${frontendUrl}/dashboard?payment=success`,
-      failure: `${frontendUrl}/dashboard?payment=failure`,
-      pending: `${frontendUrl}/dashboard?payment=pending`,
+      success: `${frontendUrl}/order-status?order=${encodeURIComponent(externalReference)}`,
+      failure: `${frontendUrl}/order-status?order=${encodeURIComponent(externalReference)}&payment=failure`,
+      pending: `${frontendUrl}/order-status?order=${encodeURIComponent(externalReference)}&payment=pending`,
     },
     auto_return: 'approved' as const,
     payment_methods: {

@@ -12,6 +12,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 // Lazy load das páginas — cada uma vira um chunk JS separado
 const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then(m => ({ default: m.CheckoutPage })));
+const OrderStatusPage = lazy(() => import('./pages/OrderStatusPage').then(m => ({ default: m.OrderStatusPage })));
 const TrialPage = lazy(() => import('./pages/TrialPage').then(m => ({ default: m.TrialPage })));
 const CompleteRegistrationPage = lazy(() => import('./pages/CompleteRegistrationPage').then(m => ({ default: m.CompleteRegistrationPage })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -88,6 +89,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/order-status" element={<OrderStatusPage />} />
                 <Route path="/trial" element={<TrialPage />} />
                 <Route path="/complete-registration" element={<CompleteRegistrationPage />} />
                 <Route path="/login" element={<LoginPage />} />

@@ -8,6 +8,14 @@ import { sendTrialActivation, sendRegistrationComplete } from '../services/whats
 
 const router = Router();
 
+const PLAN_DAYS: Record<string, number> = {
+    mensal: 31,
+    trimestral: 93,
+    semestral: 186,
+    anual: 365,
+    trial: 3,
+};
+
 async function logLoginEvent(action: string, whatsapp?: string, email?: string, details?: string, success: boolean = true, ip?: string, userAgent?: string) {
   try {
     await sql`
@@ -265,9 +273,46 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
 
         // Verificar se WhatsApp já existe na tabela clients
         const [existingClient] = await sql`
-          SELECT id FROM clients WHERE whatsapp = ${order.whatsapp}
+          SELECT id, app_account FROM clients WHERE whatsapp = ${order.whatsapp}
         `;
         if (existingClient) {
+            const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+            let poolEntry: any = null;
+
+            if (!existingClient.app_account) {
+                [poolEntry] = await sql`
+                  UPDATE login_pool
+                  SET status = 'em_uso', client_id = ${existingClient.id}, assigned_at = NOW()
+                  WHERE id = (
+                    SELECT id FROM login_pool
+                    WHERE status = 'disponivel'
+                    ORDER BY created_at ASC
+                    LIMIT 1
+                  )
+                  RETURNING id, app_account, app_password
+                `;
+            }
+
+            if (poolEntry) {
+                await sql`
+                  UPDATE clients
+                  SET status = 'Ativo',
+                      days_remaining = ${daysToAdd},
+                      plan = ${order.plan},
+                      app_account = ${poolEntry.app_account},
+                      app_password = ${poolEntry.app_password}
+                  WHERE id = ${existingClient.id}
+                `;
+            } else {
+                await sql`
+                  UPDATE clients
+                  SET status = 'Ativo',
+                      days_remaining = ${daysToAdd},
+                      plan = ${order.plan}
+                  WHERE id = ${existingClient.id}
+                `;
+            }
+
             // Vincular pedido ao cliente existente
             await sql`
               UPDATE pending_orders
@@ -300,11 +345,36 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
         const JWT_SECRET = process.env.JWT_SECRET!;
         const passwordHash = await bcrypt.hash(password, 12);
 
+        const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+
         const [newClient] = await sql`
-          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status)
-          VALUES (${order.name}, ${order.whatsapp}, ${device}, ${email || null}, ${passwordHash}, ${order.plan}, 'Ativo')
+          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status, days_remaining)
+          VALUES (${order.name}, ${order.whatsapp}, ${device}, ${email || null}, ${passwordHash}, ${order.plan}, 'Ativo', ${daysToAdd})
           RETURNING id, name, email, plan, status
         `;
+
+        const [poolEntry] = await sql`
+          UPDATE login_pool
+          SET status = 'em_uso', client_id = ${newClient.id}, assigned_at = NOW()
+          WHERE id = (
+            SELECT id FROM login_pool
+            WHERE status = 'disponivel'
+            ORDER BY created_at ASC
+            LIMIT 1
+          )
+          RETURNING id, app_account, app_password
+        `;
+
+        if (poolEntry) {
+            await sql`
+              UPDATE clients
+              SET app_account = ${poolEntry.app_account},
+                  app_password = ${poolEntry.app_password}
+              WHERE id = ${newClient.id}
+            `;
+        } else {
+            logger.warn(`Pool vazio no cadastro pos-pagamento. Cliente ${newClient.id} criado sem login atribuido.`);
+        }
 
         // Atualizar pedido como registrado
         await sql`

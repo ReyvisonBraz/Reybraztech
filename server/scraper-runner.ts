@@ -96,18 +96,16 @@ async function runScraper(): Promise<{ success: boolean; clients: number; error?
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    let stdout = '';
     let stderr = '';
 
     child.stdout.on('data', (data: Buffer) => {
       const text = data.toString();
-      stdout += text;
       process.stdout.write('[Scraper] ' + text);
     });
 
     child.stderr.on('data', (data: Buffer) => {
       const text = data.toString();
-      stderr += text;
+      stderr = (stderr + text).slice(-5000);
       process.stderr.write('[Scraper Error] ' + text);
     });
 
@@ -158,16 +156,14 @@ async function runSearch(query: string, searchBy: string): Promise<{ success: bo
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    let stdout = '';
     let stderr = '';
 
     child.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
       process.stdout.write('[Search] ' + data.toString());
     });
 
     child.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
+      stderr = (stderr + data.toString()).slice(-5000);
       process.stderr.write('[Search Error] ' + data.toString());
     });
 

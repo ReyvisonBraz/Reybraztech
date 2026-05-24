@@ -241,14 +241,36 @@ router.post('/webhook', async (req, res) => {
             );
           }
         } else {
-          // Cliente não encontrado — alerta apenas (não bloqueia o webhook)
+          // Cliente nao encontrado: envia o link para finalizar cadastro.
+          // O envio e best-effort para nunca bloquear o webhook do Mercado Pago.
           logger.warn(`⚠️ Pagamento ${orderId} aprovado mas cliente não encontrado (whatsapp: ${order.whatsapp})`);
+          let whatsappSent = false;
+
+          try {
+            whatsappSent = await sendPaymentConfirmation(
+              order.whatsapp,
+              order.name,
+              order.plan,
+              Number(order.amount),
+              orderId
+            );
+
+            if (whatsappSent) {
+              logger.info(`✅ Link de cadastro enviado por WhatsApp para pedido ${orderId}`);
+            } else {
+              logger.warn(`⚠️ WhatsApp nao enviado para pedido ${orderId}`);
+            }
+          } catch (whatsappError) {
+            logger.error(`⚠️ Erro ao enviar WhatsApp do pedido ${orderId}:`, whatsappError);
+          }
+
           await sendTelegramMessage(
             `⚠️ <b>Pagamento sem cadastro</b>\n` +
             `👤 ${order.name} | 📱 ${order.whatsapp}\n` +
             `📦 ${order.plan} | 💰 R$${order.amount}\n` +
             `🆔 Pedido: ${orderId}\n` +
-            `👉 Cliente pagou mas não tem conta. Verifique!`
+            `📲 WhatsApp com link: ${whatsappSent ? 'enviado' : 'falhou ou nao configurado'}\n` +
+            `👉 Cliente deve finalizar em /complete-registration?order=${orderId}`
           );
         }
       } else {

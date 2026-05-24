@@ -13,12 +13,14 @@ const DEVICE_OPTIONS = [
 ];
 
 type OrderData = {
-  name: string;
-  whatsapp: string;
+  name?: string;
+  whatsapp?: string;
   plan: string;
   status: string;
   amount: number;
   device?: string;
+  registered?: boolean;
+  needs_registration?: boolean;
 };
 
 const STRONG_PASSWORDS = [
@@ -112,10 +114,7 @@ export const CompleteRegistrationPage = () => {
 
     const fetchOrder = async () => {
       try {
-        const token = localStorage.getItem('reyb_token');
-        const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const res = await fetch(`${API_URL}/api/orders/public/${encodeURIComponent(orderId)}`);
         if (!res.ok) {
           setError('Pedido nao encontrado.');
           setLoading(false);
@@ -131,7 +130,7 @@ export const CompleteRegistrationPage = () => {
         }
 
         // Se ja registrado, redireciona
-        if (data.status === 'registered') {
+        if (data.status === 'registered' || data.registered) {
           if (pollInterval) clearInterval(pollInterval);
           navigate('/login');
         }
@@ -330,27 +329,32 @@ export const CompleteRegistrationPage = () => {
             )}
           </div>
 
-          {/* Dados pre-preenchidos (read-only) */}
-          <div className="space-y-3 mb-6">
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
-                value={order.name}
-                readOnly
-                className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-slate-400 cursor-not-allowed"
-              />
+          {(order.name || order.whatsapp) && (
+            <div className="space-y-3 mb-6">
+              {order.name && (
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="text"
+                    value={order.name}
+                    readOnly
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-slate-400 cursor-not-allowed"
+                  />
+                </div>
+              )}
+              {order.whatsapp && (
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="text"
+                    value={order.whatsapp}
+                    readOnly
+                    className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-slate-400 cursor-not-allowed"
+                  />
+                </div>
+              )}
             </div>
-            <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
-                value={order.whatsapp}
-                readOnly
-                className="w-full p-4 pl-12 bg-white/5 border border-white/10 rounded-2xl text-slate-400 cursor-not-allowed"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-4">

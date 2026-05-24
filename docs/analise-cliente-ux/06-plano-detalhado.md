@@ -111,6 +111,12 @@ Teste:
 - Verificar log de envio.
 - Confirmar que erro no WhatsApp nao quebra webhook.
 
+Status:
+
+- Implementado em 2026-05-24.
+- O webhook Mercado Pago agora chama `sendPaymentConfirmation` quando aprova pedido sem cliente cadastrado.
+- O envio e best-effort: falha de WhatsApp e registrada, mas nao quebra o webhook.
+
 ## Fase 4: Melhorar checkout
 
 Objetivo: compra mais rapida e clara.

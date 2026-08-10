@@ -12,7 +12,8 @@ Abra o terminal e rode:
 ```bash
 openssl rand -hex 32
 ```
-**Copie o resultado.** Essa é a chave que vai nos 3 serviços.
+**Copie o resultado.** Essa chave vai somente nos dois serviços server-side:
+backend e scraper. Ela nunca deve ser configurada no frontend.
 
 ---
 
@@ -72,6 +73,17 @@ openssl rand -hex 32
 > navegador. O frontend acessa o scraper somente por rotas autenticadas do
 > backend; `SCRAPER_API_KEY` pertence exclusivamente ao backend e ao scraper.
 
+### Migração de instalações antigas
+
+Se `VITE_SCRAPER_API_KEY` já foi configurada ou publicada anteriormente,
+considere `SCRAPER_API_KEY` comprometida:
+
+1. remova `VITE_SCRAPER_API_KEY` de development, preview e production na Vercel;
+2. gere uma nova `SCRAPER_API_KEY`;
+3. configure o mesmo novo valor no backend e no scraper, sem expô-lo em logs;
+4. faça redeploy dos dois serviços e valide a comunicação backend → scraper;
+5. remova também `VITE_SCRAPER_API_KEY` dos arquivos `.env` locais.
+
 ---
 
 ## 🔗 O que é compartilhado entre serviços
@@ -106,4 +118,4 @@ openssl rand -hex 32
 - [ ] `PANEL_ACCOUNT` e `PANEL_PASSWORD` no Render Scraper
 - [ ] `TELEGRAM_BOT_TOKEN` no Render Backend
 - [ ] `TELEGRAM_BOT_TOKEN` no Render Scraper
-- [ ] Redeploy em todos os 3 serviços após configurar env vars
+- [ ] Redeploy do backend e do scraper após alterar `SCRAPER_API_KEY`

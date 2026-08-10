@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { motion } from 'motion/react';
 import { CheckCircle2, ArrowLeft, QrCode, ExternalLink, User, Phone, CreditCard, ShieldCheck, MessageCircle, Loader2, XCircle } from 'lucide-react';
@@ -28,6 +28,7 @@ function getLoggedInToken(): string | null {
 }
 
 export const CheckoutPage = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [plan, setPlan] = useState(searchParams.get('plan') || 'mensal');
 
@@ -82,13 +83,12 @@ export const CheckoutPage = () => {
         ? (JSON.parse(localStorage.getItem('reyb_user') || '{}').whatsapp || '').replace(/^55/, '')
         : phone.replace(/\D/g, '');
       const cleanWhatsapp = `${countryCode}${whatsapp}`;
-      const amount = parseFloat(selectedPlan.price.replace(',', '.'));
 
       try {
         const response = await fetch(`${API_URL}/api/payments/infinitypay`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan, name, whatsapp: cleanWhatsapp, amount }),
+          body: JSON.stringify({ plan, name, whatsapp: cleanWhatsapp }),
         });
 
         const data = await response.json();
@@ -113,13 +113,15 @@ export const CheckoutPage = () => {
             return;
           }
           try {
-            const token = localStorage.getItem('reyb_token');
-            const res = await fetch(`${API_URL}/api/orders/${data.orderId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await fetch(`${API_URL}/api/orders/public/${encodeURIComponent(data.orderId)}`);
             if (res.ok) {
               const orderData = await res.json();
-              if (orderData.status === 'paid' || orderData.status === 'registered') {
+              if (orderData.needs_registration) {
+                clearInterval(pollInterval);
+                navigate(`/complete-registration?order=${encodeURIComponent(data.orderId)}`);
+                return;
+              }
+              if (orderData.registered) {
                 clearInterval(pollInterval);
                 setPaymentStatus('success');
                 return;

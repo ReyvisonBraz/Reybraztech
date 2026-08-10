@@ -495,6 +495,8 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
         throw new Error(`Status inválido para pagamento: ${lockedOrder.status}`);
       }
 
+      const wasAlreadyPaid = lockedOrder.status === 'paid';
+
       const lockedExpectedAmount = Math.round(Number(lockedOrder.amount) * 100);
       if (paymentStatus.amount !== lockedExpectedAmount) {
         throw new Error('Valor do pedido mudou durante a confirmação do pagamento');
@@ -508,7 +510,7 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
 
       const daysToAdd = PLAN_DAYS[lockedOrder.plan] ?? 31;
       const [client] = await transactionSql`
-        SELECT id, starhome_account
+        SELECT id, starhome_account, app_account
         FROM clients
         WHERE whatsapp = ${lockedOrder.whatsapp}
         FOR UPDATE
@@ -516,22 +518,31 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
 
       // Cliente novo conclui o cadastro pelo fluxo público usando o pedido pago.
       if (!client) {
-        return { state: 'awaiting-registration' as const };
+        return {
+          state: 'awaiting-registration' as const,
+          notifyCustomer: !wasAlreadyPaid,
+        };
       }
 
-      const [poolEntry] = await transactionSql`
-        UPDATE login_pool
-        SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
-        WHERE id = (
-          SELECT id
-          FROM login_pool
-          WHERE status = 'disponivel'
-          ORDER BY created_at ASC
-          FOR UPDATE SKIP LOCKED
-          LIMIT 1
-        )
-        RETURNING id, app_account, app_password
-      `;
+      let poolEntry: any = null;
+
+      // Renovações reutilizam a credencial já vinculada. Só clientes ainda sem
+      // app_account consomem uma nova entrada do pool.
+      if (!client.app_account) {
+        [poolEntry] = await transactionSql`
+          UPDATE login_pool
+          SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
+          WHERE id = (
+            SELECT id
+            FROM login_pool
+            WHERE status = 'disponivel'
+            ORDER BY created_at ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT 1
+          )
+          RETURNING id, app_account, app_password
+        `;
+      }
 
       if (poolEntry) {
         await transactionSql`
@@ -570,7 +581,7 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
       return {
         state: 'registered' as const,
         clientId: client.id,
-        poolAssigned: Boolean(poolEntry),
+        poolAssigned: Boolean(poolEntry || client.app_account),
       };
     });
 
@@ -580,6 +591,19 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
       });
     } else if (result.state === 'awaiting-registration') {
       logger.info(`[InfinityPay] Pedido ${order_nsu} pago; aguardando cadastro do cliente`);
+      if (result.notifyCustomer) {
+        try {
+          await sendPaymentConfirmation(
+            order.whatsapp,
+            order.name,
+            order.plan,
+            Number(order.amount),
+            order_nsu
+          );
+        } catch (notificationError) {
+          logger.error('[InfinityPay] Falha ao enviar link de cadastro por WhatsApp:', notificationError);
+        }
+      }
     } else {
       logger.info(`[InfinityPay] Pedido ${order_nsu} já processado por outra entrega`);
     }

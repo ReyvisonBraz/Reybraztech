@@ -134,23 +134,6 @@ export async function sendWhatsApp(number: string, message: string): Promise<boo
   }
 }
 
-/**
- * Envia um OTP de verificação via WhatsApp
- */
-export async function sendOTPMessage(
-  number: string,
-  otp: string,
-  type: 'register' | 'login' | 'reset_password'
-): Promise<boolean> {
-  const messages = {
-    register: `🔐 *Reybraztech — Verificação de Cadastro*\n\nSeu código de verificação é:\n\n*${otp}*\n\n⏰ Válido por 5 minutos.\nNão compartilhe este código com ninguém.`,
-    login: `🔑 *Reybraztech — Código de Login*\n\nSeu código de acesso é:\n\n*${otp}*\n\n⏰ Válido por 5 minutos.\nNão compartilhe este código com ninguém.`,
-    reset_password: `🔓 *Reybraztech — Redefinir Senha*\n\nSeu código para redefinir a senha é:\n\n*${otp}*\n\n⏰ Válido por 5 minutos.\nSe você não solicitou isso, ignore esta mensagem.`,
-  };
-
-  return sendWhatsApp(number, messages[type]);
-}
-
 // ============================================================
 // Mensagens do fluxo de checkout/trial
 // ============================================================

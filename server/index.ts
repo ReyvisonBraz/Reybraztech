@@ -31,15 +31,13 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
-import otpRoutes from './routes/otp.js';
 import adminRoutes from './routes/admin.js';
 import scraperRoutes from './routes/scraper.js';
 import paymentRoutes from './routes/payments.js';
 import orderRoutes from './routes/orders.js';
 import axios from 'axios';
 import { ensureTables, default as sql } from './database.js';
-import { generateOTP, saveOTP } from './services/otp.js';
-import { sendOTPMessage, sendWhatsApp } from './services/whatsapp.js';
+import { sendWhatsApp } from './services/whatsapp.js';
 import cron from 'node-cron';
 
 const app = express();
@@ -90,15 +88,6 @@ const webhookLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-// Rate limit dedicado para polling de OTP — 120 req/15min (1 req/7s por 14min)
-const otpStatusLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 120,
-    message: { error: 'Muitas requisições.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
 // Rate limit dedicado para registro — 20 req/15min
 const registerLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -108,21 +97,9 @@ const registerLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-// Rate limit dedicado para envio de OTP — 3 req/15min por número (anti-spam WhatsApp)
-const otpSendLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 3,
-    message: { error: 'Muitas solicitações de código. Aguarde 15 minutos.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', limiter);
 app.use('/api/dashboard', limiter);
-app.use('/api/otp/send', otpSendLimiter);
-app.use('/api/otp/status', otpStatusLimiter);
-app.use('/api/otp', limiter);
 app.use('/api/admin', limiter);
 app.use('/api/orders', limiter);
 app.use('/api/payments/webhook', webhookLimiter);
@@ -132,7 +109,6 @@ app.use('/api/auth/register', registerLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/clients', dashboardRoutes);
-app.use('/api/otp', otpRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', scraperRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -141,67 +117,6 @@ app.use('/api/orders', orderRoutes);
 // Telegram Bot (Webhook — funciona no Vercel)
 app.post('/api/telegram-webhook', handleTelegramWebhook);
 app.get('/api/telegram-setup', setupTelegramWebhook);
-
-// ─── SendPulse WhatsApp Webhook ──────────────────────────────
-// Quando o cliente manda a mensagem de ativação, o SendPulse chama este endpoint.
-// Geramos o OTP e respondemos diretamente — sem o usuário precisar voltar ao site.
-app.post('/api/whatsapp-webhook', webhookLimiter, async (req: express.Request, res: express.Response) => {
-    // SendPulse envia payload com o contato e o texto da mensagem
-    const body = req.body;
-
-    try {
-        // SendPulse envia um array de eventos: [{info: {...}, contact: {...}, ...}]
-        const event = Array.isArray(body) ? body[0] : body;
-
-        const phone: string = String(
-            event?.contact?.phone ||
-            event?.info?.message?.channel_data?.message?.from ||
-            ''
-        );
-
-        const text: string =
-            event?.info?.message?.channel_data?.message?.text?.body ||
-            event?.contact?.last_message ||
-            '';
-
-        if (!phone || !text) {
-            res.status(200).json({ ok: true });
-            return;
-        }
-
-        // Normalizar número (garantir prefixo 55)
-        const digits = phone.replace(/\D/g, '');
-        const whatsapp = digits.startsWith('55') ? digits : `55${digits}`;
-
-        // Gerar e salvar OTP, e enviar link de verificação automática (clica → valida)
-        const otp = generateOTP();
-        await saveOTP(whatsapp, otp, 'register');
-
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const verifyLink = `${frontendUrl}/dashboard?verify=${otp}&wa=${whatsapp}`;
-        const { sendWhatsApp } = await import('./services/whatsapp.js');
-        await sendWhatsApp(whatsapp, [
-          `🔐 *Reybraztech — Validação de WhatsApp*`,
-          ``,
-          `Clique no link abaixo para validar seu número automaticamente:`,
-          ``,
-          verifyLink,
-          ``,
-          `Ou use o código: *${otp}*`,
-        ].join('\n'));
-
-        logger.info(`✅ OTP gerado via webhook SendPulse para ${whatsapp}`);
-
-        // Tentar vincular ao StarHome
-        import('./services/starhome-link.js').then(({ linkClientByWhatsapp }) =>
-          linkClientByWhatsapp(whatsapp).catch(() => {})
-        );
-        res.status(200).json({ ok: true });
-    } catch (error) {
-        logger.error('Erro no webhook SendPulse:', error);
-        res.status(200).json({ ok: true }); // Sempre 200 para evitar reenvio pelo SendPulse
-    }
-});
 
 // Health check
 app.get('/api/health', (_req, res) => {

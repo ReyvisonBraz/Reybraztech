@@ -556,28 +556,6 @@ export const handleTelegramWebhook = async (req: Request, res: Response) => {
       );
     }
 
-    // ─── /otp ───────────────────────────────────────
-    else if (textLower === '/otp') {
-      const sql = await getDb();
-
-      const recentes = await sql`
-        SELECT whatsapp, type, used, created_at, expires_at
-        FROM otp_tokens ORDER BY created_at DESC LIMIT 5
-      `;
-
-      let recentesText = '';
-      for (const o of recentes) {
-        const data = new Date(o.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-        const status = o.used ? '✅ Usado' : '⏳ Pendente';
-        recentesText += `\n• ${o.whatsapp} | ${o.type} | ${status} | ${data}`;
-      }
-
-      await sendTelegram(
-        `🔑 <b>Tokens OTP Recentes</b>\n\n` +
-        `<b>Últimos 5:</b>${recentesText || '\nNenhum token ainda.'}`
-      );
-    }
-
     // ─── /trials ─────────────────────────────────────
     else if (textLower === '/trials') {
       const sql = await getDb();

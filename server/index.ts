@@ -88,6 +88,16 @@ const webhookLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Criar checkout chama a API externa e grava um pedido: limite mais estrito
+// evita abuso da rota pública e acúmulo artificial de cobranças.
+const checkoutLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Muitas tentativas de pagamento. Aguarde 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Rate limit dedicado para registro — 20 req/15min
 const registerLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -104,6 +114,7 @@ app.use('/api/admin', limiter);
 app.use('/api/orders', limiter);
 app.use('/api/payments/webhook', webhookLimiter);
 app.use('/api/payments/infinitypay-webhook', webhookLimiter);
+app.post('/api/payments/infinitypay', checkoutLimiter);
 app.use('/api/auth/register', registerLimiter);
 
 // ─── Rotas ──────────────────────────────────────────────────

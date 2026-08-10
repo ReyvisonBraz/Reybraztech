@@ -354,13 +354,6 @@ router.post('/infinitypay', async (req: any, res: any) => {
     : `+55${normalizedWhatsapp}`;
 
   try {
-    // O pedido e o valor são criados no servidor antes do checkout. O browser
-    // nunca escolhe quanto será cobrado nem qual order_nsu será processado.
-    await sql`
-      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status)
-      VALUES (${generatedOrderId}, ${normalizedName}, ${normalizedWhatsapp}, ${plan}, ${amount}, 'pending')
-    `;
-
     const linkData = await createInfinityPayLink({
       handle,
       items: [{
@@ -381,6 +374,14 @@ router.post('/infinitypay', async (req: any, res: any) => {
       res.status(500).json({ error: linkData.error || 'Erro ao criar link.' });
       return;
     }
+
+    // O browser nunca escolhe o valor nem o order_nsu. Persistimos o pedido
+    // somente após a InfinitePay aceitar o link, evitando pedidos órfãos em
+    // falhas da API externa.
+    await sql`
+      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status)
+      VALUES (${generatedOrderId}, ${normalizedName}, ${normalizedWhatsapp}, ${plan}, ${amount}, 'pending')
+    `;
 
     logger.info(`[InfinityPay] Link gerado para ${normalizedWhatsapp}: ${linkData.link}`);
 
@@ -428,7 +429,7 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
       return;
     }
 
-    if (order.status === 'paid' || order.status === 'registered') {
+    if (order.status === 'registered') {
       logger.info(`[InfinityPay] Pedido ${order_nsu} já processado`);
       res.status(200).json({ success: true, message: null });
       return;
@@ -467,43 +468,123 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
       return;
     }
 
-    await sql`
-      UPDATE pending_orders SET status = 'paid', paid_at = NOW() WHERE id = ${order_nsu}
-    `;
+    const result = await sql.begin(async (tx) => {
+      // postgres.js fornece uma tag SQL escopada à transação, mas a interface
+      // TransactionSql da versão instalada perde a assinatura chamável no TS.
+      const transactionSql = tx as unknown as typeof sql;
 
-    const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+      // Serializa retries e webhooks concorrentes do mesmo pedido. Se qualquer
+      // etapa abaixo falhar, a transação inteira reverte e o próximo retry pode
+      // recomeçar sem perder fulfillment nem consumir dois logins.
+      const [lockedOrder] = await transactionSql`
+        SELECT id, name, whatsapp, plan, amount, status
+        FROM pending_orders
+        WHERE id = ${order_nsu}
+        FOR UPDATE
+      `;
 
-    const [client] = await sql`
-      SELECT id, starhome_account FROM clients WHERE whatsapp = ${order.whatsapp}
-    `;
+      if (!lockedOrder) {
+        throw new Error(`Pedido ${order_nsu} deixou de existir durante o processamento`);
+      }
 
-    if (client) {
-      const [poolEntry] = await sql`
+      if (lockedOrder.status === 'registered') {
+        return { state: 'already-registered' as const };
+      }
+
+      if (lockedOrder.status !== 'pending' && lockedOrder.status !== 'paid') {
+        throw new Error(`Status inválido para pagamento: ${lockedOrder.status}`);
+      }
+
+      const lockedExpectedAmount = Math.round(Number(lockedOrder.amount) * 100);
+      if (paymentStatus.amount !== lockedExpectedAmount) {
+        throw new Error('Valor do pedido mudou durante a confirmação do pagamento');
+      }
+
+      await transactionSql`
+        UPDATE pending_orders
+        SET status = 'paid', paid_at = COALESCE(paid_at, NOW())
+        WHERE id = ${order_nsu}
+      `;
+
+      const daysToAdd = PLAN_DAYS[lockedOrder.plan] ?? 31;
+      const [client] = await transactionSql`
+        SELECT id, starhome_account
+        FROM clients
+        WHERE whatsapp = ${lockedOrder.whatsapp}
+        FOR UPDATE
+      `;
+
+      // Cliente novo conclui o cadastro pelo fluxo público usando o pedido pago.
+      if (!client) {
+        return { state: 'awaiting-registration' as const };
+      }
+
+      const [poolEntry] = await transactionSql`
         UPDATE login_pool
         SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
-        WHERE id = (SELECT id FROM login_pool WHERE status = 'disponivel' ORDER BY created_at ASC LIMIT 1)
+        WHERE id = (
+          SELECT id
+          FROM login_pool
+          WHERE status = 'disponivel'
+          ORDER BY created_at ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+        )
         RETURNING id, app_account, app_password
       `;
 
       if (poolEntry) {
-        await sql`
-          UPDATE clients SET status = 'Ativo', days_remaining = ${daysToAdd},
-          app_account = ${poolEntry.app_account}, app_password = ${poolEntry.app_password}, plan = ${order.plan}
+        await transactionSql`
+          UPDATE clients
+          SET status = 'Ativo', days_remaining = ${daysToAdd},
+              app_account = ${poolEntry.app_account}, app_password = ${poolEntry.app_password},
+              plan = ${lockedOrder.plan}
           WHERE id = ${client.id}
         `;
-
-        await sql`
-          UPDATE pending_orders SET status = 'registered', client_id = ${client.id}, registered_at = NOW()
-          WHERE id = ${order_nsu}
+      } else {
+        await transactionSql`
+          UPDATE clients
+          SET status = 'Ativo', days_remaining = ${daysToAdd}, plan = ${lockedOrder.plan}
+          WHERE id = ${client.id}
         `;
-
-        logger.info(`[InfinityPay] Acesso liberado para ${client.id}`);
-
-        await enqueueRenewalJob(client.id, order_nsu, client.starhome_account);
       }
+
+      // A existência do job por order_id torna a retomada idempotente mesmo se
+      // um pedido antigo estiver como paid após uma falha anterior.
+      if (client.starhome_account) {
+        await transactionSql`
+          INSERT INTO renewal_jobs (client_id, order_id, starhome_account)
+          SELECT ${client.id}, ${order_nsu}, ${client.starhome_account}
+          WHERE NOT EXISTS (
+            SELECT 1 FROM renewal_jobs WHERE order_id = ${order_nsu}
+          )
+        `;
+      }
+
+      await transactionSql`
+        UPDATE pending_orders
+        SET status = 'registered', client_id = ${client.id}, registered_at = COALESCE(registered_at, NOW())
+        WHERE id = ${order_nsu}
+      `;
+
+      return {
+        state: 'registered' as const,
+        clientId: client.id,
+        poolAssigned: Boolean(poolEntry),
+      };
+    });
+
+    if (result.state === 'registered') {
+      logger.info(`[InfinityPay] Acesso liberado para ${result.clientId}`, {
+        poolAssigned: result.poolAssigned,
+      });
+    } else if (result.state === 'awaiting-registration') {
+      logger.info(`[InfinityPay] Pedido ${order_nsu} pago; aguardando cadastro do cliente`);
+    } else {
+      logger.info(`[InfinityPay] Pedido ${order_nsu} já processado por outra entrega`);
     }
 
-    logger.info(`[InfinityPay] Pagamento confirmado: ${order_nsu}`);
+    logger.info(`[InfinityPay] Pagamento confirmado e persistido: ${order_nsu}`);
     res.status(200).json({ success: true, message: null });
   } catch (error) {
     logger.error('[InfinityPay] Erro ao processar webhook:', error);

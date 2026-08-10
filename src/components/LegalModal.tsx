@@ -122,7 +122,7 @@ A Reybraz Tech está comprometida com a proteção dos seus dados pessoais, em c
 
 Coletamos apenas os dados estritamente necessários para a prestação do serviço:
 - Nome completo
-- Número de WhatsApp (utilizado para autenticação via OTP)
+- Número de WhatsApp (utilizado para autenticação e suporte)
 - E-mail (opcional, para comunicações)
 - Dados de pagamento (processados integralmente pelo Mercado Pago — não armazenamos dados de cartão)
 - Logs técnicos de acesso ao painel (endereço IP, data/hora)

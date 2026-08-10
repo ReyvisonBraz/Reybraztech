@@ -203,34 +203,6 @@ export const DashboardPage = () => {
     }
   }, [searchParams, location.state]);
 
-  // Auto-verificação de WhatsApp via link
-  useEffect(() => {
-    const verifyToken = searchParams.get('verify');
-    const wa = searchParams.get('wa');
-
-    if (verifyToken && wa && !localStorage.getItem(`wa_validated_${wa}`)) {
-      const autoVerify = async () => {
-        try {
-          const res = await fetch(`${API_URL}/api/otp/verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ whatsapp: wa, token: verifyToken, type: 'register' }),
-          });
-          if (res.ok) {
-            localStorage.setItem(`wa_validated_${wa}`, 'true');
-            setShowWaVerified(true);
-            setUser(prev => prev ? { ...prev, whatsapp_verified: true } : null);
-            setTimeout(() => setShowWaVerified(false), 5000);
-          }
-        } catch {
-          // Silencioso - o banner ainda aparecerá para tentar novamente
-        }
-        setSearchParams({});
-      };
-      autoVerify();
-    }
-  }, []);
-
   useEffect(() => {
     const fetchDashboard = async () => {
       const token = localStorage.getItem('reyb_token');

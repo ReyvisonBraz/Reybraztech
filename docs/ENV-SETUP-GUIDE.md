@@ -2,7 +2,8 @@
 
 ## 📋 Resumo Rápido
 
-Você tem **3 serviços** e precisa configurar env vars em **3 painéis diferentes**.
+Você tem **3 componentes lógicos** em **2 painéis**: backend + frontend no
+mesmo projeto Vercel e scraper no Render.
 
 ---
 
@@ -19,7 +20,7 @@ backend e scraper. Ela nunca deve ser configurada no frontend.
 
 ## 🎯 Passo 2: Configurar cada painel
 
-### RENDER → BACKEND (servidor principal)
+### VERCEL → BACKEND (funções serverless do servidor principal)
 
 | Variável | Valor | Obrigatória? |
 |----------|-------|:---:|
@@ -102,20 +103,17 @@ considere `SCRAPER_API_KEY` comprometida:
 | Arquivo | Para quê |
 |---------|----------|
 | `.env.example` | Template completo de TODAS as vars |
-| `.env.render-backend` | Lista pronta pro painel Render (Backend) |
-| `.env.render-scraper` | Lista pronta pro painel Render (Scraper) |
-| `.env.vercel-frontend` | Lista pronta pro painel Vercel (Frontend) |
 
 ---
 
 ## ⚠️ Checklist antes de deploy
 
-- [ ] `SCRAPER_API_KEY` configurada no Render Backend
+- [ ] `SCRAPER_API_KEY` configurada no Vercel Backend
 - [ ] `SCRAPER_API_KEY` configurada no Render Scraper (**mesma chave**)
 - [ ] Nenhuma chave ou token configurado no Vercel com prefixo `VITE_`
-- [ ] `DATABASE_URL` configurada no Render Backend
+- [ ] `DATABASE_URL` configurada no Vercel Backend
 - [ ] `DATABASE_URL` configurada no Render Scraper (**mesma string**)
 - [ ] `PANEL_ACCOUNT` e `PANEL_PASSWORD` no Render Scraper
-- [ ] `TELEGRAM_BOT_TOKEN` no Render Backend
+- [ ] `TELEGRAM_BOT_TOKEN` no Vercel Backend
 - [ ] `TELEGRAM_BOT_TOKEN` no Render Scraper
 - [ ] Redeploy do backend e do scraper após alterar `SCRAPER_API_KEY`

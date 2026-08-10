@@ -64,10 +64,13 @@ openssl rand -hex 32
 
 | Variável | Valor | Obrigatória? |
 |----------|-------|:---:|
-| `VITE_SCRAPER_API_KEY` | **MESMA** chave do Render | ✅ |
-| `VITE_SCRAPER_URL` | `https://reybraztech-scraper.onrender.com` | Não (já tem default) |
 | `VITE_API_URL` | Deixe **vazio** em produção | Não |
 | `VITE_SENTRY_DSN` | DSN do Sentry browser | Não |
+
+> **Segurança:** nunca configure tokens, senhas ou chaves com prefixo
+> `VITE_`. Essas variáveis podem ser incorporadas ao JavaScript público do
+> navegador. O frontend acessa o scraper somente por rotas autenticadas do
+> backend; `SCRAPER_API_KEY` pertence exclusivamente ao backend e ao scraper.
 
 ---
 
@@ -76,7 +79,6 @@ openssl rand -hex 32
 | Variável | Backend | Scraper | Frontend |
 |----------|:---:|:---:|:---:|
 | `SCRAPER_API_KEY` | ✅ | ✅ (mesma) | ❌ |
-| `VITE_SCRAPER_API_KEY` | ❌ | ❌ | ✅ (mesma) |
 | `DATABASE_URL` | ✅ | ✅ (mesma) | ❌ |
 | `TELEGRAM_BOT_TOKEN` | ✅ | ✅ (mesmo) | ❌ |
 | `TELEGRAM_CHAT_ID` | ✅ | ✅ (mesmo) | ❌ |
@@ -98,7 +100,7 @@ openssl rand -hex 32
 
 - [ ] `SCRAPER_API_KEY` configurada no Render Backend
 - [ ] `SCRAPER_API_KEY` configurada no Render Scraper (**mesma chave**)
-- [ ] `VITE_SCRAPER_API_KEY` configurada no Vercel (**mesma chave**)
+- [ ] Nenhuma chave ou token configurado no Vercel com prefixo `VITE_`
 - [ ] `DATABASE_URL` configurada no Render Backend
 - [ ] `DATABASE_URL` configurada no Render Scraper (**mesma string**)
 - [ ] `PANEL_ACCOUNT` e `PANEL_PASSWORD` no Render Scraper

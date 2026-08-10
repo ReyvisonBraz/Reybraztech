@@ -57,8 +57,8 @@ backend e scraper. Ela nunca deve ser configurada no frontend.
 | `ITEMS_PER_PAGE` | `100` | Não (já tem default) |
 | `PAGE_LIMIT` | `0` | Não (já tem default) |
 | `TWO_CAPTCHA_API_KEY` | Key do 2Captcha | Não |
-| `NODE_ENV` | `production` | ✅ (já está no render.yaml) |
-| `PUPPETEER_CACHE_DIR` | `/opt/render/.cache/puppeteer` | ✅ (já está no render.yaml) |
+| `NODE_ENV` | `production` | ✅ |
+| `PUPPETEER_CACHE_DIR` | `/opt/render/.cache/puppeteer` | ✅ |
 
 ---
 

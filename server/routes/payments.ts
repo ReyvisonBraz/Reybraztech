@@ -16,6 +16,27 @@ const PLAN_DAYS: Record<string, number> = {
 };
 
 /**
+ * Enfileira a renovação real no painel StarHome após um pagamento aprovado.
+ * Best-effort: nunca lança erro — falha ao inserir é logada e o webhook
+ * continua respondendo 200 (o Mercado Pago tem timeout curto e reenvia).
+ */
+async function enqueueRenewalJob(clientId: number, orderId: string, starhomeAccount: string | null | undefined): Promise<void> {
+  if (!starhomeAccount) {
+    logger.warn(`⚠️ Cliente ${clientId} sem starhome_account — pulando enfileiramento de renovação`);
+    return;
+  }
+  try {
+    await sql`
+      INSERT INTO renewal_jobs (client_id, order_id, starhome_account)
+      VALUES (${clientId}, ${orderId}, ${starhomeAccount})
+    `;
+    logger.info(`🔁 Renovação enfileirada para ${starhomeAccount} (cliente ${clientId}, pedido ${orderId})`);
+  } catch (err) {
+    logger.error('Falha ao enfileirar renovação StarHome (não bloqueia o webhook):', err);
+  }
+}
+
+/**
  * Valida a assinatura do webhook enviada pelo Mercado Pago.
  * Documentação: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
  */
@@ -164,7 +185,7 @@ router.post('/webhook', async (req, res) => {
 
         // Buscar cliente pelo whatsapp da order
         const [client] = await sql`
-          SELECT id, days_remaining FROM clients WHERE whatsapp = ${order.whatsapp}
+          SELECT id, days_remaining, starhome_account FROM clients WHERE whatsapp = ${order.whatsapp}
         `;
 
         if (client) {
@@ -201,6 +222,8 @@ router.post('/webhook', async (req, res) => {
 
             logger.info(`🔑 Login ${poolEntry.app_account} atribuído ao cliente ${client.id}`);
 
+            await enqueueRenewalJob(client.id, orderId, client.starhome_account);
+
             await sendTelegramMessage(
               `✅ <b>Pagamento Confirmado</b>\n` +
               `👤 ${order.name}\n` +
@@ -228,6 +251,8 @@ router.post('/webhook', async (req, res) => {
             `;
 
             logger.warn(`⚠️ Pool vazio! Cliente ${client.id} ativado sem login atribuído.`);
+
+            await enqueueRenewalJob(client.id, orderId, client.starhome_account);
 
             await sendTelegramMessage(
               `✅ <b>Pagamento Confirmado</b> — ⚠️ <b>POOL VAZIO!</b>\n` +
@@ -385,7 +410,7 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
     const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
 
     const [client] = await sql`
-      SELECT id FROM clients WHERE whatsapp = ${order.whatsapp}
+      SELECT id, starhome_account FROM clients WHERE whatsapp = ${order.whatsapp}
     `;
 
     if (client) {
@@ -409,6 +434,8 @@ router.post('/infinitypay-webhook', async (req: any, res: any) => {
         `;
 
         logger.info(`[InfinityPay] Acesso liberado para ${client.id}`);
+
+        await enqueueRenewalJob(client.id, order_nsu, client.starhome_account);
       }
     }
 

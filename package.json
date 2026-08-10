@@ -15,6 +15,7 @@
     "scraper:test": "powershell -ExecutionPolicy Bypass -File scripts/test-scraper-local.ps1",
     "bot": "npx ts-node bot-telegram.ts",
     "migrate:starhome": "tsx server/scripts/migrate-starhome-columns.ts",
+    "migrate:renewal-jobs": "tsx server/scripts/migrate-renewal-jobs.ts",
     "sync:starhome": "tsx server/scripts/upsert-starhome.ts",
     "build": "vite build",
     "preview": "vite preview",

@@ -103,6 +103,7 @@ app.use('/api/dashboard', limiter);
 app.use('/api/admin', limiter);
 app.use('/api/orders', limiter);
 app.use('/api/payments/webhook', webhookLimiter);
+app.use('/api/payments/infinitypay-webhook', webhookLimiter);
 app.use('/api/auth/register', registerLimiter);
 
 // ─── Rotas ──────────────────────────────────────────────────

@@ -15,6 +15,15 @@ interface InfinityPayLinkResponse {
   error?: string;
 }
 
+interface InfinityPayPaymentStatus {
+  success: boolean;
+  paid: boolean;
+  amount?: number;
+  paidAmount?: number;
+  captureMethod?: string;
+  error?: string;
+}
+
 export const createInfinityPayLink = async (params: {
   handle: string;
   items: InfinityPayItem[];
@@ -50,7 +59,7 @@ export const checkInfinityPayStatus = async (params: {
   order_nsu: string;
   transaction_nsu?: string;
   slug?: string;
-}): Promise<{ paid: boolean; amount?: number; capture_method?: string }> => {
+}): Promise<InfinityPayPaymentStatus> => {
   try {
     const response = await fetch(`${INFINITYPAY_API}/invoices/public/checkout/payment_check`, {
       method: 'POST',
@@ -59,13 +68,29 @@ export const checkInfinityPayStatus = async (params: {
     });
 
     const data = await response.json();
+
+    if (!response.ok || data.success === false) {
+      logger.warn('[InfinityPay] Falha ao confirmar pagamento:', data);
+      return {
+        success: false,
+        paid: false,
+        error: data.message || 'Falha ao confirmar pagamento',
+      };
+    }
+
     return {
-      paid: data.paid || false,
-      amount: data.amount,
-      capture_method: data.capture_method,
+      success: true,
+      paid: data.paid === true,
+      amount: typeof data.amount === 'number' ? data.amount : undefined,
+      paidAmount: typeof data.paid_amount === 'number' ? data.paid_amount : undefined,
+      captureMethod: data.capture_method,
     };
   } catch (error) {
     logger.error('[InfinityPay] Erro ao verificar status:', error);
-    return { paid: false };
+    return {
+      success: false,
+      paid: false,
+      error: 'Erro de conexão com InfinityPay',
+    };
   }
 };

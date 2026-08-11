@@ -15,6 +15,13 @@ interface TwoFAPrompt {
   code: string;
 }
 
+interface TwoFAStatus {
+  waiting: boolean;
+  state?: string;
+  sessionId?: string | null;
+  remainingMs?: number;
+}
+
 const LEVEL_STYLE: Record<LogEntry['level'], string> = {
   info:    'text-slate-400',
   warn:    'text-yellow-400',
@@ -75,24 +82,37 @@ export const LiveConsole = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs, twoFA.visible]);
 
-  // Polling de 2FA enquanto scraper está rodando
+  // Polling de 2FA independente de `running`: roda enquanto o Console estiver
+  // montado, para jobs autônomos da fila também fazerem o prompt aparecer.
   useEffect(() => {
-    if (!running) return;
-    const interval = setInterval(async () => {
+    let stopped = false;
+    let failCount = 0;
+    const poll = async () => {
+      if (stopped) return;
       try {
         const r = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
           headers: authHeaders(),
           signal: AbortSignal.timeout(4000),
         });
-        const data = await r.json() as { waiting: boolean };
+        const data = await r.json() as TwoFAStatus;
+        failCount = 0;
         if (data.waiting && !twoFA.visible) {
           setTwoFA(p => ({ ...p, visible: true }));
           addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
+        } else if (!data.waiting && twoFA.visible) {
+          // Scraper deixou de aguardar (consumido/aceito/timeout) — fecha o prompt.
+          setTwoFA(p => ({ ...p, visible: false }));
         }
-      } catch { /* silent */ }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [running, twoFA.visible]);
+      } catch {
+        failCount++;
+      }
+      const backoff = failCount > 2 ? 10000 : 5000;
+      if (!stopped) setTimeout(poll, backoff);
+    };
+    poll();
+    return () => { stopped = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [twoFA.visible]);
 
   const token = () => localStorage.getItem('reyb_token') ?? '';
   const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
@@ -108,12 +128,19 @@ export const LiveConsole = () => {
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
       });
-      addLog(res.ok ? 'success' : 'error',
-        res.ok ? 'Código 2FA enviado. Scraper retomando...' : `Falha ao enviar 2FA: ${res.status}`);
+      const data = await res.json() as { message?: string; error?: string; state?: string };
+      if (res.ok) {
+        addLog('success', data.message ?? 'Código 2FA enviado. Scraper retomando...');
+        setTwoFA({ visible: false, submitting: false, code: '' });
+      } else {
+        // 400/409: mantém o prompt aberto para correção, mostrando o motivo.
+        addLog('error', `Falha ao enviar 2FA (${res.status}): ${data.error ?? data.message ?? 'erro desconhecido'}`);
+        setTwoFA(p => ({ ...p, submitting: false, code: '' }));
+      }
     } catch (err: any) {
       addLog('error', `Erro ao enviar 2FA: ${err.message}`);
+      setTwoFA(p => ({ ...p, submitting: false }));
     }
-    setTwoFA({ visible: false, submitting: false, code: '' });
   };
 
   // ── Polling genérico de job com exibição de logs incrementais ──────────
@@ -221,9 +248,14 @@ export const LiveConsole = () => {
             headers: authHeaders(),
             signal: AbortSignal.timeout(6000),
           });
-          const d = await r.json() as { waiting: boolean };
-          addLog(d.waiting ? 'warn' : 'info',
-            d.waiting ? '🔐 Scraper está aguardando código 2FA.' : 'Scraper não está aguardando 2FA.');
+          const d = await r.json() as TwoFAStatus;
+          if (d.waiting) {
+            addLog('warn', '🔐 Scraper está aguardando código 2FA.');
+            setTwoFA(p => ({ ...p, visible: true }));
+          } else {
+            addLog('info', d.state && d.state !== 'none'
+              ? `Scraper 2FA: ${d.state}.` : 'Scraper não está aguardando 2FA.');
+          }
         } catch { addLog('error', 'Não foi possível contatar o scraper.'); }
         setRunning(false);
         return;

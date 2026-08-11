@@ -250,7 +250,7 @@ router.get('/scraper-2fa-status', async (_req: AuthRequest, res: Response) => {
             signal: AbortSignal.timeout(8000),
         });
         const data = await r.json();
-        res.json(data);
+        res.status(r.status).json(data);
     } catch (err: any) {
         res.status(504).json({ error: err.message });
     }
@@ -270,7 +270,7 @@ router.post('/scraper-2fa', async (req: AuthRequest, res: Response) => {
             signal: AbortSignal.timeout(8000),
         });
         const data = await r.json();
-        res.json(data);
+        res.status(r.status).json(data);
     } catch (err: any) {
         res.status(504).json({ error: err.message });
     }

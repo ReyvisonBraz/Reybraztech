@@ -13,6 +13,7 @@ interface TwoFAPrompt {
   visible: boolean;
   submitting: boolean;
   code: string;
+  sessionId?: string | null;
 }
 
 interface TwoFAStatus {
@@ -94,14 +95,26 @@ export const LiveConsole = () => {
           headers: authHeaders(),
           signal: AbortSignal.timeout(4000),
         });
+        // Falha HTTP (401/500/504): mantém o prompt/estado atual e aplica
+        // backoff de erro, sem interpretar o payload como "não aguardando".
+        if (!r.ok) {
+          failCount++;
+          const backoff = failCount > 2 ? 10000 : 5000;
+          if (!stopped) setTimeout(poll, backoff);
+          return;
+        }
         const data = await r.json() as TwoFAStatus;
         failCount = 0;
-        if (data.waiting && !twoFA.visible) {
-          setTwoFA(p => ({ ...p, visible: true }));
+        if (data.waiting) {
+          // Sessão mudou: zera o código digitado para não enviar o antigo.
+          setTwoFA(p => {
+            const sessionChanged = p.sessionId != null && p.sessionId !== data.sessionId;
+            return { ...p, visible: true, sessionId: data.sessionId ?? p.sessionId, code: sessionChanged ? '' : p.code };
+          });
           addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
-        } else if (!data.waiting && twoFA.visible) {
+        } else if (twoFA.visible) {
           // Scraper deixou de aguardar (consumido/aceito/timeout) — fecha o prompt.
-          setTwoFA(p => ({ ...p, visible: false }));
+          setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
         }
       } catch {
         failCount++;
@@ -118,7 +131,7 @@ export const LiveConsole = () => {
   const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
   // ── 2FA submit ──────────────────────────────────────────────────────────
-  const submit2FA = async (codeArg?: string) => {
+  const submit2FA = async (codeArg?: string, sessionIdArg?: string) => {
     const code = (codeArg ?? twoFA.code).trim();
     if (!code) return;
     setTwoFA(p => ({ ...p, submitting: true }));
@@ -126,12 +139,12 @@ export const LiveConsole = () => {
       const res = await fetch(`${API_URL}/api/admin/scraper-2fa`, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, sessionId: sessionIdArg ?? twoFA.sessionId ?? null }),
       });
       const data = await res.json() as { message?: string; error?: string; state?: string };
       if (res.ok) {
         addLog('success', data.message ?? 'Código 2FA enviado. Scraper retomando...');
-        setTwoFA({ visible: false, submitting: false, code: '' });
+        setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
       } else {
         // 400/409: mantém o prompt aberto para correção, mostrando o motivo.
         addLog('error', `Falha ao enviar 2FA (${res.status}): ${data.error ?? data.message ?? 'erro desconhecido'}`);
@@ -251,7 +264,7 @@ export const LiveConsole = () => {
           const d = await r.json() as TwoFAStatus;
           if (d.waiting) {
             addLog('warn', '🔐 Scraper está aguardando código 2FA.');
-            setTwoFA(p => ({ ...p, visible: true }));
+            setTwoFA(p => ({ ...p, visible: true, sessionId: d.sessionId ?? p.sessionId }));
           } else {
             addLog('info', d.state && d.state !== 'none'
               ? `Scraper 2FA: ${d.state}.` : 'Scraper não está aguardando 2FA.');
@@ -264,7 +277,18 @@ export const LiveConsole = () => {
       // 2fa [código]
       if (cmd.startsWith('2fa ')) {
         const code = raw.replace(/^2fa\s+/i, '').trim();
-        await submit2FA(code);
+        // Garante que temos o sessionId da tentativa atual mesmo sem prompt aberto.
+        let sessionId = twoFA.sessionId;
+        if (!sessionId) {
+          try {
+            const sr = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
+              headers: authHeaders(), signal: AbortSignal.timeout(6000),
+            });
+            const sd = await sr.json() as TwoFAStatus;
+            sessionId = sd.waiting ? sd.sessionId ?? null : null;
+          } catch { /* keep null */ }
+        }
+        await submit2FA(code, sessionId ?? undefined);
         setRunning(false);
         return;
       }

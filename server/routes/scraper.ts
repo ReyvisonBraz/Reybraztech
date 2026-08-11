@@ -260,13 +260,13 @@ router.get('/scraper-2fa-status', async (_req: AuthRequest, res: Response) => {
 // POST /api/admin/scraper-2fa — Envia código 2FA
 // ============================================================
 router.post('/scraper-2fa', async (req: AuthRequest, res: Response) => {
-    const { code } = req.body;
+    const { code, sessionId } = req.body;
     if (!code) { res.status(400).json({ error: 'Código obrigatório' }); return; }
     try {
         const r = await fetch(`${scraperUrl()}/2fa`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': scraperKey() },
-            body: JSON.stringify({ code }),
+            body: JSON.stringify({ code, sessionId }),
             signal: AbortSignal.timeout(8000),
         });
         const data = await r.json();

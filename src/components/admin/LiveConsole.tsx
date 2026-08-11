@@ -13,6 +13,14 @@ interface TwoFAPrompt {
   visible: boolean;
   submitting: boolean;
   code: string;
+  sessionId?: string | null;
+}
+
+interface TwoFAStatus {
+  waiting: boolean;
+  state?: string;
+  sessionId?: string | null;
+  remainingMs?: number;
 }
 
 const LEVEL_STYLE: Record<LogEntry['level'], string> = {
@@ -67,6 +75,8 @@ export const LiveConsole = () => {
   const [twoFA, setTwoFA] = useState<TwoFAPrompt>({ visible: false, submitting: false, code: '' });
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Lembra o último estado 2FA observado pelo polling para só logar em transições.
+  const lastPolledSessionId = useRef<string | null | undefined>(undefined);
 
   const addLog = (level: LogEntry['level'], message: string) =>
     setLogs(prev => [...prev.slice(-400), newLog(level, message)]);
@@ -75,30 +85,65 @@ export const LiveConsole = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs, twoFA.visible]);
 
-  // Polling de 2FA enquanto scraper está rodando
+  // Polling de 2FA independente de `running`: roda enquanto o Console estiver
+  // montado, para jobs autônomos da fila também fazerem o prompt aparecer.
   useEffect(() => {
-    if (!running) return;
-    const interval = setInterval(async () => {
+    let stopped = false;
+    let failCount = 0;
+    const poll = async () => {
+      if (stopped) return;
       try {
         const r = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
           headers: authHeaders(),
           signal: AbortSignal.timeout(4000),
         });
-        const data = await r.json() as { waiting: boolean };
-        if (data.waiting && !twoFA.visible) {
-          setTwoFA(p => ({ ...p, visible: true }));
-          addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
+        // Falha HTTP (401/500/504): mantém o prompt/estado atual e aplica
+        // backoff de erro, sem interpretar o payload como "não aguardando".
+        if (!r.ok) {
+          failCount++;
+          const backoff = failCount > 2 ? 10000 : 5000;
+          if (!stopped) setTimeout(poll, backoff);
+          return;
         }
-      } catch { /* silent */ }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [running, twoFA.visible]);
+        const data = await r.json() as TwoFAStatus;
+        failCount = 0;
+        if (data.waiting) {
+          // Sessão mudou: zera o código digitado para não enviar o antigo.
+          setTwoFA(p => {
+            const sessionChanged = p.sessionId != null && p.sessionId !== data.sessionId;
+            return { ...p, visible: true, sessionId: data.sessionId ?? p.sessionId, code: sessionChanged ? '' : p.code };
+          });
+          // Loga apenas na transição para waiting (ou troca de tentativa).
+          if (lastPolledSessionId.current !== data.sessionId) {
+            lastPolledSessionId.current = data.sessionId ?? null;
+            addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
+          }
+        } else {
+          // Sempre zera a ref em !waiting, mesmo se o prompt já estiver fechado
+          // (ex: submit 200 fechou o prompt antes deste poll). Assim, se a mesma
+          // tentativa voltar a waiting, o aviso é reexibido.
+          lastPolledSessionId.current = null;
+          if (twoFA.visible) {
+            // Scraper deixou de aguardar (consumido/aceito/timeout) — fecha o prompt.
+            setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
+          }
+        }
+      } catch {
+        failCount++;
+      }
+      const backoff = failCount > 2 ? 10000 : 5000;
+      if (!stopped) setTimeout(poll, backoff);
+    };
+    poll();
+    return () => { stopped = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [twoFA.visible]);
 
   const token = () => localStorage.getItem('reyb_token') ?? '';
   const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
   // ── 2FA submit ──────────────────────────────────────────────────────────
-  const submit2FA = async (codeArg?: string) => {
+  const submit2FA = async (codeArg?: string, sessionIdArg?: string) => {
     const code = (codeArg ?? twoFA.code).trim();
     if (!code) return;
     setTwoFA(p => ({ ...p, submitting: true }));
@@ -106,14 +151,21 @@ export const LiveConsole = () => {
       const res = await fetch(`${API_URL}/api/admin/scraper-2fa`, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, sessionId: sessionIdArg ?? twoFA.sessionId ?? null }),
       });
-      addLog(res.ok ? 'success' : 'error',
-        res.ok ? 'Código 2FA enviado. Scraper retomando...' : `Falha ao enviar 2FA: ${res.status}`);
+      const data = await res.json() as { message?: string; error?: string; state?: string };
+      if (res.ok) {
+        addLog('success', data.message ?? 'Código 2FA enviado. Scraper retomando...');
+        setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
+      } else {
+        // 400/409: mantém o prompt aberto para correção, mostrando o motivo.
+        addLog('error', `Falha ao enviar 2FA (${res.status}): ${data.error ?? data.message ?? 'erro desconhecido'}`);
+        setTwoFA(p => ({ ...p, submitting: false, code: '' }));
+      }
     } catch (err: any) {
       addLog('error', `Erro ao enviar 2FA: ${err.message}`);
+      setTwoFA(p => ({ ...p, submitting: false }));
     }
-    setTwoFA({ visible: false, submitting: false, code: '' });
   };
 
   // ── Polling genérico de job com exibição de logs incrementais ──────────
@@ -221,9 +273,19 @@ export const LiveConsole = () => {
             headers: authHeaders(),
             signal: AbortSignal.timeout(6000),
           });
-          const d = await r.json() as { waiting: boolean };
-          addLog(d.waiting ? 'warn' : 'info',
-            d.waiting ? '🔐 Scraper está aguardando código 2FA.' : 'Scraper não está aguardando 2FA.');
+          if (!r.ok) {
+            addLog('error', `Falha ao consultar status 2FA (${r.status}).`);
+            setRunning(false);
+            return;
+          }
+          const d = await r.json() as TwoFAStatus;
+          if (d.waiting) {
+            addLog('warn', '🔐 Scraper está aguardando código 2FA.');
+            setTwoFA(p => ({ ...p, visible: true, sessionId: d.sessionId ?? p.sessionId }));
+          } else {
+            addLog('info', d.state && d.state !== 'none'
+              ? `Scraper 2FA: ${d.state}.` : 'Scraper não está aguardando 2FA.');
+          }
         } catch { addLog('error', 'Não foi possível contatar o scraper.'); }
         setRunning(false);
         return;
@@ -232,7 +294,32 @@ export const LiveConsole = () => {
       // 2fa [código]
       if (cmd.startsWith('2fa ')) {
         const code = raw.replace(/^2fa\s+/i, '').trim();
-        await submit2FA(code);
+        // Garante que temos o sessionId da tentativa atual mesmo sem prompt aberto.
+        let sessionId = twoFA.sessionId;
+        if (!sessionId) {
+          try {
+            const sr = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
+              headers: authHeaders(), signal: AbortSignal.timeout(6000),
+            });
+            if (!sr.ok) {
+              addLog('error', `Falha ao consultar status 2FA (${sr.status}).`);
+              setRunning(false);
+              return;
+            }
+            const sd = await sr.json() as TwoFAStatus;
+            if (!sd.waiting) {
+              addLog('warn', 'Scraper não está aguardando 2FA. Nada a enviar.');
+              setRunning(false);
+              return;
+            }
+            sessionId = sd.sessionId ?? null;
+          } catch {
+            addLog('error', 'Não foi possível contatar o scraper para enviar o 2FA.');
+            setRunning(false);
+            return;
+          }
+        }
+        await submit2FA(code, sessionId ?? undefined);
         setRunning(false);
         return;
       }

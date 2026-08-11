@@ -75,6 +75,8 @@ export const LiveConsole = () => {
   const [twoFA, setTwoFA] = useState<TwoFAPrompt>({ visible: false, submitting: false, code: '' });
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Lembra o último estado 2FA observado pelo polling para só logar em transições.
+  const lastPolledSessionId = useRef<string | null | undefined>(undefined);
 
   const addLog = (level: LogEntry['level'], message: string) =>
     setLogs(prev => [...prev.slice(-400), newLog(level, message)]);
@@ -111,9 +113,14 @@ export const LiveConsole = () => {
             const sessionChanged = p.sessionId != null && p.sessionId !== data.sessionId;
             return { ...p, visible: true, sessionId: data.sessionId ?? p.sessionId, code: sessionChanged ? '' : p.code };
           });
-          addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
+          // Loga apenas na transição para waiting (ou troca de tentativa).
+          if (lastPolledSessionId.current !== data.sessionId) {
+            lastPolledSessionId.current = data.sessionId ?? null;
+            addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
+          }
         } else if (twoFA.visible) {
           // Scraper deixou de aguardar (consumido/aceito/timeout) — fecha o prompt.
+          lastPolledSessionId.current = null;
           setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
         }
       } catch {
@@ -261,6 +268,11 @@ export const LiveConsole = () => {
             headers: authHeaders(),
             signal: AbortSignal.timeout(6000),
           });
+          if (!r.ok) {
+            addLog('error', `Falha ao consultar status 2FA (${r.status}).`);
+            setRunning(false);
+            return;
+          }
           const d = await r.json() as TwoFAStatus;
           if (d.waiting) {
             addLog('warn', '🔐 Scraper está aguardando código 2FA.');
@@ -284,9 +296,23 @@ export const LiveConsole = () => {
             const sr = await fetch(`${API_URL}/api/admin/scraper-2fa-status`, {
               headers: authHeaders(), signal: AbortSignal.timeout(6000),
             });
+            if (!sr.ok) {
+              addLog('error', `Falha ao consultar status 2FA (${sr.status}).`);
+              setRunning(false);
+              return;
+            }
             const sd = await sr.json() as TwoFAStatus;
-            sessionId = sd.waiting ? sd.sessionId ?? null : null;
-          } catch { /* keep null */ }
+            if (!sd.waiting) {
+              addLog('warn', 'Scraper não está aguardando 2FA. Nada a enviar.');
+              setRunning(false);
+              return;
+            }
+            sessionId = sd.sessionId ?? null;
+          } catch {
+            addLog('error', 'Não foi possível contatar o scraper para enviar o 2FA.');
+            setRunning(false);
+            return;
+          }
         }
         await submit2FA(code, sessionId ?? undefined);
         setRunning(false);

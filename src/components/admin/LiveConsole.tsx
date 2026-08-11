@@ -118,10 +118,15 @@ export const LiveConsole = () => {
             lastPolledSessionId.current = data.sessionId ?? null;
             addLog('warn', '🔐 Scraper aguarda código 2FA — use o campo amarelo abaixo!');
           }
-        } else if (twoFA.visible) {
-          // Scraper deixou de aguardar (consumido/aceito/timeout) — fecha o prompt.
+        } else {
+          // Sempre zera a ref em !waiting, mesmo se o prompt já estiver fechado
+          // (ex: submit 200 fechou o prompt antes deste poll). Assim, se a mesma
+          // tentativa voltar a waiting, o aviso é reexibido.
           lastPolledSessionId.current = null;
-          setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
+          if (twoFA.visible) {
+            // Scraper deixou de aguardar (consumido/aceito/timeout) — fecha o prompt.
+            setTwoFA({ visible: false, submitting: false, code: '', sessionId: null });
+          }
         }
       } catch {
         failCount++;

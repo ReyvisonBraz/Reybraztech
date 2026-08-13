@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { createHmac } from 'crypto';
+import { createHmac, randomUUID } from 'crypto';
 import { createPaymentPreference, getPaymentDetails } from '../services/mercadopago.js';
+import { checkInfinityPayStatus, createInfinityPayLink } from '../services/infinitypay.js';
 import { verifyToken, AuthRequest } from '../middleware/auth.js';
 import { sendPaymentConfirmation } from '../services/whatsapp.js';
 import { sendTelegramMessage } from '../services/telegram.js';
@@ -13,6 +14,13 @@ const PLAN_DAYS: Record<string, number> = {
   semestral: 186,
   anual: 365,
   trial: 3,
+};
+
+const PLAN_PRICES: Record<string, number> = {
+  mensal: 35,
+  trimestral: 90,
+  semestral: 169,
+  anual: 299,
 };
 
 /**
@@ -317,10 +325,18 @@ router.post('/webhook', async (req, res) => {
 // POST /api/payments/infinitypay — Criar link de pagamento
 // ============================================================
 router.post('/infinitypay', async (req: any, res: any) => {
-  const { plan, name, whatsapp, amount, orderId } = req.body;
+  const { plan, name, whatsapp } = req.body;
 
-  if (!plan || !whatsapp) {
-    res.status(400).json({ error: 'Plano e WhatsApp são obrigatórios.' });
+  const amount = PLAN_PRICES[plan];
+  const normalizedWhatsapp = String(whatsapp || '').replace(/\D/g, '');
+  const normalizedName = String(name || '').trim();
+
+  if (
+    typeof amount !== 'number' ||
+    normalizedName.length < 2 || normalizedName.length > 120 ||
+    normalizedWhatsapp.length < 10 || normalizedWhatsapp.length > 15
+  ) {
+    res.status(400).json({ error: 'Plano, nome ou WhatsApp inválido.' });
     return;
   }
 
@@ -332,11 +348,12 @@ router.post('/infinitypay', async (req: any, res: any) => {
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const apiUrl = process.env.API_URL || frontendUrl;
-  const generatedOrderId = orderId || `INF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const generatedOrderId = randomUUID();
+  const customerPhone = normalizedWhatsapp.startsWith('55')
+    ? `+${normalizedWhatsapp}`
+    : `+55${normalizedWhatsapp}`;
 
   try {
-    const { createInfinityPayLink } = await import('../services/infinitypay.js');
-
     const linkData = await createInfinityPayLink({
       handle,
       items: [{
@@ -348,8 +365,8 @@ router.post('/infinitypay', async (req: any, res: any) => {
       redirect_url: `${frontendUrl}/dashboard?payment=success`,
       webhook_url: `${apiUrl}/api/payments/infinitypay-webhook`,
       customer: {
-        name,
-        phone_number: `+55${whatsapp.replace(/\D/g, '')}`,
+        name: normalizedName,
+        phone_number: customerPhone,
       },
     });
 
@@ -358,7 +375,15 @@ router.post('/infinitypay', async (req: any, res: any) => {
       return;
     }
 
-    logger.info(`[InfinityPay] Link gerado para ${whatsapp}: ${linkData.link}`);
+    // O browser nunca escolhe o valor nem o order_nsu. Persistimos o pedido
+    // somente após a InfinitePay aceitar o link, evitando pedidos órfãos em
+    // falhas da API externa.
+    await sql`
+      INSERT INTO pending_orders (id, name, whatsapp, plan, amount, status)
+      VALUES (${generatedOrderId}, ${normalizedName}, ${normalizedWhatsapp}, ${plan}, ${amount}, 'pending')
+    `;
+
+    logger.info(`[InfinityPay] Link gerado para ${normalizedWhatsapp}: ${linkData.link}`);
 
     res.json({
       success: true,
@@ -376,72 +401,218 @@ router.post('/infinitypay', async (req: any, res: any) => {
 // POST /api/payments/infinitypay-webhook — Webhook
 // ============================================================
 router.post('/infinitypay-webhook', async (req: any, res: any) => {
-  const { order_nsu, invoice_slug, paid, amount, paid_amount, capture_method, transaction_nsu, receipt_url } = req.body;
+  const { order_nsu, invoice_slug, transaction_nsu } = req.body;
 
-  logger.info('[InfinityPay] Webhook recebido:', req.body);
+  logger.info('[InfinityPay] Webhook recebido:', { order_nsu, invoice_slug, transaction_nsu });
 
-  // Responder com JSON conforme documentação
-  res.status(200).json({ success: true });
-
-  if (!paid) {
-    logger.info(`[InfinityPay] Pagamento não aprovado para ${order_nsu}`);
+  if (
+    typeof order_nsu !== 'string' || !order_nsu || order_nsu.length > 120 ||
+    typeof invoice_slug !== 'string' || !invoice_slug ||
+    typeof transaction_nsu !== 'string' || !transaction_nsu
+  ) {
+    logger.warn('[InfinityPay] Webhook rejeitado: identificadores ausentes ou inválidos');
+    res.status(400).json({ success: false, message: 'Payload inválido' });
     return;
   }
 
   try {
     const [order] = await sql`
-      SELECT id, name, whatsapp, plan, status FROM pending_orders WHERE id = ${order_nsu}
+      SELECT id, name, whatsapp, plan, amount, status
+      FROM pending_orders
+      WHERE id = ${order_nsu}
+      LIMIT 1
     `;
 
     if (!order) {
       logger.warn(`[InfinityPay] Pedido ${order_nsu} não encontrado`);
+      res.status(400).json({ success: false, message: 'Pedido não encontrado' });
       return;
     }
 
-    if (order.status === 'paid' || order.status === 'registered') {
+    if (order.status === 'registered') {
       logger.info(`[InfinityPay] Pedido ${order_nsu} já processado`);
+      res.status(200).json({ success: true, message: null });
       return;
     }
 
-    await sql`
-      UPDATE pending_orders SET status = 'paid', paid_at = NOW() WHERE id = ${order_nsu}
-    `;
+    const handle = process.env.INFINITYPAY_HANDLE;
+    if (!handle) {
+      logger.error('[InfinityPay] INFINITYPAY_HANDLE ausente; webhook não pode ser validado');
+      res.status(500).json({ success: false, message: 'Integração não configurada' });
+      return;
+    }
 
-    const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+    // A InfinitePay não assina o webhook. Antes de alterar qualquer dado,
+    // confirmamos a transação diretamente na API oficial usando os três IDs.
+    const paymentStatus = await checkInfinityPayStatus({
+      handle,
+      order_nsu,
+      transaction_nsu,
+      slug: invoice_slug,
+    });
 
-    const [client] = await sql`
-      SELECT id, starhome_account FROM clients WHERE whatsapp = ${order.whatsapp}
-    `;
+    const expectedAmount = Math.round(Number(order.amount) * 100);
+    if (
+      !paymentStatus.success ||
+      !paymentStatus.paid ||
+      paymentStatus.amount !== expectedAmount
+    ) {
+      logger.warn('[InfinityPay] Webhook rejeitado após confirmação na API:', {
+        order_nsu,
+        confirmed: paymentStatus.success,
+        paid: paymentStatus.paid,
+        expectedAmount,
+        confirmedAmount: paymentStatus.amount,
+      });
+      res.status(400).json({ success: false, message: 'Pagamento não confirmado' });
+      return;
+    }
 
-    if (client) {
-      const [poolEntry] = await sql`
-        UPDATE login_pool
-        SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
-        WHERE id = (SELECT id FROM login_pool WHERE status = 'disponivel' ORDER BY created_at ASC LIMIT 1)
-        RETURNING id, app_account, app_password
+    const result = await sql.begin(async (tx) => {
+      // postgres.js fornece uma tag SQL escopada à transação, mas a interface
+      // TransactionSql da versão instalada perde a assinatura chamável no TS.
+      const transactionSql = tx as unknown as typeof sql;
+
+      // Serializa retries e webhooks concorrentes do mesmo pedido. Se qualquer
+      // etapa abaixo falhar, a transação inteira reverte e o próximo retry pode
+      // recomeçar sem perder fulfillment nem consumir dois logins.
+      const [lockedOrder] = await transactionSql`
+        SELECT id, name, whatsapp, plan, amount, status
+        FROM pending_orders
+        WHERE id = ${order_nsu}
+        FOR UPDATE
       `;
 
+      if (!lockedOrder) {
+        throw new Error(`Pedido ${order_nsu} deixou de existir durante o processamento`);
+      }
+
+      if (lockedOrder.status === 'registered') {
+        return { state: 'already-registered' as const };
+      }
+
+      if (lockedOrder.status !== 'pending' && lockedOrder.status !== 'paid') {
+        throw new Error(`Status inválido para pagamento: ${lockedOrder.status}`);
+      }
+
+      const wasAlreadyPaid = lockedOrder.status === 'paid';
+
+      const lockedExpectedAmount = Math.round(Number(lockedOrder.amount) * 100);
+      if (paymentStatus.amount !== lockedExpectedAmount) {
+        throw new Error('Valor do pedido mudou durante a confirmação do pagamento');
+      }
+
+      await transactionSql`
+        UPDATE pending_orders
+        SET status = 'paid', paid_at = COALESCE(paid_at, NOW())
+        WHERE id = ${order_nsu}
+      `;
+
+      const daysToAdd = PLAN_DAYS[lockedOrder.plan] ?? 31;
+      const [client] = await transactionSql`
+        SELECT id, starhome_account, app_account
+        FROM clients
+        WHERE whatsapp = ${lockedOrder.whatsapp}
+        FOR UPDATE
+      `;
+
+      // Cliente novo conclui o cadastro pelo fluxo público usando o pedido pago.
+      if (!client) {
+        return {
+          state: 'awaiting-registration' as const,
+          notifyCustomer: !wasAlreadyPaid,
+        };
+      }
+
+      let poolEntry: any = null;
+
+      // Renovações reutilizam a credencial já vinculada. Só clientes ainda sem
+      // app_account consomem uma nova entrada do pool.
+      if (!client.app_account) {
+        [poolEntry] = await transactionSql`
+          UPDATE login_pool
+          SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
+          WHERE id = (
+            SELECT id
+            FROM login_pool
+            WHERE status = 'disponivel'
+            ORDER BY created_at ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT 1
+          )
+          RETURNING id, app_account, app_password
+        `;
+      }
+
       if (poolEntry) {
-        await sql`
-          UPDATE clients SET status = 'Ativo', days_remaining = ${daysToAdd},
-          app_account = ${poolEntry.app_account}, app_password = ${poolEntry.app_password}, plan = ${order.plan}
+        await transactionSql`
+          UPDATE clients
+          SET status = 'Ativo', days_remaining = ${daysToAdd},
+              app_account = ${poolEntry.app_account}, app_password = ${poolEntry.app_password},
+              plan = ${lockedOrder.plan}
           WHERE id = ${client.id}
         `;
-
-        await sql`
-          UPDATE pending_orders SET status = 'registered', client_id = ${client.id}, registered_at = NOW()
-          WHERE id = ${order_nsu}
+      } else {
+        await transactionSql`
+          UPDATE clients
+          SET status = 'Ativo', days_remaining = ${daysToAdd}, plan = ${lockedOrder.plan}
+          WHERE id = ${client.id}
         `;
-
-        logger.info(`[InfinityPay] Acesso liberado para ${client.id}`);
-
-        await enqueueRenewalJob(client.id, order_nsu, client.starhome_account);
       }
+
+      // A existência do job por order_id torna a retomada idempotente mesmo se
+      // um pedido antigo estiver como paid após uma falha anterior.
+      if (client.starhome_account) {
+        await transactionSql`
+          INSERT INTO renewal_jobs (client_id, order_id, starhome_account)
+          SELECT ${client.id}, ${order_nsu}, ${client.starhome_account}
+          WHERE NOT EXISTS (
+            SELECT 1 FROM renewal_jobs WHERE order_id = ${order_nsu}
+          )
+        `;
+      }
+
+      await transactionSql`
+        UPDATE pending_orders
+        SET status = 'registered', client_id = ${client.id}, registered_at = COALESCE(registered_at, NOW())
+        WHERE id = ${order_nsu}
+      `;
+
+      return {
+        state: 'registered' as const,
+        clientId: client.id,
+        poolAssigned: Boolean(poolEntry || client.app_account),
+      };
+    });
+
+    if (result.state === 'registered') {
+      logger.info(`[InfinityPay] Acesso liberado para ${result.clientId}`, {
+        poolAssigned: result.poolAssigned,
+      });
+    } else if (result.state === 'awaiting-registration') {
+      logger.info(`[InfinityPay] Pedido ${order_nsu} pago; aguardando cadastro do cliente`);
+      if (result.notifyCustomer) {
+        try {
+          await sendPaymentConfirmation(
+            order.whatsapp,
+            order.name,
+            order.plan,
+            Number(order.amount),
+            order_nsu
+          );
+        } catch (notificationError) {
+          logger.error('[InfinityPay] Falha ao enviar link de cadastro por WhatsApp:', notificationError);
+        }
+      }
+    } else {
+      logger.info(`[InfinityPay] Pedido ${order_nsu} já processado por outra entrega`);
     }
 
-    logger.info(`[InfinityPay] Pagamento confirmado: ${order_nsu}`);
+    logger.info(`[InfinityPay] Pagamento confirmado e persistido: ${order_nsu}`);
+    res.status(200).json({ success: true, message: null });
   } catch (error) {
     logger.error('[InfinityPay] Erro ao processar webhook:', error);
+    res.status(400).json({ success: false, message: 'Falha ao processar pagamento' });
   }
 });
 

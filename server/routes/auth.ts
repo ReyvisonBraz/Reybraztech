@@ -254,39 +254,88 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
     const { orderId, device: formDevice, email, password } = result.data;
 
     try {
-        // Buscar o pedido (status = 'paid' e ainda não registrado)
-        const [order] = await sql`
-          SELECT id, name, whatsapp, plan, amount, device
+        // Preflight barato antes do bcrypt. A transação abaixo repete e bloqueia
+        // esta leitura antes de executar qualquer efeito.
+        const [preflightOrder] = await sql`
+          SELECT id
           FROM pending_orders
           WHERE id = ${orderId}
             AND status = 'paid'
             AND registered_at IS NULL
         `;
 
-        // Device: usa do formulario, ou do order (trial envia device na criação)
-        const device = formDevice || order?.device || '';
-
-        if (!order) {
+        if (!preflightOrder) {
             res.status(404).json({ error: 'Pedido não encontrado ou já registrado.' });
             return;
         }
 
-        // Verificar se WhatsApp já existe na tabela clients
-        const [existingClient] = await sql`
-          SELECT id, app_account FROM clients WHERE whatsapp = ${order.whatsapp}
-        `;
-        if (existingClient) {
+        const passwordHash = await bcrypt.hash(password, 12);
+        const normalizedEmail = email?.trim() || null;
+
+        const registration = await sql.begin(async (tx) => {
+            // A versão instalada de postgres.js perde a assinatura chamável de
+            // TransactionSql nos tipos, embora forneça a tag SQL em runtime.
+            const transactionSql = tx as unknown as typeof sql;
+
+            // Mesmo lock usado pelo webhook InfinityPay: cadastro e fulfillment
+            // nunca podem atuar simultaneamente sobre o mesmo pedido.
+            const [order] = await transactionSql`
+              SELECT id, name, whatsapp, plan, amount, device, status, registered_at
+              FROM pending_orders
+              WHERE id = ${orderId}
+              FOR UPDATE
+            `;
+
+            if (!order || order.status !== 'paid' || order.registered_at) {
+                return { state: 'order-unavailable' as const };
+            }
+
+            const device = formDevice || order.device || '';
             const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
+
+            const [existingClient] = await transactionSql`
+              SELECT id, name, email, app_account
+              FROM clients
+              WHERE whatsapp = ${order.whatsapp}
+              FOR UPDATE
+            `;
+
+            let client = existingClient;
+            let created = false;
+
+            if (!client) {
+                if (normalizedEmail) {
+                    const [existingEmail] = await transactionSql`
+                      SELECT id
+                      FROM clients
+                      WHERE LOWER(email) = LOWER(${normalizedEmail})
+                      FOR UPDATE
+                    `;
+                    if (existingEmail) {
+                        return { state: 'email-conflict' as const };
+                    }
+                }
+
+                [client] = await transactionSql`
+                  INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status, days_remaining)
+                  VALUES (${order.name}, ${order.whatsapp}, ${device}, ${normalizedEmail}, ${passwordHash}, ${order.plan}, 'Ativo', ${daysToAdd})
+                  RETURNING id, name, email, app_account
+                `;
+                created = true;
+            }
+
             let poolEntry: any = null;
 
-            if (!existingClient.app_account) {
-                [poolEntry] = await sql`
+            if (!client.app_account) {
+                [poolEntry] = await transactionSql`
                   UPDATE login_pool
-                  SET status = 'em_uso', client_id = ${existingClient.id}, assigned_at = NOW()
+                  SET status = 'em_uso', client_id = ${client.id}, assigned_at = NOW()
                   WHERE id = (
-                    SELECT id FROM login_pool
+                    SELECT id
+                    FROM login_pool
                     WHERE status = 'disponivel'
                     ORDER BY created_at ASC
+                    FOR UPDATE SKIP LOCKED
                     LIMIT 1
                   )
                   RETURNING id, app_account, app_password
@@ -294,128 +343,95 @@ router.post('/register-from-order', async (req: Request, res: Response) => {
             }
 
             if (poolEntry) {
-                await sql`
+                await transactionSql`
                   UPDATE clients
                   SET status = 'Ativo',
                       days_remaining = ${daysToAdd},
                       plan = ${order.plan},
                       app_account = ${poolEntry.app_account},
                       app_password = ${poolEntry.app_password}
-                  WHERE id = ${existingClient.id}
+                  WHERE id = ${client.id}
                 `;
             } else {
-                await sql`
+                await transactionSql`
                   UPDATE clients
                   SET status = 'Ativo',
                       days_remaining = ${daysToAdd},
                       plan = ${order.plan}
-                  WHERE id = ${existingClient.id}
+                  WHERE id = ${client.id}
                 `;
             }
 
-            // Vincular pedido ao cliente existente
-            await sql`
+            await transactionSql`
               UPDATE pending_orders
-              SET status = 'registered', client_id = ${existingClient.id}, registered_at = NOW()
+              SET status = 'registered', client_id = ${client.id}, registered_at = NOW()
               WHERE id = ${orderId}
             `;
-            // Gerar token para login automático
-            const JWT_SECRET = process.env.JWT_SECRET!;
-            const token = jwt.sign(
-                { id: existingClient.id, email: order.whatsapp },
-                JWT_SECRET,
-                { algorithm: 'HS256', expiresIn: '8h' }
-            );
-            res.json({ success: true, token, user: { name: order.name, whatsapp: order.whatsapp } });
+
+            return {
+                state: 'completed' as const,
+                created,
+                poolAssigned: Boolean(poolEntry || client.app_account),
+                clientId: client.id,
+                clientName: client.name || order.name,
+                clientEmail: client.email || normalizedEmail,
+                orderName: order.name,
+                whatsapp: order.whatsapp,
+                plan: order.plan,
+                device,
+            };
+        });
+
+        if (registration.state === 'order-unavailable') {
+            res.status(404).json({ error: 'Pedido não encontrado ou já registrado.' });
             return;
         }
 
-        // Se forneceu email, verificar duplicata
-        if (email && email.trim() !== '') {
-            const [existingEmail] = await sql`
-              SELECT id FROM clients WHERE email = ${email}
-            `;
-            if (existingEmail) {
-                res.status(409).json({ error: 'Este e-mail já está cadastrado.' });
-                return;
-            }
+        if (registration.state === 'email-conflict') {
+            res.status(409).json({ error: 'Este e-mail já está cadastrado.' });
+            return;
         }
 
-        // Criar cliente
-        const JWT_SECRET = process.env.JWT_SECRET!;
-        const passwordHash = await bcrypt.hash(password, 12);
-
-        const daysToAdd = PLAN_DAYS[order.plan] ?? 31;
-
-        const [newClient] = await sql`
-          INSERT INTO clients (name, whatsapp, device, email, password_hash, plan, status, days_remaining)
-          VALUES (${order.name}, ${order.whatsapp}, ${device}, ${email || null}, ${passwordHash}, ${order.plan}, 'Ativo', ${daysToAdd})
-          RETURNING id, name, email, plan, status
-        `;
-
-        const [poolEntry] = await sql`
-          UPDATE login_pool
-          SET status = 'em_uso', client_id = ${newClient.id}, assigned_at = NOW()
-          WHERE id = (
-            SELECT id FROM login_pool
-            WHERE status = 'disponivel'
-            ORDER BY created_at ASC
-            LIMIT 1
-          )
-          RETURNING id, app_account, app_password
-        `;
-
-        if (poolEntry) {
-            await sql`
-              UPDATE clients
-              SET app_account = ${poolEntry.app_account},
-                  app_password = ${poolEntry.app_password}
-              WHERE id = ${newClient.id}
-            `;
-        } else {
-            logger.warn(`Pool vazio no cadastro pos-pagamento. Cliente ${newClient.id} criado sem login atribuido.`);
+        if (!registration.poolAssigned) {
+            logger.warn(`Pool vazio no cadastro pos-pagamento. Cliente ${registration.clientId} criado sem login atribuido.`);
         }
-
-        // Atualizar pedido como registrado
-        await sql`
-          UPDATE pending_orders
-          SET status = 'registered', client_id = ${newClient.id}, registered_at = NOW()
-          WHERE id = ${orderId}
-        `;
 
         // Gerar JWT
+        const JWT_SECRET = process.env.JWT_SECRET!;
         const token = jwt.sign(
-            { id: newClient.id, email: email || order.whatsapp },
+            { id: registration.clientId, email: registration.clientEmail || registration.whatsapp },
             JWT_SECRET,
             { algorithm: 'HS256', expiresIn: '8h' }
         );
 
-        const logMsg = [
-            `✅ <b>Novo cliente via ${order.plan === 'trial' ? 'trial' : 'checkout'}!</b>`,
-            `👤 <b>Nome:</b> ${order.name}`,
-            `📱 <b>WhatsApp:</b> ${order.whatsapp}`,
-            `🖥️ <b>Dispositivo:</b> ${device}`,
-            `📋 <b>Plano:</b> ${order.plan}`,
-            `🆔 <b>ID:</b> ${newClient.id}`
-        ].join('\n');
-        logger.info(logMsg);
+        if (registration.created) {
+            const logMsg = [
+                `✅ <b>Novo cliente via ${registration.plan === 'trial' ? 'trial' : 'checkout'}!</b>`,
+                `👤 <b>Nome:</b> ${registration.orderName}`,
+                `📱 <b>WhatsApp:</b> ${registration.whatsapp}`,
+                `🖥️ <b>Dispositivo:</b> ${registration.device}`,
+                `📋 <b>Plano:</b> ${registration.plan}`,
+                `🆔 <b>ID:</b> ${registration.clientId}`
+            ].join('\n');
+            logger.info(logMsg);
 
-        // Enviar WhatsApp (best-effort, não bloqueia resposta em caso de falha)
-        if (order.plan === 'trial') {
-            await sendTrialActivation(order.whatsapp, order.name);
-        } else {
-            await sendRegistrationComplete(order.whatsapp, order.name);
+            // Envio externo fica fora da transação e não compromete o cadastro.
+            if (registration.plan === 'trial') {
+                await sendTrialActivation(registration.whatsapp, registration.orderName);
+            } else {
+                await sendRegistrationComplete(registration.whatsapp, registration.orderName);
+            }
         }
 
-        res.status(201).json({
+        res.status(registration.created ? 201 : 200).json({
             success: true,
             token,
             user: {
-                name: newClient.name,
-                plan: newClient.plan,
-                status: newClient.status,
-                whatsapp: order.whatsapp,
-                email: email || null,
+                name: registration.clientName,
+                plan: registration.plan,
+                status: 'Ativo',
+                whatsapp: registration.whatsapp,
+                email: registration.clientEmail || null,
             },
         });
     } catch (error) {
